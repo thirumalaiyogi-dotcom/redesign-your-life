@@ -1,0 +1,233 @@
+<title>Email Templates</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column; each template = steps, subject copy, body copy, live preview. */
+:root{color-scheme:dark;--bg:#070d1f;--surface:#101b3b;--line:rgba(160,175,215,.16);--ink:#f4efe3;--ink2:#c9cfdf;--muted:#8a94b2;--gold:#d9b35c;--ok:#3fbf7f;
+--f:"Segoe UI",system-ui,-apple-system,sans-serif}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:30px;line-height:1.1} h2{margin:0;font-size:22px}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px}
+ol{margin:0;padding-left:20px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+code{background:#0b1430;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;flex:1;min-width:0;overflow-wrap:anywhere}
+button{font:inherit;font-weight:800;font-size:14px;border:0;border-radius:12px;padding:12px 16px;min-height:44px;cursor:pointer;background:linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227);color:#1a1204}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.ok{background:var(--ok);color:#03200f}
+button:focus-visible{outline:2px solid #f6e0a0;outline-offset:2px}
+iframe{width:100%;height:560px;border:0;border-radius:12px;background:#eef0f6;max-width:100%}
+.muted{color:var(--muted);font-size:13px}
+</style>
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow">Supabase · Authentication · Emails · Templates</span>
+  <h1>Email templates</h1><p style="color:var(--ink2);margin:0">ஒவ்வொரு template-க்கும் Subject, Body இரண்டையும் copy பண்ணி Supabase-ல paste பண்ணுங்க. கீழே preview இருக்கு.</p></header>
+  <section class="card"><span class="eyebrow">1 · Confirm signup</span><h2>Confirm your email</h2>
+    <ol><li>Supabase → redesign-your-life → <b>Authentication</b> → <b>Emails</b> → <b>Templates</b> → <b>Confirm signup</b></li>
+    <li><b>Subject</b> box-ல இருக்கிறதை அழிச்சிட்டு Subject-ஐ paste பண்ணுங்க</li><li><b>Message body</b> (Source) முழுசையும் அழிச்சிட்டு Body-ஐ paste பண்ணுங்க</li><li><b>Save changes</b></li></ol>
+    <div class="row"><code id="s1">Confirm your email · Redesign Your Life</code><button data-copy="s1">Copy subject</button></div>
+    <div class="row"><button data-copy="b1" style="flex:1">Copy body (HTML)</button></div>
+    <iframe title="Confirm email preview" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;color-scheme&quot; content=&quot;light dark&quot;&gt;
+&lt;title&gt;Confirm your email&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style=&quot;margin:0;padding:0;background:#eef0f6;&quot;&gt;
+&lt;div style=&quot;display:none;max-height:0;overflow:hidden;opacity:0;&quot;&gt;Confirm your email to start tracking your 58 daily habits.&lt;/div&gt;
+&lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#eef0f6;&quot;&gt;
+&lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:24px 12px;&quot;&gt;
+  &lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;max-width:520px;background:#0b1430;border-radius:16px;overflow:hidden;&quot;&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;width:36px;height:36px;background:#d9b35c;border-radius:10px;text-align:center;vertical-align:middle;font-size:18px;color:#1a1204;font-weight:bold;&quot;&gt;&amp;#9819;&lt;/td&gt;
+        &lt;td style=&quot;padding-left:10px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+          &lt;div style=&quot;font-size:15px;font-weight:bold;letter-spacing:1px;color:#f4efe3;text-transform:uppercase;&quot;&gt;Redesign Your Life&lt;/div&gt;
+          &lt;div style=&quot;font-size:10px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;&quot;&gt;Deepak&amp;#39;s Program&lt;/div&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:20px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;font-size:11px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;font-weight:bold;&quot;&gt;Welcome to the program&lt;/div&gt;
+      &lt;h1 style=&quot;margin:8px 0 0 0;font-size:26px;line-height:1.2;color:#f4efe3;font-family:Arial,Helvetica,sans-serif;&quot;&gt;Confirm your email&lt;/h1&gt;
+      &lt;p style=&quot;margin:14px 0 0 0;font-size:15px;line-height:1.6;color:#c9cfdf;&quot;&gt;Thank you for joining Deepak&amp;#39;s Redesign Your Life. Tap the button below to confirm your email address and activate your member account.&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 8px 28px;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;border-radius:12px;background:#d9b35c;&quot;&gt;
+          &lt;a href=&quot;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&quot; style=&quot;display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#1a1204;text-decoration:none;border-radius:12px;&quot;&gt;Confirm my email&lt;/a&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:12px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;p style=&quot;margin:0;font-size:14px;line-height:1.6;color:#c9cfdf;&quot;&gt;After confirming, log in and tick today&amp;#39;s habits across Wealth, Conscious, Karma and Champion trackers. Every tick earns points on the group leaderboard.&lt;/p&gt;
+      &lt;p style=&quot;margin:18px 0 0 0;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;If the button does not work, copy this link into your browser:&lt;br&gt;
+        &lt;a href=&quot;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&quot; style=&quot;color:#d9b35c;word-break:break-all;&quot;&gt;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&lt;/a&gt;&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 28px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;border-top:1px solid #26325a;padding-top:16px;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;
+        You received this because someone signed up with this email address. If it was not you, you can ignore this email and no account will be activated.&lt;br&gt;Sent to member@example.com by Deepak&amp;#39;s Redesign Your Life &amp;middot; Small habits | Big transformation
+      &lt;/div&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+  &lt;/table&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></section>
+  <section class="card"><span class="eyebrow">2 · Reset password</span><h2>Reset your password</h2>
+    <ol><li>அதே Templates page-ல <b>Reset Password</b> tab</li><li>Subject, Body இரண்டையும் அதே மாதிரி மாத்துங்க</li><li><b>Save changes</b></li></ol>
+    <div class="row"><code id="s2">Reset your password · Redesign Your Life</code><button data-copy="s2">Copy subject</button></div>
+    <div class="row"><button data-copy="b2" style="flex:1">Copy body (HTML)</button></div>
+    <iframe title="Reset password preview" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;color-scheme&quot; content=&quot;light dark&quot;&gt;
+&lt;title&gt;Reset your password&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style=&quot;margin:0;padding:0;background:#eef0f6;&quot;&gt;
+&lt;div style=&quot;display:none;max-height:0;overflow:hidden;opacity:0;&quot;&gt;Use this link to set a new password for your account.&lt;/div&gt;
+&lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#eef0f6;&quot;&gt;
+&lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:24px 12px;&quot;&gt;
+  &lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;max-width:520px;background:#0b1430;border-radius:16px;overflow:hidden;&quot;&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;width:36px;height:36px;background:#d9b35c;border-radius:10px;text-align:center;vertical-align:middle;font-size:18px;color:#1a1204;font-weight:bold;&quot;&gt;&amp;#9819;&lt;/td&gt;
+        &lt;td style=&quot;padding-left:10px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+          &lt;div style=&quot;font-size:15px;font-weight:bold;letter-spacing:1px;color:#f4efe3;text-transform:uppercase;&quot;&gt;Redesign Your Life&lt;/div&gt;
+          &lt;div style=&quot;font-size:10px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;&quot;&gt;Deepak&amp;#39;s Program&lt;/div&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:20px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;font-size:11px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;font-weight:bold;&quot;&gt;Account help&lt;/div&gt;
+      &lt;h1 style=&quot;margin:8px 0 0 0;font-size:26px;line-height:1.2;color:#f4efe3;font-family:Arial,Helvetica,sans-serif;&quot;&gt;Reset your password&lt;/h1&gt;
+      &lt;p style=&quot;margin:14px 0 0 0;font-size:15px;line-height:1.6;color:#c9cfdf;&quot;&gt;We received a request to reset the password for your Redesign Your Life account. Tap the button below to choose a new password.&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 8px 28px;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;border-radius:12px;background:#d9b35c;&quot;&gt;
+          &lt;a href=&quot;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&quot; style=&quot;display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#1a1204;text-decoration:none;border-radius:12px;&quot;&gt;Set a new password&lt;/a&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:12px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;p style=&quot;margin:0;font-size:14px;line-height:1.6;color:#c9cfdf;&quot;&gt;This link works once and expires soon. If it has expired, request a new one from the Forgot password page.&lt;/p&gt;
+      &lt;p style=&quot;margin:18px 0 0 0;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;If the button does not work, copy this link into your browser:&lt;br&gt;
+        &lt;a href=&quot;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&quot; style=&quot;color:#d9b35c;word-break:break-all;&quot;&gt;https://thirumalaiyogi-dotcom.github.io/redesign-your-life/login.html&lt;/a&gt;&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 28px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;border-top:1px solid #26325a;padding-top:16px;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;
+        If you did not ask to reset your password, you can ignore this email. Your password will stay the same.&lt;br&gt;Sent to member@example.com by Deepak&amp;#39;s Redesign Your Life &amp;middot; Small habits | Big transformation
+      &lt;/div&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+  &lt;/table&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></section>
+  <p class="muted">Body-ல இருக்கிற <code style="flex:none;padding:2px 6px">{{ .ConfirmationURL }}</code>, <code style="flex:none;padding:2px 6px">{{ .Email }}</code> இரண்டையும் மாத்தாதீங்க. Supabase அனுப்பும்போது அதை உண்மையான link, email-ஆ மாத்தும்.</p>
+</div>
+<textarea id="b1" hidden>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;color-scheme&quot; content=&quot;light dark&quot;&gt;
+&lt;title&gt;Confirm your email&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style=&quot;margin:0;padding:0;background:#eef0f6;&quot;&gt;
+&lt;div style=&quot;display:none;max-height:0;overflow:hidden;opacity:0;&quot;&gt;Confirm your email to start tracking your 58 daily habits.&lt;/div&gt;
+&lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#eef0f6;&quot;&gt;
+&lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:24px 12px;&quot;&gt;
+  &lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;max-width:520px;background:#0b1430;border-radius:16px;overflow:hidden;&quot;&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;width:36px;height:36px;background:#d9b35c;border-radius:10px;text-align:center;vertical-align:middle;font-size:18px;color:#1a1204;font-weight:bold;&quot;&gt;&amp;#9819;&lt;/td&gt;
+        &lt;td style=&quot;padding-left:10px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+          &lt;div style=&quot;font-size:15px;font-weight:bold;letter-spacing:1px;color:#f4efe3;text-transform:uppercase;&quot;&gt;Redesign Your Life&lt;/div&gt;
+          &lt;div style=&quot;font-size:10px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;&quot;&gt;Deepak&amp;#39;s Program&lt;/div&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:20px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;font-size:11px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;font-weight:bold;&quot;&gt;Welcome to the program&lt;/div&gt;
+      &lt;h1 style=&quot;margin:8px 0 0 0;font-size:26px;line-height:1.2;color:#f4efe3;font-family:Arial,Helvetica,sans-serif;&quot;&gt;Confirm your email&lt;/h1&gt;
+      &lt;p style=&quot;margin:14px 0 0 0;font-size:15px;line-height:1.6;color:#c9cfdf;&quot;&gt;Thank you for joining Deepak&amp;#39;s Redesign Your Life. Tap the button below to confirm your email address and activate your member account.&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 8px 28px;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;border-radius:12px;background:#d9b35c;&quot;&gt;
+          &lt;a href=&quot;{{ .ConfirmationURL }}&quot; style=&quot;display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#1a1204;text-decoration:none;border-radius:12px;&quot;&gt;Confirm my email&lt;/a&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:12px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;p style=&quot;margin:0;font-size:14px;line-height:1.6;color:#c9cfdf;&quot;&gt;After confirming, log in and tick today&amp;#39;s habits across Wealth, Conscious, Karma and Champion trackers. Every tick earns points on the group leaderboard.&lt;/p&gt;
+      &lt;p style=&quot;margin:18px 0 0 0;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;If the button does not work, copy this link into your browser:&lt;br&gt;
+        &lt;a href=&quot;{{ .ConfirmationURL }}&quot; style=&quot;color:#d9b35c;word-break:break-all;&quot;&gt;{{ .ConfirmationURL }}&lt;/a&gt;&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 28px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;border-top:1px solid #26325a;padding-top:16px;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;
+        You received this because someone signed up with this email address. If it was not you, you can ignore this email and no account will be activated.&lt;br&gt;Sent to {{ .Email }} by Deepak&amp;#39;s Redesign Your Life &amp;middot; Small habits | Big transformation
+      &lt;/div&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+  &lt;/table&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</textarea><textarea id="b2" hidden>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;color-scheme&quot; content=&quot;light dark&quot;&gt;
+&lt;title&gt;Reset your password&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style=&quot;margin:0;padding:0;background:#eef0f6;&quot;&gt;
+&lt;div style=&quot;display:none;max-height:0;overflow:hidden;opacity:0;&quot;&gt;Use this link to set a new password for your account.&lt;/div&gt;
+&lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#eef0f6;&quot;&gt;
+&lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:24px 12px;&quot;&gt;
+  &lt;table role=&quot;presentation&quot; width=&quot;100%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;max-width:520px;background:#0b1430;border-radius:16px;overflow:hidden;&quot;&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;width:36px;height:36px;background:#d9b35c;border-radius:10px;text-align:center;vertical-align:middle;font-size:18px;color:#1a1204;font-weight:bold;&quot;&gt;&amp;#9819;&lt;/td&gt;
+        &lt;td style=&quot;padding-left:10px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+          &lt;div style=&quot;font-size:15px;font-weight:bold;letter-spacing:1px;color:#f4efe3;text-transform:uppercase;&quot;&gt;Redesign Your Life&lt;/div&gt;
+          &lt;div style=&quot;font-size:10px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;&quot;&gt;Deepak&amp;#39;s Program&lt;/div&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:20px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;font-size:11px;letter-spacing:2px;color:#d9b35c;text-transform:uppercase;font-weight:bold;&quot;&gt;Account help&lt;/div&gt;
+      &lt;h1 style=&quot;margin:8px 0 0 0;font-size:26px;line-height:1.2;color:#f4efe3;font-family:Arial,Helvetica,sans-serif;&quot;&gt;Reset your password&lt;/h1&gt;
+      &lt;p style=&quot;margin:14px 0 0 0;font-size:15px;line-height:1.6;color:#c9cfdf;&quot;&gt;We received a request to reset the password for your Redesign Your Life account. Tap the button below to choose a new password.&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 8px 28px;&quot;&gt;
+      &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+        &lt;td style=&quot;border-radius:12px;background:#d9b35c;&quot;&gt;
+          &lt;a href=&quot;{{ .ConfirmationURL }}&quot; style=&quot;display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#1a1204;text-decoration:none;border-radius:12px;&quot;&gt;Set a new password&lt;/a&gt;
+        &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:12px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;p style=&quot;margin:0;font-size:14px;line-height:1.6;color:#c9cfdf;&quot;&gt;This link works once and expires soon. If it has expired, request a new one from the Forgot password page.&lt;/p&gt;
+      &lt;p style=&quot;margin:18px 0 0 0;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;If the button does not work, copy this link into your browser:&lt;br&gt;
+        &lt;a href=&quot;{{ .ConfirmationURL }}&quot; style=&quot;color:#d9b35c;word-break:break-all;&quot;&gt;{{ .ConfirmationURL }}&lt;/a&gt;&lt;/p&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style=&quot;padding:24px 28px 28px 28px;font-family:Arial,Helvetica,sans-serif;&quot;&gt;
+      &lt;div style=&quot;border-top:1px solid #26325a;padding-top:16px;font-size:12px;line-height:1.6;color:#8a94b2;&quot;&gt;
+        If you did not ask to reset your password, you can ignore this email. Your password will stay the same.&lt;br&gt;Sent to {{ .Email }} by Deepak&amp;#39;s Redesign Your Life &amp;middot; Small habits | Big transformation
+      &lt;/div&gt;
+    &lt;/td&gt;&lt;/tr&gt;
+  &lt;/table&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</textarea>
+<script>
+const T={s1:()=>document.getElementById('s1').textContent,s2:()=>document.getElementById('s2').textContent,b1:()=>document.getElementById('b1').value,b2:()=>document.getElementById('b2').value};
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-copy]');if(!b)return;const txt=T[b.dataset.copy]();const label=b.textContent;
+ const done=()=>{b.textContent='Copied ✓';b.classList.add('ok');setTimeout(()=>{b.textContent=label;b.classList.remove('ok')},1800)};
+ try{await navigator.clipboard.writeText(txt);done()}catch(_){const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();
+ try{document.execCommand('copy');done()}catch(__){b.textContent='Long-press to copy'}t.remove()}});
+</script>
