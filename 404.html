@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070d1f">
+<meta name="robots" content="noindex">
+<title>Page not found · Redesign Your Life</title>
+<!-- Self-contained: GitHub Pages shows this at whatever URL was missing, in any folder. -->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #070d1f; color: #f4efe3; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  main { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); text-align: center; box-sizing: border-box;
+    background: radial-gradient(90% 60% at 50% 110%, rgba(240,170,70,.28), transparent 60%); }
+  .card { max-width: 380px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .n { font-size: 72px; font-weight: 900; line-height: 1; background: linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1 { margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase; }
+  p { margin: 0; color: #8a94b2; line-height: 1.5; }
+  a { display: block; width: 100%; box-sizing: border-box; padding: 14px; border-radius: 12px; font-weight: 800; text-decoration: none; }
+  .gold { color: #1a1204; background: linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227); }
+  .ghost { color: #f4efe3; border: 1px solid rgba(214,178,94,.3); }
+  a:focus-visible { outline: 2px solid #f6e0a0; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <span class="n">404</span>
+    <h1>Page not found</h1>
+    <p>This link may be old or mistyped. Your habits and points are safe.</p>
+    <a class="gold" id="home" href="/redesign-your-life/login.html">Go to my dashboard</a>
+    <a class="ghost" id="land" href="/redesign-your-life/">Open the home page</a>
+  </div>
+</main>
+<script>
+  // Works on GitHub Pages (/redesign-your-life/...) and on a custom domain or Vercel (/...).
+  var base = location.pathname.indexOf('/redesign-your-life/') === 0 ? '/redesign-your-life/' : '/';
+  document.getElementById('home').href = base + 'login.html';
+  document.getElementById('land').href = base;
+</script>
+</body>
+</html>

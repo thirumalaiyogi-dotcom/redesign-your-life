@@ -23,7 +23,7 @@
 | 9 | Journal, progress & reports | ✅ private journal, my progress (chart, trackers, badges, points history), coach reports + CSV, shared journals |
 | 10 | PWA & Android install | ✅ manifest, app icons, service worker (no private data cached), offline screen, install card |
 | 11 | Security review | ✅ see SECURITY.md: 62/62 live attacks blocked, CSP, image URL limits, clickjacking guard |
-| 12 | Production deploy & domain | planned |
+| 12 | Production | ✅ live on GitHub Pages; 404 page, robots.txt, HANDOVER.md (running the program, free-plan limits, moving to a domain) |
 
 ## Folders
 ```
@@ -34,8 +34,7 @@ admin/                dashboard.html, checkins.html, members.html, activities.ht
 css/                  style.css, dashboard.css, admin.css, responsive.css
 js/                   supabase.js, auth.js, ui.js, icons.js, dashboard.js, admin.js, auth-pages.js, stadium.js
 js/vendor/            supabase-js 2.45.4 browser build (MIT)
-design-preview.html   Phase 1 clickable design (SAMPLE data only)
-image-prompts.html    AI prompts used for the 58 activity images
+design/               design-preview.html (Phase 1, SAMPLE data only), image-prompts.html
 assets/images/        58 activity images (WebP, 640×480)
 js/supabase.js        Supabase client (public anon key only)
 supabase/             schema, functions, policies, seed, setup-all.sql, README

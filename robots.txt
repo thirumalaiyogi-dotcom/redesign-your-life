@@ -1,0 +1,12 @@
+# Deepak's Redesign Your Life
+User-agent: *
+Allow: /redesign-your-life/$
+Allow: /redesign-your-life/index.html
+Disallow: /redesign-your-life/member/
+Disallow: /redesign-your-life/admin/
+Disallow: /redesign-your-life/design/
+Disallow: /redesign-your-life/supabase/
+Disallow: /member/
+Disallow: /admin/
+Disallow: /design/
+Disallow: /supabase/
