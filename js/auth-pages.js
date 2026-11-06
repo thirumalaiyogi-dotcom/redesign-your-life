@@ -2,6 +2,7 @@
 import { supabase, app } from './supabase.js';
 import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, EMAIL_RE, PHONE_RE, validatePassword } from './ui.js';
+import { currentTheme } from './theme.js';
 import { stadium } from './stadium.js';
 
 const page = document.body.dataset.page;
@@ -9,6 +10,21 @@ const params = new URLSearchParams(location.search);
 
 stadium($('#art-canvas'));
 $$icons();
+decorate();
+
+// 2.0: theme toggle on every auth screen (ui.js handles the click) and the art panel's highlights.
+function decorate() {
+  const form = $('.auth-form');
+  if (form && !$('#theme-btn')) {
+    const dark = currentTheme() === 'dark';
+    form.insertAdjacentHTML('afterbegin', `<button class="iconbtn theme-btn auth-theme" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>`);
+  }
+  const quote = $('.auth-art .quote');
+  if (quote && !$('.art-points', quote)) {
+    quote.insertAdjacentHTML('beforeend', `<ul class="art-points">${[['check-circle-2', 'One tap, instant points'], ['flame', 'Streaks, badges and a live leaderboard'], ['lock', 'A private evening journal']]
+      .map(([ic, t]) => `<li>${icon(ic)}<span>${t}</span></li>`).join('')}</ul>`);
+  }
+}
 wirePasswordToggles();
 
 function $$icons() {

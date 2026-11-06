@@ -1,15 +1,20 @@
 /* Breakpoints: tablet ≤ 980px, phone ≤ 560px. Mobile layouts are the primary target. */
 @media (max-width: 980px) {
-  .auth { grid-template-columns: 1fr; }
-  .auth-art { min-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .auth-art .quote { left: 20px; right: 20px; bottom: 20px; }
-  .auth-art .quote h2 { font-size: 36px; }
-  .auth-form { padding-block: 28px 48px; align-items: flex-start; }
+  .auth { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .auth-art { min-height: 200px; }
+  .auth-art .quote { left: 24px; right: 24px; bottom: 22px; gap: 8px; }
+  .auth-art .quote h2 { font-size: 30px; }
+  .art-points { display: none; }
+  .auth-form { padding-block: 24px 48px; align-items: flex-start; }
+  .auth { position: relative; }
+  .auth-form { position: static; }
+  .auth-theme { top: calc(12px + env(safe-area-inset-top, 0px)); background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .25); color: #F2F6F2; box-shadow: none; }
 }
 @media (max-width: 560px) {
-  .auth-art { min-height: 168px; }
+  .auth-art { min-height: 156px; }
   .auth-art .quote .eyebrow { display: none; }
-  .auth-card h1 { font-size: 36px; }
+  .auth-art .quote h2 { font-size: 26px; }
+  .auth-card { padding: 0; border: 0; background: transparent; box-shadow: none; gap: 18px; }
   .brand b { font-size: 16px; }
   .section-h h2 { font-size: 21px; }
 }

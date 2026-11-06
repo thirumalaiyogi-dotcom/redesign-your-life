@@ -22,49 +22,7 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/responsive.css">
-<style>
-  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); background: #12302A; color: #F2F6F2; --ink: #F2F6F2; --ink-2: #CBD5CE; --muted: #A9C1B4; --gold-hi: #E6C98C; --c-text: #F2F6F2; --c-text-2: #CBD5CE; --c-muted: #A9C1B4; --c-accent-ink: #E6C98C; }
-  .hero h1 { color: #F2F6F2; }
-  .hero .btn-ghost { background: rgba(255,255,255,.08); color: #F2F6F2; border-color: rgba(255,255,255,.28); }
-  .hero .btn-gold { background: var(--c-accent); color: var(--c-on-accent); }
-  .hero .brand small { color: #E6C98C; }
-  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .hero .wrap { position: relative; padding-block: 20px 52px; display: grid; gap: 26px; }
-  .hero .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .hero h1 { font-size: clamp(42px, 11vw, 96px); font-weight: 800; line-height: 1; letter-spacing: -.035em; }
-  .hero h1 .who { display: block; font-size: .36em; color: var(--ink-2); letter-spacing: 0; font-weight: 600; margin-bottom: .2em; }
-  .hero .lede { max-width: 52ch; color: var(--ink-2); font-size: 17px; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
-  .tagline { display: flex; gap: 14px; align-items: center; font-size: 12px; font-weight: 800; letter-spacing: .28em; text-transform: uppercase; color: var(--gold-hi); }
-  .tagline i { width: 1px; height: 14px; background: var(--gold); }
-  .loop { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
-  .loop div { padding: 18px 14px; border-right: 1px solid var(--line); background: var(--c-surface); }
-  .loop div:last-child { border-right: 0; }
-  .loop b { display: block; font-family: var(--f-display); font-size: 18px; }
-  .loop small { color: var(--muted); font-size: 12.5px; }
-  .loop .n { font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: .14em; }
-  .showcase { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .show-card { position: relative; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-2); overflow: hidden; display: flex; flex-direction: column; }
-  .show-card img { aspect-ratio: 4/3; width: 100%; object-fit: cover; }
-  .show-card .body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-  .show-card .big { font-family: var(--f-display); font-size: 44px; font-weight: 800; line-height: .9; color: var(--tc); }
-  .show-card h3 { font-size: 18px; }
-  .show-card p { color: var(--ink-2); font-size: 13.5px; }
-  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .feature { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-  .feature .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--c-primary-light); color: var(--c-primary); }
-  .feature h3 { font-size: 18px; }
-  .feature p { color: var(--ink-2); font-size: 14px; }
-  footer { border-top: 1px solid var(--line); padding-block: 28px calc(28px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 13px; }
-  @media (max-width: 980px) { .showcase { grid-template-columns: repeat(2, 1fr); } .features { grid-template-columns: 1fr; } }
-  @media (max-width: 560px) {
-    .loop { grid-template-columns: repeat(2, 1fr); }
-    .loop div:nth-child(2) { border-right: 0; }
-    .loop div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
-    .tagline { letter-spacing: .14em; font-size: 11px; gap: 10px; }
-    .showcase { gap: 10px; } .show-card .body { padding: 12px; } .show-card .big { font-size: 40px; } .show-card h3 { font-size: 18px; } .show-card p { display: none; }
-  }
-</style>
+<link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
 <header class="hero">
@@ -72,9 +30,9 @@
   <div class="wrap">
     <div class="top">
       <a class="brand" href="./"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
-      <a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a>
+      <div class="top-act"><button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode"></button><a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a></div>
     </div>
-    <span class="eyebrow" style="color:#E6C98C">A 90-day transformation program</span>
+    <span class="eyebrow hero-eyebrow">A 90-day transformation program</span>
     <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
     <div class="tagline">Small habits <i></i> Big transformation</div>
     <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
@@ -83,10 +41,13 @@
       <a class="btn btn-gold" id="main-cta" href="register.html" data-icon="user-plus">Join the program</a>
       <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
     </div>
+    <ul class="hero-stats" aria-label="The program in numbers">
+      <li><b>58</b><span>daily habits</span></li><li><b>4</b><span>trackers</span></li><li><b>10</b><span>badges</span></li><li><b>0</b><span>minus points</span></li>
+    </ul>
   </div>
 </header>
 <main class="wrap stack" style="padding-block:40px">
-  <section><div class="section-h"><h2>The daily loop</h2></div>
+  <section><div class="sec-intro"><span class="eyebrow">How it works</span><h2>The daily loop</h2><p>Four steps, every day, for 90 days.</p></div>
     <div class="loop">
       <div><span class="n">STEP 1</span><b>Aware</b><small>Notice the habit</small></div>
       <div><span class="n">STEP 2</span><b>Apply</b><small>Do it today</small></div>
@@ -94,7 +55,7 @@
       <div><span class="n">STEP 4</span><b>Transform</b><small>Repeat for 90 days</small></div>
     </div>
   </section>
-  <section><div class="section-h"><h2>Four trackers · 58 activities</h2></div>
+  <section><div class="sec-intro"><span class="eyebrow">What you track</span><h2>Four trackers · 58 activities</h2><p>Each habit has its own picture and a short description.</p></div>
     <div class="showcase">
       <article class="show-card" style="--tc:var(--t-wealth)"><img src="assets/images/wealth-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Wealth Habits</h3><p>Morning-to-night habits that build health, focus and abundance.</p></div></article>
       <article class="show-card" style="--tc:var(--t-conscious)"><img src="assets/images/conscious-02.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">10</span><h3>Conscious Habits</h3><p>Stop, reduce and take control of the habits that hold you back.</p></div></article>
@@ -102,12 +63,13 @@
       <article class="show-card" style="--tc:var(--t-champion)"><img src="assets/images/champion-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Champion Mindsets</h3><p>Train your mind like an athlete, one mindset a day.</p></div></article>
     </div>
   </section>
-  <section class="features">
+  <section><div class="sec-intro"><span class="eyebrow">Why it works</span><h2>Built for small daily wins</h2></div><div class="features">
     <div class="panel feature"><span class="ic" data-icon="check-circle-2"></span><h3>One tap, instant points</h3><p>Tick ✓ and +10 points are added right away. Missed days show a cross with no penalty.</p></div>
     <div class="panel feature"><span class="ic" data-icon="trophy"></span><h3>Live leaderboard</h3><p>Daily, weekly, monthly and all-time ranks, with a podium for the top three.</p></div>
     <div class="panel feature"><span class="ic" data-icon="notebook-pen"></span><h3>Private journal</h3><p>Five evening questions. Your coach sees them only if you choose to share.</p></div>
-  </section>
+  </div></section>
 </main>
+<section class="wrap cta-band"><div><h2>Ready for day 1?</h2><p>Join with your email. It takes a minute.</p></div><a class="btn btn-gold" href="register.html" data-icon="user-plus">Join the program</a></section>
 <footer><div class="wrap row-between"><span>© 2026 Deepak's Redesign Your Life</span><span>Get 1% better every day</span></div></footer>
 <script src="js/vendor/supabase.js"></script>
 <script type="module" src="js/landing.js"></script>
