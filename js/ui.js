@@ -115,7 +115,7 @@ export function memberNav(current) {
   const items = [
     [app('member/dashboard.html'), 'layout-dashboard', 'Home', 'dashboard'],
     [app('member/trackers.html'), 'list-checks', 'Trackers', 'trackers'],
-    ['#', 'trophy', 'Ranks', 'leaderboard', 'Leaderboard opens in Phase 8'],
+    [app('member/leaderboard.html'), 'trophy', 'Ranks', 'leaderboard'],
     ['#', 'notebook-pen', 'Journal', 'journal', 'Journal opens in Phase 9'],
     [app('member/profile.html'), 'user-round', 'Profile', 'profile']
   ];
@@ -129,9 +129,9 @@ export function adminNav(current) {
     [app('admin/checkins.html'), 'check-check', 'Check-ins', 'checkins'],
     [app('admin/members.html'), 'users', 'Members', 'members'],
     [app('admin/activities.html'), 'list-checks', 'Activities', 'activities'],
-    ['#', 'trophy', 'Leaderboard', 'leaderboard', 'Leaderboard opens in Phase 8'],
+    [app('admin/leaderboard.html'), 'trophy', 'Leaderboard', 'leaderboard'],
     ['#', 'file-chart-column', 'Reports', 'reports', 'Reports open in Phase 9'],
-    ['#', 'settings', 'Settings', 'settings', 'Settings open in Phase 7']
+    [app('admin/settings.html'), 'settings', 'Settings', 'settings']
   ];
   return `<nav class="admin-nav" aria-label="Coach menu">${items.map(([href, ic, label, key, soon]) =>
     `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} ${soon ? `${SOON}="${esc(soon)}"` : ''}>${icon(ic)}${label}</a>`).join('')}</nav>`;

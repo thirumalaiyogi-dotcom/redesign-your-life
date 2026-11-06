@@ -387,15 +387,99 @@ function editActivity(a) {
   });
 }
 
+// ---------------- SETTINGS (scoring) ----------------
+const SCORE_KEYS = [
+  ['daily_completion_bonus', 'Daily completion bonus', 'Extra points when a member finishes every activity in one day.'],
+  ['streak7_bonus', '7-day streak bonus', 'Extra points on every 7th day in a row with at least one tick.'],
+  ['perfect_week_bonus', 'Perfect week bonus', 'Extra points on Sunday when every activity was done every day, Monday to Sunday.'],
+  ['streak_min_daily', 'Ticks needed for a streak day', 'How many habits a member must tick for the day to count toward a streak.']
+];
+
+async function renderSettings() {
+  const main = $('#main');
+  const isSuper = me.profile.role === 'super_admin';
+  main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">${isSuper ? 'Changes apply to new ticks from now on' : 'Only the super admin can change these'}</span><h1>Settings</h1></div></div>
+    <div class="skeleton" style="height:300px"></div>`;
+  const [st, au] = await Promise.all([
+    supabase.from('app_settings').select('key, value, updated_at'),
+    supabase.from('audit_logs').select('action, entity_id, details, created_at').eq('action', 'settings.update').order('created_at', { ascending: false }).limit(8)
+  ]);
+  if (st.error) return errorPanel(main, st.error, renderSettings);
+  const val = Object.fromEntries(st.data.map((r) => [r.key, r.value]));
+  const label = Object.fromEntries(SCORE_KEYS.map(([k, l]) => [k, l]));
+  main.innerHTML = `
+  <div class="admin-head"><div><span class="eyebrow">${isSuper ? 'Changes apply to new ticks from now on' : 'Only the super admin can change these'}</span><h1>Settings</h1></div></div>
+  <div class="set-grid">
+    <form class="panel" id="score-form" novalidate>
+      <div class="panel-h"><h3>Points</h3>${isSuper ? '<button class="btn btn-gold btn-sm" id="save-scores" type="submit" disabled>Save</button>' : '<span class="pill blue">View only</span>'}</div>
+      <div class="set-row"><div><b>Each activity done</b><small>Set per activity on the Activities page. Default is 10.</small></div><input value="10" readonly aria-label="Points per activity"></div>
+      ${SCORE_KEYS.map(([k, l, help]) => `<div class="set-row"><div><label for="s-${k}"><b>${l}</b></label><small>${help}</small></div>
+        <input id="s-${k}" data-key="${k}" type="number" inputmode="numeric" min="${k === 'streak_min_daily' ? 1 : 0}" max="${k === 'streak_min_daily' ? 58 : 500}" value="${esc(val[k] ?? '')}" ${isSuper ? '' : 'readonly'}></div>`).join('')}
+      <p class="muted" id="score-err" style="padding:0 16px 14px;font-size:13px;color:var(--bad-soft)"></p>
+    </form>
+    <div class="stack" style="gap:14px">
+      <section class="panel"><div class="panel-h"><h3>How scoring works</h3></div>
+        <ul class="rules">
+          <li>✓ Done adds the activity's points instantly. ✗ Not done, or not marked, gives 0. Points never go negative.</li>
+          <li>Members can mark only today. Past days are locked.</li>
+          <li>Each bonus is given at most once per member per day, and is taken back if the tick that earned it is removed.</li>
+          <li>Leaderboard ties: consistency, then streak, then who reached the score first.</li>
+        </ul></section>
+      <section class="panel panel-pad stack" style="gap:10px">
+        <b>Monthly Champion</b>
+        <p class="muted" style="font-size:14px">At the start of each month, award the Monthly Champion badge to last month's #1. Safe to press more than once.</p>
+        <button class="btn btn-ghost" id="close-month" type="button">${icon('trophy')}Award last month's champion</button>
+      </section>
+      <section class="panel"><div class="panel-h"><h3>Recent changes</h3></div>
+        ${au.data?.length ? `<div class="feed">${au.data.map((a) => `<div class="row"><span class="txt"><b>${esc(label[a.entity_id] || a.entity_id)}</b> · ${esc(JSON.stringify(a.details.from))} → ${esc(JSON.stringify(a.details.to))}</span><time>${esc(timeAgo(a.created_at))}</time></div>`).join('')}</div>`
+          : `<p class="muted" style="padding:14px 16px;font-size:13px">No changes yet.</p>`}
+      </section>
+    </div>
+  </div>`;
+
+  $('#close-month').addEventListener('click', async (e) => {
+    const d = new Date(); const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+    await withBusy(e.currentTarget, 'Checking…', async () => {
+      const { data, error } = await supabase.rpc('admin_close_month', { p_month: prev });
+      toast(error ? friendlyError(error) : data, error ? 'bad' : 'ok');
+    });
+  });
+  if (!isSuper) return;
+  const form = $('#score-form'), save = $('#save-scores');
+  form.addEventListener('input', (e) => {
+    const inp = e.target.closest('[data-key]'); if (!inp) return;
+    inp.classList.toggle('changed', String(inp.value) !== String(val[inp.dataset.key]));
+    save.disabled = !$$('[data-key].changed', form).length;
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const changed = $$('[data-key].changed', form);
+    for (const inp of changed) {
+      const n = Number(inp.value), min = Number(inp.min), max = Number(inp.max);
+      if (!Number.isInteger(n) || n < min || n > max) { $('#score-err').textContent = `${label[inp.dataset.key]}: enter a whole number from ${min} to ${max}.`; inp.focus(); return; }
+    }
+    $('#score-err').textContent = '';
+    await withBusy(save, 'Saving…', async () => {
+      for (const inp of changed) {
+        const { error } = await supabase.rpc('admin_update_setting', { p_key: inp.dataset.key, p_value: Number(inp.value) });
+        if (error) { toast(friendlyError(error), 'bad'); return; }
+      }
+      toast(`${changed.length} setting${changed.length > 1 ? 's' : ''} saved`);
+      renderSettings();
+    });
+  });
+}
+
 // ---------------- boot ----------------
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities' }[page] || 'dashboard');
+    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
     if (page === 'admin-checkins') await renderCheckins();
     if (page === 'admin-activities') await renderActivities();
+    if (page === 'admin-settings') await renderSettings();
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

@@ -19,7 +19,8 @@
 | 3 | Authentication & roles | ✅ login, register, forgot/reset, role guards, member & coach pages |
 | 4–5 | Trackers & daily check-in | ✅ 4 tracker pages: ✓ / ✗ today, notes, week grid, month calendar, history |
 | 6 | Coach tools | ✅ check-in feed with remove + reason, activity editor with image upload, special bonus |
-| 7–12 | Scoring settings, leaderboard, analytics, PWA, security tests, deploy | planned |
+| 7–8 | Scoring settings & leaderboard | ✅ super-admin point settings, monthly champion, podium leaderboard with recognitions |
+| 9–12 | Journal, analytics & reports, PWA, security tests, deploy | planned |
 
 ## Folders
 ```

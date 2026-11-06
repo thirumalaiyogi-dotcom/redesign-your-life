@@ -402,7 +402,8 @@ begin
   pr as (
     select pp.member_id, row_number() over (order by pp.points desc, pp.consistency desc,
                                             pp.last_score_at asc nulls last, pp.member_id)::int as rk
-    from public._period_stats(ps, pe) pp)
+    from public._period_stats(ps, pe) pp
+    where pp.points > 0)                       -- movement only against a period where they scored
   select cr.rk, cr.member_id, cr.nm, cr.av, cr.points, cr.activities_done, cr.consistency, cr.stk,
          pr.rk, coalesce(pr.rk - cr.rk, 0), cr.member_id = auth.uid()
   from cr left join pr on pr.member_id = cr.member_id
@@ -420,7 +421,7 @@ begin
 
   select l.full_name, l.consistency into r from public.get_leaderboard('weekly', d) l where l.activities_done > 0
     order by l.consistency desc, l.points desc limit 1;
-  if found then v := v || jsonb_build_object('most_consistent', jsonb_build_object('name', r.full_name, 'detail', r.consistency || '% this week')); end if;
+  if found then v := v || jsonb_build_object('most_consistent', jsonb_build_object('name', r.full_name, 'detail', round(r.consistency)::int || '% this week')); end if;
 
   select l.full_name, l.movement into r from public.get_leaderboard('weekly', d) l where l.movement > 0
     order by l.movement desc, l.rank limit 1;

@@ -19,9 +19,6 @@
 .today-bar .pts { font-family: var(--f-display); font-size: 20px; color: var(--gold-hi); white-space: nowrap; }
 
 .t-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.seg { display: inline-flex; padding: 4px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; }
-.seg button { border: 0; background: none; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 800; color: var(--muted); min-height: 34px; }
-.seg button[aria-selected="true"] { background: var(--raise); color: var(--gold-hi); }
 .weeknav { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
 .weeknav button { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--surface); display: grid; place-items: center; color: var(--ink); }
 .weeknav button:disabled { opacity: .35; cursor: default; }
