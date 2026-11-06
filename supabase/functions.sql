@@ -655,13 +655,43 @@ end; $$;
 
 
 -- ---------------------------------------------------------------------
+-- MEMBER: streak summary (Redesign 2.0 dashboard). Read-only, own data only.
+-- Uses the same rule as _streak(): a day counts when it has >= streak_min_daily
+-- done (not removed) ticks. Longest = the longest such run of consecutive days.
+-- ---------------------------------------------------------------------
+create or replace function public.get_my_streaks()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_uid uuid := auth.uid();
+  v_today date := public.app_today();
+  v_longest int;
+begin
+  if v_uid is null or public.my_role() is null then
+    raise exception 'Please log in again.' using errcode = '42501';
+  end if;
+  with days as (
+    select d.checkin_date as day
+    from public.daily_checkins d
+    where d.member_id = v_uid and d.status = 'done' and d.voided_at is null and d.checkin_date <= v_today
+    group by d.checkin_date
+    having count(*) >= public.setting_int('streak_min_daily', 1)
+  ), runs as (select day - (row_number() over (order by day))::int as grp from days)
+  select coalesce(max(n), 0)::int into v_longest from (select count(*) as n from runs group by grp) r;
+
+  return jsonb_build_object(
+    'current', public._display_streak(v_uid, v_today),
+    'longest', v_longest,
+    'min_daily', public.setting_int('streak_min_daily', 1));
+end; $$;
+
+-- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon, authenticated;
 
 grant execute on function
   public.app_today(), public.my_role(), public.is_admin(), public.is_super_admin(),
-  public.mark_activity(uuid, text, text), public.get_my_dashboard(),
+  public.mark_activity(uuid, text, text), public.get_my_dashboard(), public.get_my_streaks(),
   public.get_leaderboard(text, date), public.get_recognitions(date),
   public.admin_void_checkin(uuid, text), public.admin_award_bonus(uuid, int, text),
   public.admin_set_role(uuid, text), public.admin_set_active(uuid, boolean),

@@ -1,0 +1,151 @@
+/* =====================================================================
+   Redesign Your Life 2.0 — design tokens
+   One design system, two themes. Light is the default; dark is set by
+   js/theme-init.js as <html data-theme="dark"> (saved choice or system).
+   Components use only the semantic tokens below — never raw colours.
+   ===================================================================== */
+:root {
+  color-scheme: light;
+
+  /* ---- colour: brand palette (light) ---- */
+  --c-bg: #F7F8F5;
+  --c-surface: #FFFFFF;
+  --c-elevated: #FFFFFF;
+  --c-sunken: #F0F3EE;          /* inputs, wells, tracks */
+  --c-primary: #173F35;
+  --c-primary-hover: #0F2F27;
+  --c-on-primary: #FFFFFF;
+  --c-primary-light: #E2EEE8;
+  --c-secondary: #DDEBE4;
+  --c-accent: #D5AD62;          /* gold: points, ranks, rewards */
+  --c-accent-ink: #8A6520;      /* gold used as text (AA on light) */
+  --c-on-accent: #2A1D05;
+  --c-success: #229B72;
+  --c-success-ink: #17805D;
+  --c-on-success: #FFFFFF;
+  --c-warning: #E5A447;
+  --c-warning-ink: #9A6214;
+  --c-danger: #D95C5C;
+  --c-danger-ink: #B94141;
+  --c-text: #202923;
+  --c-text-2: #47524B;
+  --c-muted: #737D76;
+  --c-border: #E8ECE8;
+  --c-border-strong: #D5DCD6;
+  --c-track: #E6ECE7;
+  --c-streak: #E07A2F;
+  --c-scrim: rgba(16, 23, 19, .48);
+  --c-hero-from: #1D4A3E;
+  --c-hero-to: #123129;
+  --c-hero-ink: #F2F6F2;
+  --c-hero-muted: #B9CCC2;
+
+  /* tracker identities (one hue each, tuned for contrast in each theme) */
+  --t-wealth: #C99A35;
+  --t-conscious: #C9524C;
+  --t-karma: #D9772B;
+  --t-champion: #4774D6;
+
+  /* ---- elevation ---- */
+  --shadow-1: 0 1px 2px rgba(23, 63, 53, .06), 0 1px 1px rgba(23, 63, 53, .04);
+  --shadow-2: 0 6px 20px -8px rgba(23, 63, 53, .18), 0 2px 6px rgba(23, 63, 53, .05);
+  --shadow-3: 0 18px 44px -16px rgba(23, 63, 53, .32);
+
+  /* ---- type ---- */
+  --f-display: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --fs-greeting: clamp(24px, 6.4vw, 30px);
+  --fs-page: clamp(24px, 6vw, 32px);
+  --fs-section: 18px;
+  --fs-card: 15.5px;
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-label: 11.5px;
+  --fs-stat: clamp(26px, 7vw, 34px);
+  --fs-stat-xl: clamp(40px, 12vw, 52px);
+
+  /* ---- spacing: 4px scale ---- */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+
+  /* ---- radius ---- */
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: .15s; --t-med: .28s; --t-slow: .8s;
+
+  /* ---- layout ---- */
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --nav-h: 68px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #101713;
+  --c-surface: #19231D;
+  --c-elevated: #202D25;
+  --c-sunken: #141D18;
+  --c-primary: #83C5A2;
+  --c-primary-hover: #9AD3B4;
+  --c-on-primary: #0B1F16;
+  --c-primary-light: #274436;
+  --c-secondary: #22372C;
+  --c-accent: #D9B66F;
+  --c-accent-ink: #E6C98C;
+  --c-on-accent: #2A1D05;
+  --c-success: #56C995;
+  --c-success-ink: #6FD6A6;
+  --c-on-success: #062015;
+  --c-warning: #E9B65C;
+  --c-warning-ink: #F0C677;
+  --c-danger: #F07878;
+  --c-danger-ink: #F59393;
+  --c-text: #F2F6F2;
+  --c-text-2: #CBD5CE;
+  --c-muted: #A2B0A7;
+  --c-border: #2D3A32;
+  --c-border-strong: #3A4A40;
+  --c-track: #2A3830;
+  --c-streak: #F29B5C;
+  --c-scrim: rgba(3, 7, 5, .66);
+  --c-hero-from: #1F3B2F;
+  --c-hero-to: #16271F;
+  --c-hero-ink: #F2F6F2;
+  --c-hero-muted: #A9C1B4;
+
+  --t-wealth: #E2B65A;
+  --t-conscious: #EC7B74;
+  --t-karma: #F09450;
+  --t-champion: #7FA2F2;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-2: 0 8px 24px -10px rgba(0, 0, 0, .6);
+  --shadow-3: 0 20px 48px -16px rgba(0, 0, 0, .7);
+}
+
+/* ---------------------------------------------------------------------
+   Legacy aliases — the v1 pages still use these names. They now resolve
+   to the theme tokens, so every existing page follows Light/Dark.
+   --------------------------------------------------------------------- */
+:root, :root[data-theme="dark"] {
+  --bg: var(--c-bg);
+  --bg-2: var(--c-sunken);
+  --surface: var(--c-surface);
+  --surface-2: var(--c-elevated);
+  --raise: var(--c-primary-light);
+  --line: var(--c-border);
+  --line-2: var(--c-border);
+  --ink: var(--c-text);
+  --ink-2: var(--c-text-2);
+  --muted: var(--c-muted);
+  --gold: var(--c-accent);
+  --gold-hi: var(--c-accent-ink);
+  --gold-lo: color-mix(in srgb, var(--c-accent) 70%, #000);
+  --grad-gold: linear-gradient(135deg, color-mix(in srgb, var(--c-accent) 60%, #fff) 0%, var(--c-accent) 50%, color-mix(in srgb, var(--c-accent) 72%, #000) 100%);
+  --ok: var(--c-success);
+  --warn: var(--c-warning);
+  --bad: var(--c-danger);
+  --bad-soft: var(--c-danger-ink);
+}

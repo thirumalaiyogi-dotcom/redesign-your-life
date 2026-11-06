@@ -111,16 +111,19 @@ export function brandHTML(href, title = 'Redesign Your Life', sub = "Deepak's Pr
 }
 
 const SOON = 'data-soon';
+// Bottom navigation (member). Labels stay short so five items fit at 320px; "Leaderboard"
+// shows as "Ranks" on very narrow phones. Every item is a working page.
 export function memberNav(current) {
   const items = [
-    [app('member/dashboard.html'), 'layout-dashboard', 'Home', 'dashboard'],
-    [app('member/trackers.html'), 'list-checks', 'Trackers', 'trackers'],
-    [app('member/leaderboard.html'), 'trophy', 'Ranks', 'leaderboard'],
-    [app('member/journal.html'), 'notebook-pen', 'Journal', 'journal'],
-    [app('member/profile.html'), 'user-round', 'Profile', 'profile']
+    [app('member/dashboard.html'), 'house', 'Home', 'Home', 'dashboard'],
+    [app('member/trackers.html'), 'list-checks', 'Track', 'Track', 'trackers'],
+    [app('member/leaderboard.html'), 'trophy', 'Leaderboard', 'Ranks', 'leaderboard'],
+    [app('member/journal.html'), 'notebook-pen', 'Journal', 'Journal', 'journal'],
+    [app('member/profile.html'), 'user-round', 'Profile', 'Profile', 'profile']
   ];
-  return `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, key, soon]) =>
-    `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} ${soon ? `${SOON}="${esc(soon)}"` : ''}>${icon(ic)}${label}</a>`).join('')}</div></nav>`;
+  return `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, short, key]) =>
+    `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} aria-label="${esc(label)}">${icon(ic)}${label === short
+      ? `<span>${esc(label)}</span>` : `<span class="l-long">${esc(label)}</span><span class="l-short">${esc(short)}</span>`}</a>`).join('')}</div></nav>`;
 }
 
 export function adminNav(current) {

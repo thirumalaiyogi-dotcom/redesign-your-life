@@ -1,12 +1,12 @@
 /* Coach / admin console */
 .admin-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
-.admin-head h1 { font-size: 40px; margin-top: 6px; }
+.admin-head h1 { font-size: var(--fs-page); margin-top: 6px; }
 .akpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .akpi { padding: 14px; display: flex; flex-direction: column; gap: 4px; }
 .akpi small { font-size: 11.5px; color: var(--muted); font-weight: 700; }
-.akpi b { font-family: var(--f-display); font-size: 34px; line-height: 1; }
+.akpi b { font-family: var(--f-display); font-size: 28px; line-height: 1; }
 .akpi span { font-size: 12px; font-weight: 700; color: var(--muted); }
-.akpi.warn b { color: var(--warn); }
+.akpi.warn b { color: var(--c-warning-ink); }
 .admin-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
 
 .tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
@@ -32,7 +32,7 @@
 @media (max-width: 980px) { .akpis { grid-template-columns: repeat(3, 1fr); } .admin-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
   .akpis { grid-template-columns: repeat(2, 1fr); }
-  .admin-head h1 { font-size: 32px; }
+  .admin-head h1 { font-size: var(--fs-page); }
   .search { max-width: none; flex-basis: 100%; }
   .person { grid-template-columns: auto 1fr; }
   .person .acts { grid-column: 1 / -1; justify-content: flex-start; }

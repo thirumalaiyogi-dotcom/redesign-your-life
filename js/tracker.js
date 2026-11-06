@@ -58,7 +58,7 @@ async function renderList() {
   if (error) return errorPanel(main, error, renderList);
   const done = d.done_today || 0, total = d.total_activities || 0;
   main.innerHTML = `
-    <div><span class="eyebrow">${esc(fmtLong(d.today))}</span><h1 style="font-size:36px;margin-top:6px">Today's trackers</h1></div>
+    <div><span class="eyebrow">${esc(fmtLong(d.today))}</span><h1 style="font-size:var(--fs-page);margin-top:6px">Today's trackers</h1></div>
     <div class="today-bar"><div class="txt"><b>${done}</b>/${total} done today</div>
       <div class="progress" style="--tc:var(--gold)"><i style="width:${total ? Math.round(100 * done / total) : 0}%"></i></div>
       <span class="pts">+${formatNumber(d.today_points)} pts</span></div>
@@ -68,7 +68,7 @@ async function renderList() {
       return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${COLOR[t.slug] || 'var(--gold)'}">
         <div class="art"><img src="${app('assets/images/' + (COVER[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="n">${t.total}</span></div>
         <h3>${esc(t.name)}</h3>
-        <div class="stats"><div><b class="num" style="color:var(--ok)">${t.done_today}</b>Done</div><div><b class="num" style="color:#e98a85">${t.not_done_today || 0}</b>Not done</div><div><b class="num">${Math.max(0, left)}</b>To mark</div></div>
+        <div class="stats"><div><b class="num" style="color:var(--ok)">${t.done_today}</b>Done</div><div><b class="num" style="color:var(--c-danger-ink)">${t.not_done_today || 0}</b>Not done</div><div><b class="num">${Math.max(0, left)}</b>To mark</div></div>
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="foot">${pct}% done<span>Open →</span></div></a>`; }).join('')}</div>
     <p class="muted" style="font-size:13px">Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</p>`;
@@ -138,7 +138,7 @@ function renderWeek() {
       <span>${fmtShort(weekStart)} – ${fmtShort(addDays(weekStart, 6))}</span>
       <button id="next-w" aria-label="Next week" ${weekStart >= thisWeek ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
       ${weekStart !== thisWeek ? `<button class="btn btn-ghost btn-sm" id="this-w">Back to this week</button>` : ''}</div>
-    <div class="legend"><span><i style="background:var(--ok)"></i>Done</span><span><i style="background:rgba(226,85,79,.35)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
+    <div class="legend"><span><i style="background:var(--ok)"></i>Done</span><span><i style="background:color-mix(in srgb, var(--c-danger) 35%, transparent)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
     <div class="acts">${acts.map(cardHTML).join('')}</div>
     ${weekStart !== thisWeek ? `<p class="muted" style="font-size:13px">Past weeks are view-only. Only today can be marked.</p>` : ''}`;
   $('#prev-w')?.addEventListener('click', () => shiftWeek(-7));
@@ -176,7 +176,7 @@ async function showMonth() {
   }
   body.innerHTML = `<section class="panel month"><div class="section-h"><h2 style="font-size:20px">${esc(monthName(today))}</h2>
     <span class="eyebrow">Avg ${counted ? Math.round(sum / counted) : 0}% done</span></div><div class="month-grid">${cells}</div></section>
-    <div class="legend"><span><i style="background:rgba(63,191,127,.5)"></i>85%+</span><span><i style="background:rgba(63,191,127,.25)"></i>60–84%</span><span><i style="background:rgba(242,193,78,.3)"></i>30–59%</span><span><i style="background:rgba(226,85,79,.25)"></i>under 30%</span></div>`;
+    <div class="legend"><span><i style="background:color-mix(in srgb, var(--c-success) 50%, transparent)"></i>85%+</span><span><i style="background:color-mix(in srgb, var(--c-success) 25%, transparent)"></i>60–84%</span><span><i style="background:color-mix(in srgb, var(--c-warning) 30%, transparent)"></i>30–59%</span><span><i style="background:color-mix(in srgb, var(--c-danger) 25%, transparent)"></i>under 30%</span></div>`;
 }
 
 async function showHistory() {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#070d1f">
+<meta name="theme-color" content="#F7F8F5">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gcbizlnpryihrrmjwbdv.supabase.co; connect-src 'self' https://gcbizlnpryihrrmjwbdv.supabase.co wss://gcbizlnpryihrrmjwbdv.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Deepak's Redesign Your Life</title>
@@ -13,41 +13,47 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Redesign Life">
+<script src="js/theme-init.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Plus+Jakarta+Sans:wght@500..800&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/responsive.css">
 <style>
-  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); background: #12302A; color: #F2F6F2; --ink: #F2F6F2; --ink-2: #CBD5CE; --muted: #A9C1B4; --gold-hi: #E6C98C; --c-text: #F2F6F2; --c-text-2: #CBD5CE; --c-muted: #A9C1B4; --c-accent-ink: #E6C98C; }
+  .hero h1 { color: #F2F6F2; }
+  .hero .btn-ghost { background: rgba(255,255,255,.08); color: #F2F6F2; border-color: rgba(255,255,255,.28); }
+  .hero .btn-gold { background: var(--c-accent); color: var(--c-on-accent); }
+  .hero .brand small { color: #E6C98C; }
   .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   .hero .wrap { position: relative; padding-block: 20px 52px; display: grid; gap: 26px; }
   .hero .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .hero h1 { font-size: clamp(54px, 13vw, 128px); font-weight: 900; line-height: .86; }
-  .hero h1 .who { display: block; font-size: .42em; color: var(--ink-2); letter-spacing: .08em; }
+  .hero h1 { font-size: clamp(42px, 11vw, 96px); font-weight: 800; line-height: 1; letter-spacing: -.035em; }
+  .hero h1 .who { display: block; font-size: .36em; color: var(--ink-2); letter-spacing: 0; font-weight: 600; margin-bottom: .2em; }
   .hero .lede { max-width: 52ch; color: var(--ink-2); font-size: 17px; }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
   .tagline { display: flex; gap: 14px; align-items: center; font-size: 12px; font-weight: 800; letter-spacing: .28em; text-transform: uppercase; color: var(--gold-hi); }
   .tagline i { width: 1px; height: 14px; background: var(--gold); }
   .loop { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
-  .loop div { padding: 18px 14px; border-right: 1px solid var(--line); background: rgba(16,27,59,.6); }
+  .loop div { padding: 18px 14px; border-right: 1px solid var(--line); background: var(--c-surface); }
   .loop div:last-child { border-right: 0; }
-  .loop b { display: block; font-family: var(--f-display); font-size: 26px; letter-spacing: .04em; text-transform: uppercase; }
+  .loop b { display: block; font-family: var(--f-display); font-size: 18px; }
   .loop small { color: var(--muted); font-size: 12.5px; }
   .loop .n { font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: .14em; }
   .showcase { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .show-card { position: relative; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-2); overflow: hidden; display: flex; flex-direction: column; }
   .show-card img { aspect-ratio: 4/3; width: 100%; object-fit: cover; }
   .show-card .body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-  .show-card .big { font-family: var(--f-display); font-size: 56px; font-weight: 900; line-height: .8; color: var(--tc); }
-  .show-card h3 { font-size: 22px; }
+  .show-card .big { font-family: var(--f-display); font-size: 44px; font-weight: 800; line-height: .9; color: var(--tc); }
+  .show-card h3 { font-size: 18px; }
   .show-card p { color: var(--ink-2); font-size: 13.5px; }
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .feature { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-  .feature .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgba(217,179,92,.1); color: var(--gold-hi); }
-  .feature h3 { font-size: 22px; }
+  .feature .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--c-primary-light); color: var(--c-primary); }
+  .feature h3 { font-size: 18px; }
   .feature p { color: var(--ink-2); font-size: 14px; }
   footer { border-top: 1px solid var(--line); padding-block: 28px calc(28px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 13px; }
   @media (max-width: 980px) { .showcase { grid-template-columns: repeat(2, 1fr); } .features { grid-template-columns: 1fr; } }
@@ -68,7 +74,7 @@
       <a class="brand" href="./"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
       <a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a>
     </div>
-    <span class="eyebrow" style="color:var(--gold)">A 90-day transformation program</span>
+    <span class="eyebrow" style="color:#E6C98C">A 90-day transformation program</span>
     <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
     <div class="tagline">Small habits <i></i> Big transformation</div>
     <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>

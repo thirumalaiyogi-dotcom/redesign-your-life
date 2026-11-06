@@ -1,4 +1,5 @@
-// Ambient "stadium at night" background: light rays, horizon glow, rising embers.
+// Ambient brand art (2.0): deep-green dawn, horizon glow, light rays, rising sparks.
+// A fixed brand panel: it looks the same in Light and Dark mode, so text on it is always light.
 export function stadium(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -14,10 +15,10 @@ export function stadium(canvas) {
   }
   function draw() {
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#0a1433'); g.addColorStop(.6, '#0b1633'); g.addColorStop(1, '#1c1a2a');
+    g.addColorStop(0, '#0f2c24'); g.addColorStop(.6, '#123129'); g.addColorStop(1, '#1d3328');
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     const glow = ctx.createRadialGradient(w * .5, h * 1.05, 0, w * .5, h * 1.05, h * .9);
-    glow.addColorStop(0, 'rgba(240,170,70,.55)'); glow.addColorStop(.4, 'rgba(217,140,60,.18)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    glow.addColorStop(0, 'rgba(217,182,111,.5)'); glow.addColorStop(.4, 'rgba(131,197,162,.16)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
     for (const px of [.12, .88]) for (let i = 0; i < 5; i++) {
       const spread = (i - 2) * w * .09;
@@ -25,7 +26,7 @@ export function stadium(canvas) {
       ctx.lineTo(w * .5 + spread - w * .05, h); ctx.lineTo(w * .5 + spread + w * .05, h); ctx.closePath();
       ctx.fillStyle = 'rgba(246,224,160,.025)'; ctx.fill();
     }
-    ctx.fillStyle = 'rgba(5,9,22,.9)'; ctx.beginPath(); ctx.moveTo(0, h);
+    ctx.fillStyle = 'rgba(8,22,17,.92)'; ctx.beginPath(); ctx.moveTo(0, h);
     for (let x = 0; x <= w; x += w / 40) ctx.lineTo(x, h * .86 - Math.sin(x / w * Math.PI) * h * .06);
     ctx.lineTo(w, h); ctx.fill();
     for (const p of parts) {

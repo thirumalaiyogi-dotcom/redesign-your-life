@@ -51,4 +51,5 @@ document.addEventListener('click', async (e) => {
 
 // Pages render their content after login, so look for slots again a moment later.
 addEventListener('load', () => { render(); setTimeout(render, 1500); setTimeout(render, 4000); });
+document.addEventListener('ryl:slots', render);   // a page re-rendered and has a new slot
 export { render as renderInstall };

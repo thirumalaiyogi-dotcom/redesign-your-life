@@ -11,7 +11,7 @@ const QUESTIONS = [
   ['grateful', 'What am I grateful for?', 'People, moments, small things'],
   ['tomorrow', 'What will I improve tomorrow?', 'One clear intention for tomorrow']
 ];
-const COLOR = { wealth: '#e7b54a', conscious: '#e0605a', karma: '#f08a3c', champion: '#5b8cf0' };
+const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const nice = (iso) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 let me, today;
@@ -48,7 +48,7 @@ function draw() {
   const canEdit = editing >= addDays(today, -1);
   const yest = addDays(today, -1);
   main.innerHTML = `
-  <div><span class="eyebrow">Evening reflection · 5 questions</span><h1 style="font-size:36px;margin-top:6px">Journal</h1></div>
+  <div><span class="eyebrow">Evening reflection · 5 questions</span><h1 style="font-size:var(--fs-page);margin-top:6px">Journal</h1></div>
   <div class="seg" role="tablist" aria-label="Day" style="align-self:flex-start">
     <button role="tab" data-day="${today}" aria-selected="${editing === today}">Today</button>
     <button role="tab" data-day="${yest}" aria-selected="${editing === yest}">Yesterday</button></div>
@@ -134,9 +134,9 @@ async function renderProgress() {
   const W = 600, H = 190, bw = W / 30;
   const y = (v) => H - 30 - (v / max) * (H - 56);
   const chart = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Points per day for the last 30 days, ${sum30} points in total" style="width:100%;height:auto;display:block">
-    ${[0, 0.5, 1].map((f) => `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="rgba(160,175,215,.12)"/><text x="${W - 2}" y="${y(max * f) - 4}" fill="#8a94b2" font-size="19" text-anchor="end">${Math.round(max * f)}</text>`).join('')}
-    ${vals.map((v, i) => `<rect x="${i * bw + bw * .18}" y="${y(v)}" width="${bw * .64}" height="${Math.max(0, H - 30 - y(v))}" rx="3" fill="${days[i] === today ? '#f6e0a0' : v ? '#d9b35c' : '#26325a'}"><title>${nice(days[i])}: ${v} pts</title></rect>`).join('')}
-    ${[0, 10, 20, 29].map((i) => `<text x="${i === 0 ? 0 : i === 29 ? W : i * bw + bw / 2}" y="${H - 6}" fill="#8a94b2" font-size="19" text-anchor="${i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}">${Number(days[i].slice(8))}/${Number(days[i].slice(5, 7))}</text>`).join('')}
+    ${[0, 0.5, 1].map((f) => `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" style="stroke:var(--c-border)"/><text x="${W - 2}" y="${y(max * f) - 4}" style="fill:var(--c-muted)" font-size="19" text-anchor="end">${Math.round(max * f)}</text>`).join('')}
+    ${vals.map((v, i) => `<rect x="${i * bw + bw * .18}" y="${y(v)}" width="${bw * .64}" height="${Math.max(0, H - 30 - y(v))}" rx="3" style="fill:${days[i] === today ? 'var(--c-primary)' : v ? 'var(--c-accent)' : 'var(--c-track)'}"><title>${nice(days[i])}: ${v} pts</title></rect>`).join('')}
+    ${[0, 10, 20, 29].map((i) => `<text x="${i === 0 ? 0 : i === 29 ? W : i * bw + bw / 2}" y="${H - 6}" style="fill:var(--c-muted)" font-size="19" text-anchor="${i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}">${Number(days[i].slice(8))}/${Number(days[i].slice(5, 7))}</text>`).join('')}
   </svg>`;
 
   const kindLabel = { activity: 'Habit done', daily_bonus: 'All habits done', streak7_bonus: '7-day streak', perfect_week_bonus: 'Perfect week', special_bonus: 'Coach bonus' };
@@ -145,10 +145,10 @@ async function renderProgress() {
   for (const s of scores.data.filter((x) => x.kind === 'activity')) byDay[s.score_date] = (byDay[s.score_date] || 0) + 1;
 
   main.innerHTML = `
-  <div><span class="eyebrow">Your journey</span><h1 style="font-size:36px;margin-top:6px">My progress</h1></div>
+  <div><span class="eyebrow">Your journey</span><h1 style="font-size:var(--fs-page);margin-top:6px">My progress</h1></div>
   <section class="kpis">
     <div class="kpi"><small>Total points</small><b class="num gold-text">${formatNumber(d.total_points)}</b></div>
-    <div class="kpi"><small>Current streak</small><b class="num" style="color:#ff9a5a">${d.streak} days</b></div>
+    <div class="kpi"><small>Current streak</small><b class="num" style="color:var(--c-streak)">${d.streak} days</b></div>
     <div class="kpi"><small>Weekly completion</small><b class="num">${d.weekly_pct}%</b><div class="bar"><i style="width:${Math.min(100, d.weekly_pct)}%"></i></div></div>
     <div class="kpi"><small>Monthly completion</small><b class="num">${d.monthly_pct}%</b><div class="bar"><i style="width:${Math.min(100, d.monthly_pct)}%"></i></div></div>
   </section>
@@ -156,7 +156,7 @@ async function renderProgress() {
     <div style="padding:14px 16px">${chart}${sum30 ? `<p class="muted" style="font-size:12.5px;margin-top:6px">Best day: ${esc(nice(best))}, ${Math.max(...vals)} pts.</p>` : ''}</div></section>
   <section class="panel"><div class="panel-h"><h3>Trackers this month</h3><small class="muted">% of possible ticks</small></div>
     <div class="catbars">${cats.data.map((c) => { const pct = total[c.slug] ? Math.min(100, Math.round(100 * (catDone[c.slug] || 0) / (total[c.slug] * elapsed))) : 0;
-      return `<div class="catbar"><div class="lbl">${esc(c.name)}<span>${pct}% · ${catDone[c.slug] || 0} done</span></div><div class="track"><i style="width:${pct}%;background:${COLOR[c.slug] || '#d9b35c'}"></i></div></div>`; }).join('')}</div></section>
+      return `<div class="catbar"><div class="lbl">${esc(c.name)}<span>${pct}% · ${catDone[c.slug] || 0} done</span></div><div class="track"><i style="width:${pct}%;background:${COLOR[c.slug] || 'var(--c-accent)'}"></i></div></div>`; }).join('')}</div></section>
   <section><div class="section-h"><h2>Badges</h2><span class="eyebrow">${(d.badges || []).filter((b) => b.earned_at).length} of ${(d.badges || []).length}</span></div>
     <div class="badge-grid">${(d.badges || []).map((b) => `<div class="badge ${b.earned_at ? '' : 'locked'}"><span class="medal" style="background:linear-gradient(135deg,${esc(b.color_from)},${esc(b.color_to)})">${esc(b.glyph)}</span>
       <b>${esc(b.name)}</b><small>${b.earned_at ? 'Earned ' + esc(formatDate(b.earned_at)) : 'Not yet'}</small></div>`).join('')}</div></section>

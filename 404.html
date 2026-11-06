@@ -3,24 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#070d1f">
+<meta name="theme-color" content="#F7F8F5">
 <meta name="robots" content="noindex">
 <title>Page not found · Redesign Your Life</title>
 <!-- Self-contained: GitHub Pages shows this at whatever URL was missing, in any folder. -->
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; background: #070d1f; color: #f4efe3; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  :root { color-scheme: light; --bg: #F7F8F5; --ink: #202923; --muted: #737D76; --primary: #173F35; --on-primary: #FFFFFF; --pl: #E2EEE8; --gold: #8A6520; --line: #D5DCD6; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg: #101713; --ink: #F2F6F2; --muted: #A2B0A7; --primary: #83C5A2; --on-primary: #0B1F16; --pl: #274436; --gold: #E6C98C; --line: #3A4A40; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif; }
   main { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); text-align: center; box-sizing: border-box;
-    background: radial-gradient(90% 60% at 50% 110%, rgba(240,170,70,.28), transparent 60%); }
+    background: radial-gradient(90% 60% at 50% 110%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 60%); }
   .card { max-width: 380px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
-  .n { font-size: 72px; font-weight: 900; line-height: 1; background: linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  h1 { margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase; }
-  p { margin: 0; color: #8a94b2; line-height: 1.5; }
-  a { display: block; width: 100%; box-sizing: border-box; padding: 14px; border-radius: 12px; font-weight: 800; text-decoration: none; }
-  .gold { color: #1a1204; background: linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227); }
-  .ghost { color: #f4efe3; border: 1px solid rgba(214,178,94,.3); }
-  a:focus-visible { outline: 2px solid #f6e0a0; outline-offset: 2px; }
+  .n { font-size: 72px; font-weight: 800; line-height: 1; color: var(--gold); letter-spacing: -.04em; font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif; }
+  h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif; }
+  p { margin: 0; color: var(--muted); line-height: 1.5; }
+  a { display: block; width: 100%; box-sizing: border-box; padding: 14px; border-radius: 14px; font-weight: 650; text-decoration: none; }
+  .gold { color: var(--on-primary); background: var(--primary); }
+  .ghost { color: var(--ink); border: 1px solid var(--line); }
+  a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 </style>
+<script>
+  // Same saved theme as the rest of the app (self-contained: no other files may load here).
+  (function () { var p = 'light'; try { p = localStorage.getItem('ryl.theme') || 'light'; } catch (e) {}
+    var d = p === 'dark' || (p === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = d ? '#101713' : '#F7F8F5'; })();
+</script>
 </head>
 <body>
 <main>

@@ -31,7 +31,7 @@ create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   full_name   text not null default '' check (char_length(full_name) <= 80),
   phone       text check (phone is null or phone ~ '^\+?[0-9 ]{7,16}$'),
-  avatar_url  text check (avatar_url is null or char_length(avatar_url) <= 500),
+  avatar_url  text constraint profiles_avatar_url_check check (avatar_url is null or avatar_url ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/avatars/[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$'),
   role        text not null default 'member' check (role in ('super_admin','admin','member')),
   is_active   boolean not null default true,
   joined_on   date not null default ((now() at time zone 'Asia/Kolkata')::date),
@@ -59,7 +59,8 @@ create table if not exists public.activities (
   number        smallint not null check (number between 1 and 99),
   default_name  text not null,                      -- original client name; never editable from the app
   description   text check (description is null or char_length(description) <= 400),
-  image_path    text,                               -- 'wealth-01.webp' (bundled) or full https URL (Storage)
+  image_path    text constraint activities_image_path_check check (image_path is null or image_path ~ '^[a-z]+-[0-9]{2}\.webp$'
+                  or image_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$'),  -- bundled file or this project's Storage
   icon          text,
   points        smallint not null default 10 check (points between 0 and 100),
   is_active     boolean not null default true,
@@ -284,9 +285,11 @@ create trigger journals_touch before update on public.journals for each row exec
 -- every new auth user gets a member profile; role can only be raised by a super admin
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_phone text := nullif(regexp_replace(coalesce(new.raw_user_meta_data ->> 'phone', ''), '[^0-9+ ]', '', 'g'), '');
 begin
-  insert into public.profiles(id, full_name)
-  values (new.id, left(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), 80))
+  if v_phone is not null and v_phone !~ '^\+?[0-9 ]{7,16}$' then v_phone := null; end if;
+  insert into public.profiles(id, full_name, phone)
+  values (new.id, left(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), 80), v_phone)
   on conflict (id) do nothing;
   return new;
 end; $$;
@@ -579,7 +582,8 @@ begin
   pr as (
     select pp.member_id, row_number() over (order by pp.points desc, pp.consistency desc,
                                             pp.last_score_at asc nulls last, pp.member_id)::int as rk
-    from public._period_stats(ps, pe) pp)
+    from public._period_stats(ps, pe) pp
+    where pp.points > 0)                       -- movement only against a period where they scored
   select cr.rk, cr.member_id, cr.nm, cr.av, cr.points, cr.activities_done, cr.consistency, cr.stk,
          pr.rk, coalesce(pr.rk - cr.rk, 0), cr.member_id = auth.uid()
   from cr left join pr on pr.member_id = cr.member_id
@@ -597,7 +601,7 @@ begin
 
   select l.full_name, l.consistency into r from public.get_leaderboard('weekly', d) l where l.activities_done > 0
     order by l.consistency desc, l.points desc limit 1;
-  if found then v := v || jsonb_build_object('most_consistent', jsonb_build_object('name', r.full_name, 'detail', r.consistency || '% this week')); end if;
+  if found then v := v || jsonb_build_object('most_consistent', jsonb_build_object('name', r.full_name, 'detail', round(r.consistency)::int || '% this week')); end if;
 
   select l.full_name, l.movement into r from public.get_leaderboard('weekly', d) l where l.movement > 0
     order by l.movement desc, l.rank limit 1;
@@ -780,6 +784,86 @@ begin
   order by coalesce(st.points, 0) desc, p.full_name;
 end; $$;
 
+-- everyone (members, coaches, super admins) for the role-management screen
+create or replace function public.admin_list_people()
+returns table(id uuid, full_name text, email text, phone text, role text, is_active boolean,
+              joined_on date, last_sign_in_at timestamptz, email_confirmed boolean)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query
+  select p.id, p.full_name, u.email::text, p.phone, p.role, p.is_active, p.joined_on,
+         u.last_sign_in_at, u.email_confirmed_at is not null
+  from public.profiles p join auth.users u on u.id = p.id
+  order by case p.role when 'super_admin' then 0 when 'admin' then 1 else 2 end, p.full_name;
+end; $$;
+
+-- Coach check-in feed (server-side filtering, coaches only)
+create or replace function public.admin_checkins(
+  p_date date default null, p_tracker text default null, p_status text default null,
+  p_search text default null, p_limit int default 200)
+returns table(id uuid, checkin_date date, status text, note text, points_awarded smallint,
+              voided_at timestamptz, void_reason text, voided_by_name text, updated_at timestamptz,
+              member_id uuid, member_name text, activity_number smallint, activity_name text, tracker_slug text, tracker_name text)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := coalesce(p_date, public.app_today()); q text := nullif(trim(coalesce(p_search, '')), '');
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  if p_status is not null and p_status not in ('done','not_done','removed') then
+    raise exception 'Unknown status filter.' using errcode = '22023';
+  end if;
+  return query
+  select c.id, c.checkin_date, c.status, c.note, c.points_awarded, c.voided_at, c.void_reason, vb.full_name,
+         c.updated_at, p.id, p.full_name, a.number, a.default_name, t.slug, t.name
+  from public.daily_checkins c
+  join public.profiles p on p.id = c.member_id
+  join public.activities a on a.id = c.activity_id
+  join public.tracker_categories t on t.id = a.category_id
+  left join public.profiles vb on vb.id = c.voided_by
+  where c.checkin_date = d
+    and (p_tracker is null or t.slug = p_tracker)
+    and (p_status is null
+         or (p_status = 'removed' and c.voided_at is not null)
+         or (p_status <> 'removed' and c.voided_at is null and c.status = p_status))
+    and (q is null or p.full_name ilike '%' || q || '%' or a.default_name ilike '%' || q || '%')
+  order by c.updated_at desc
+  limit least(greatest(coalesce(p_limit, 200), 1), 500);
+end; $$;
+
+
+
+-- ---------------------------------------------------------------------
+-- MEMBER: streak summary (Redesign 2.0 dashboard). Read-only, own data only.
+-- Uses the same rule as _streak(): a day counts when it has >= streak_min_daily
+-- done (not removed) ticks. Longest = the longest such run of consecutive days.
+-- ---------------------------------------------------------------------
+create or replace function public.get_my_streaks()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_uid uuid := auth.uid();
+  v_today date := public.app_today();
+  v_longest int;
+begin
+  if v_uid is null or public.my_role() is null then
+    raise exception 'Please log in again.' using errcode = '42501';
+  end if;
+  with days as (
+    select d.checkin_date as day
+    from public.daily_checkins d
+    where d.member_id = v_uid and d.status = 'done' and d.voided_at is null and d.checkin_date <= v_today
+    group by d.checkin_date
+    having count(*) >= public.setting_int('streak_min_daily', 1)
+  ), runs as (select day - (row_number() over (order by day))::int as grp from days)
+  select coalesce(max(n), 0)::int into v_longest from (select count(*) as n from runs group by grp) r;
+
+  return jsonb_build_object(
+    'current', public._display_streak(v_uid, v_today),
+    'longest', v_longest,
+    'min_daily', public.setting_int('streak_min_daily', 1));
+end; $$;
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -787,12 +871,13 @@ revoke execute on all functions in schema public from public, anon, authenticate
 
 grant execute on function
   public.app_today(), public.my_role(), public.is_admin(), public.is_super_admin(),
-  public.mark_activity(uuid, text, text), public.get_my_dashboard(),
+  public.mark_activity(uuid, text, text), public.get_my_dashboard(), public.get_my_streaks(),
   public.get_leaderboard(text, date), public.get_recognitions(date),
   public.admin_void_checkin(uuid, text), public.admin_award_bonus(uuid, int, text),
   public.admin_set_role(uuid, text), public.admin_set_active(uuid, boolean),
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
-  public.admin_overview(date), public.admin_member_report(date, date)
+  public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people(),
+  public.admin_checkins(date, text, text, text, int)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
@@ -930,6 +1015,9 @@ values ('activity-images', 'activity-images', true, 524288, array['image/webp','
 on conflict (id) do update set public = excluded.public,
   file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists activity_images_admin_select on storage.objects;
+create policy activity_images_admin_select on storage.objects for select to authenticated
+  using (bucket_id = 'activity-images' and (select public.is_admin()));
 drop policy if exists activity_images_admin_insert on storage.objects;
 create policy activity_images_admin_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'activity-images' and (select public.is_admin()));
