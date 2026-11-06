@@ -10,6 +10,7 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
+import { COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
 
 const page = document.body.dataset.page;
 const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
@@ -235,6 +236,16 @@ function weekHTML() {
   </section>`;
 }
 
+// Coach's next workshop (from js/site-content.js); hidden automatically once it has ended.
+function workshopCardHTML() {
+  const st = workshopState(); if (!st) return '';
+  return `<a class="card ws-card" href="${waLink(WORKSHOP.whatsappText)}" target="_blank" rel="noopener">
+    <img src="${app(COACH.face)}" alt="" width="48" height="48">
+    <span class="ws-txt"><small>${st === 'live' ? 'Happening now' : 'Next workshop'} · ${esc(workshopDate())}</small><b>${esc(WORKSHOP.title)}</b>
+      <span>${WORKSHOP.days} days · ${esc(WORKSHOP.time)} · ${esc(WORKSHOP.where)}</span></span>
+    <span class="ws-go" aria-hidden="true">${icon('chevron-right')}</span></a>`;
+}
+
 function quickHTML() {
   const qa = [
     ['member/journal.html', 'notebook-pen', 'Journal'],
@@ -298,7 +309,7 @@ async function renderDashboard() {
       <p>Let's make today count.</p></div>
     <div data-install-slot></div>
     <div class="dash">
-      <div class="dash-col" id="col-main">${heroHTML()}<div id="tk-wrap"></div><div id="act-wrap"></div></div>
+      <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}<div id="tk-wrap"></div><div id="act-wrap"></div></div>
       <div class="dash-col dash-side" id="col-side"><div id="streak-wrap">${streakHTML()}</div><div id="week-wrap"></div>${quickHTML()}</div>
     </div>`;
   animateRings(main);
@@ -511,6 +522,12 @@ function renderProfile() {
         <div class="field"><label for="password2">Confirm new password</label><div class="pw"><input id="password2" type="password" autocomplete="new-password"><button type="button"></button></div><span class="err"></span></div>
         <button class="btn btn-ghost" id="pw-btn" type="submit">Update password</button>
       </form>
+      <section class="card coach-mini" aria-label="Your coach">
+        <img src="${app(COACH.face)}" alt="" width="56" height="56">
+        <div><small>Your coach</small><b>${esc(COACH.name)}</b><span>${esc(COACH.title)}</span></div>
+        <div class="cm-acts"><a class="btn btn-sm btn-wa" href="${waLink()}" target="_blank" rel="noopener">${icon('message-square')}WhatsApp</a>
+          <a class="btn btn-sm btn-ghost" href="${app('index.html')}#coach-sec">About</a></div>
+      </section>
       <section class="card set-links" aria-label="More">
         ${link('member/progress.html', 'trending-up', 'My progress', 'Points chart, trackers and badges')}
         ${link('member/journal.html', 'notebook-pen', 'Journal', 'Your evening reflections')}

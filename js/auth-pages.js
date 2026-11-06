@@ -3,6 +3,7 @@ import { supabase, app } from './supabase.js';
 import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, EMAIL_RE, PHONE_RE, validatePassword } from './ui.js';
 import { currentTheme } from './theme.js';
+import { COACH, TESTIMONIALS } from './site-content.js';
 import { stadium } from './stadium.js';
 
 const page = document.body.dataset.page;
@@ -18,6 +19,12 @@ function decorate() {
   if (form && !$('#theme-btn')) {
     const dark = currentTheme() === 'dark';
     form.insertAdjacentHTML('afterbegin', `<button class="iconbtn theme-btn auth-theme" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>`);
+  }
+  const art = $('.auth-art');
+  if (art && !$('.art-coach', art)) {
+    art.insertAdjacentHTML('beforeend', `<img class="art-coach" src="${esc(COACH.photo)}" alt="">`);
+    const [n, img, q] = TESTIMONIALS[Math.floor(Math.random() * TESTIMONIALS.length)];
+    $('.quote', art)?.insertAdjacentHTML('beforeend', `<figure class="art-voice"><blockquote>“${esc(q)}”</blockquote><figcaption><img src="${esc(img)}" alt=""><b>${esc(n)}</b></figcaption></figure>`);
   }
   const quote = $('.auth-art .quote');
   if (quote && !$('.art-points', quote)) {

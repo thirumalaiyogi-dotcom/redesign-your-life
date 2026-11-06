@@ -4,7 +4,7 @@
   .auth-art { min-height: 200px; }
   .auth-art .quote { left: 24px; right: 24px; bottom: 22px; gap: 8px; }
   .auth-art .quote h2 { font-size: 30px; }
-  .art-points { display: none; }
+  .art-points, .art-voice, .art-coach { display: none; }
   .auth-form { padding-block: 24px 48px; align-items: flex-start; }
   .auth { position: relative; }
   .auth-form { position: static; }

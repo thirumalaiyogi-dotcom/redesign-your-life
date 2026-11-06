@@ -32,21 +32,29 @@
       <a class="brand" href="./"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
       <div class="top-act"><button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode"></button><a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a></div>
     </div>
-    <span class="eyebrow hero-eyebrow">A 90-day transformation program</span>
-    <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
-    <div class="tagline">Small habits <i></i> Big transformation</div>
-    <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
-    <div data-install-slot style="max-width:460px"></div>
-    <div class="ctas">
-      <a class="btn btn-gold" id="main-cta" href="register.html" data-icon="user-plus">Join the program</a>
-      <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow hero-eyebrow">A 90-day transformation program</span>
+        <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
+        <p class="hero-ta" lang="ta">சிந்தனையை மாற்று, வாழ்க்கையை மாற்று.</p>
+        <div class="tagline">Small habits <i></i> Big transformation</div>
+        <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
+        <div data-install-slot style="max-width:460px"></div>
+        <div class="ctas">
+          <a class="btn btn-gold" id="main-cta" href="register.html" data-icon="user-plus">Join the program</a>
+          <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
+        </div>
+        <ul class="hero-stats" aria-label="The program in numbers">
+          <li><b data-c="stories">8872+</b><span>success stories</span></li><li><b>58</b><span>daily habits</span></li><li><b>4</b><span>trackers</span></li><li><b>0</b><span>minus points</span></li>
+        </ul>
+      </div>
+      <figure class="hero-coach" id="hero-coach"></figure>
     </div>
-    <ul class="hero-stats" aria-label="The program in numbers">
-      <li><b>58</b><span>daily habits</span></li><li><b>4</b><span>trackers</span></li><li><b>10</b><span>badges</span></li><li><b>0</b><span>minus points</span></li>
-    </ul>
   </div>
 </header>
 <main class="wrap stack" style="padding-block:40px">
+  <div id="workshop-slot"></div>
+  <section id="coach-sec" class="coach-sec" aria-labelledby="coach-h"></section>
   <section><div class="sec-intro"><span class="eyebrow">How it works</span><h2>The daily loop</h2><p>Four steps, every day, for 90 days.</p></div>
     <div class="loop">
       <div><span class="n">STEP 1</span><b>Aware</b><small>Notice the habit</small></div>
@@ -68,9 +76,11 @@
     <div class="panel feature"><span class="ic" data-icon="trophy"></span><h3>Live leaderboard</h3><p>Daily, weekly, monthly and all-time ranks, with a podium for the top three.</p></div>
     <div class="panel feature"><span class="ic" data-icon="notebook-pen"></span><h3>Private journal</h3><p>Five evening questions. Your coach sees them only if you choose to share.</p></div>
   </div></section>
+  <section id="voices" aria-labelledby="voices-h"></section>
+  <section id="community" class="community"></section>
 </main>
 <section class="wrap cta-band"><div><h2>Ready for day 1?</h2><p>Join with your email. It takes a minute.</p></div><a class="btn btn-gold" href="register.html" data-icon="user-plus">Join the program</a></section>
-<footer><div class="wrap row-between"><span>© 2026 Deepak's Redesign Your Life</span><span>Get 1% better every day</span></div></footer>
+<footer><div class="wrap foot-grid" id="foot"><div><b>Redesign Your Life</b><span>Deepak's Program · Get 1% better every day</span></div></div><div class="wrap foot-copy">© 2026 Deepak's Redesign Your Life</div></footer>
 <script src="js/vendor/supabase.js"></script>
 <script type="module" src="js/landing.js"></script>
 <script type="module" src="js/pwa.js"></script>

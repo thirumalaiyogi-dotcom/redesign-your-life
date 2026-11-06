@@ -30,6 +30,7 @@
 | 2.0 · 4 | My progress + Profile | ✅ see `docs/REDESIGN-2.0-PHASE-4.md` |
 | 2.0 · 5 | Coach console (7 pages) | ✅ see `docs/REDESIGN-2.0-PHASE-5.md` |
 | 2.0 · 6 | Landing + sign-in pages (2.0 complete) | ✅ see `docs/REDESIGN-2.0-PHASE-6.md` |
+| 2.0 · + | Deepak's coach content (landing, sign-in, Home, Profile) | ✅ edit in `js/site-content.js`, see HANDOVER.md |
 
 ## Folders
 ```
@@ -43,6 +44,8 @@ docs/                 DESIGN-SYSTEM.md, REDESIGN-2.0-PHASE-1…6.md
 js/vendor/            supabase-js 2.45.4 browser build (MIT)
 design/               design-preview.html (v1 Phase 1 mock-up, SAMPLE data only, old look), image-prompts.html
 assets/images/        58 activity images (WebP, 640×480)
+assets/coach/         Deepak's photos, awards, community and testimonial faces
+js/site-content.js    Coach details, testimonials, next workshop (edit here)
 js/supabase.js        Supabase client (public anon key only)
 supabase/             schema, functions, policies, seed, setup-all.sql, README
 ```

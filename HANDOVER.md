@@ -19,6 +19,14 @@
 | Read members' journals | **Reports** → **Shared journals** (only entries the member chose to share) |
 | Download a report | **Reports** → pick a period → **Download CSV** (opens in Excel or Google Sheets) |
 
+## Coach details, testimonials and the next workshop
+All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: open the file → pencil icon → edit → Commit). The site updates in 1–2 minutes.
+- **Next workshop:** change `title`, `start` (yyyy-mm-dd), `days`, `time`, `where`. It shows on the landing page and on members' Home from today until the last day, then hides by itself. Set `WORKSHOP = null` to hide it.
+- **Payment link:** paste the Razorpay page link into `registerUrl`; a "Register & pay" button appears next to WhatsApp.
+- **Testimonials:** add or remove lines in `TESTIMONIALS` (name, photo in `assets/coach/`, quote). Show only people who agreed to be shown.
+- **Success-story count, phone, email:** `COACH.successStories`, `CONTACT`.
+- **Photos:** `assets/coach/` (Deepak's portrait and face, awards, community, testimonial faces). To swap a photo, upload a new file with the same name.
+
 ## Every month (1st or 2nd)
 **Settings** → **Award last month's champion**. This gives the Monthly Champion badge to last month's #1. Pressing it twice does no harm.
 
