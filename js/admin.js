@@ -1,5 +1,5 @@
 // Coach console: overview + member & role management.
-import { supabase, app } from './supabase.js';
+import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, adminNav, brandHTML, initials,
          formatDate, formatToday, formatNumber } from './ui.js';
@@ -50,7 +50,7 @@ async function renderOverview() {
     <a class="btn btn-gold btn-sm" href="${app('admin/members.html')}">${icon('users')}Manage members</a></div>
   <section class="akpis">${kpis.map(([l, v, s, c]) => `<div class="panel akpi ${c || ''}"><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
-    <section class="panel"><div class="panel-h"><h3>Latest check-ins</h3><small class="muted">Live</small></div>
+    <section class="panel"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
       ${recent.length ? `<div class="feed">${recent.map((r) => `<div class="row">${r.status === 'done' && !r.voided ? `<span class="pill ok">Done</span>` : r.voided ? `<span class="pill bad">Removed</span>` : `<span class="pill none">Not done</span>`}
         <span class="txt"><b>${esc(r.member)}</b> · ${esc(r.activity)}</span><time>${esc(timeAgo(r.at))}</time></div>`).join('')}</div>`
       : `<div class="empty-state"><span class="ic">${icon('check-check')}</span><b>No check-ins yet</b><span>When members tick habits, they appear here.</span></div>`}
@@ -94,6 +94,7 @@ function personHTML(p) {
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
       <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--warn)">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
+      ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
   </article>`;
 }
@@ -134,6 +135,8 @@ async function renderMembers() {
   main.addEventListener('click', async (e) => {
     const f = e.target.closest('[data-filter]');
     if (f) { filter = f.dataset.filter; renderList(); return; }
+    const bz = e.target.closest('[data-bonus]');
+    if (bz) { bonusDialog(people.find((x) => x.id === bz.dataset.bonus)); return; }
     const t = e.target.closest('[data-active]');
     if (t) {
       const p = people.find((x) => x.id === t.dataset.active);
@@ -171,13 +174,228 @@ async function renderMembers() {
   catch (err) { errorPanel($('#list'), err, renderMembers); }
 }
 
+
+// ---------------- shared form dialog ----------------
+function formDialog({ title, body, fields, submitLabel, onSubmit, danger = false }) {
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim';
+  scrim.innerHTML = `<form class="dialog form" role="dialog" aria-modal="true" aria-labelledby="fd-t" novalidate style="gap:14px">
+    <h2 id="fd-t">${esc(title)}</h2>${body ? `<p class="muted" style="font-size:14px">${body}</p>` : ''}
+    ${fields}
+    <div class="actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button>
+    <button type="submit" class="btn ${danger ? 'btn-bad' : 'btn-gold'}">${esc(submitLabel)}</button></div></form>`;
+  document.body.appendChild(scrim);
+  const form = scrim.querySelector('form');
+  const close = () => scrim.remove();
+  scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-close]')) close(); });
+  scrim.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  form.querySelector('input, textarea, select')?.focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('[type=submit]');
+    await withBusy(btn, 'Saving…', async () => { if (await onSubmit(form)) close(); });
+  });
+  return scrim;
+}
+const fieldErr = (form, sel, msg) => {
+  const input = form.querySelector(sel); const f = input.closest('.field');
+  f.classList.toggle('invalid', !!msg); f.querySelector('.err').textContent = msg || ''; if (msg) input.focus(); return !msg;
+};
+
+// ---------------- SPECIAL BONUS ----------------
+function bonusDialog(p) {
+  formDialog({
+    title: `Bonus for ${p.full_name || p.email}`,
+    body: 'Points are added to their score right away and they get a notification with your reason.',
+    submitLabel: 'Give bonus',
+    fields: `<div class="field"><label for="b-pts">Points (1–500)</label><input id="b-pts" type="number" inputmode="numeric" min="1" max="500" value="25"><span class="err"></span></div>
+      <div class="field"><label for="b-why">Reason (the member sees this)</label><textarea id="b-why" maxlength="240" rows="3" placeholder="e.g. Shared a powerful reflection in today's session"></textarea><span class="err"></span></div>`,
+    onSubmit: async (form) => {
+      const pts = Number(form.querySelector('#b-pts').value), why = form.querySelector('#b-why').value.trim();
+      const ok = [fieldErr(form, '#b-pts', Number.isInteger(pts) && pts >= 1 && pts <= 500 ? '' : 'Enter a whole number from 1 to 500.'),
+                  fieldErr(form, '#b-why', why.length >= 3 ? '' : 'Add a short reason.')].every(Boolean);
+      if (!ok) return false;
+      const { error } = await supabase.rpc('admin_award_bonus', { p_member: p.id, p_points: pts, p_reason: why });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      toast(`+${pts} bonus points given to ${p.full_name || 'member'}`);
+      return true;
+    }
+  });
+}
+
+// ---------------- CHECK-INS ----------------
+let ci = { date: null, tracker: '', status: '', q: '', rows: [] };
+const istToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+
+async function renderCheckins() {
+  const main = $('#main');
+  ci.date = ci.date || istToday();
+  main.innerHTML = `
+  <div class="admin-head"><div><span class="eyebrow">Members tick, points are instant. Remove fake ticks here.</span><h1>Check-ins</h1></div></div>
+  <div class="tools">
+    <label class="field" style="flex:none;gap:4px"><span class="visually-hidden">Date</span><input id="ci-date" type="date" value="${ci.date}" max="${istToday()}" style="min-height:42px;padding:8px 12px"></label>
+    <label class="search">${icon('search')}<input id="ci-q" type="search" placeholder="Search member or activity" aria-label="Search check-ins" value="${esc(ci.q)}"></label>
+  </div>
+  <div class="tools"><div class="chips" role="group" aria-label="Tracker">${[['', 'All trackers'], ['wealth', 'Wealth'], ['conscious', 'Conscious'], ['karma', 'Karma'], ['champion', 'Champion']].map(([v, l]) =>
+      `<button class="chip" data-tr="${v}" aria-pressed="${ci.tracker === v}">${l}</button>`).join('')}</div></div>
+  <div class="tools"><div class="chips" role="group" aria-label="Status">${[['', 'All'], ['done', 'Done'], ['not_done', 'Not done'], ['removed', 'Removed']].map(([v, l]) =>
+      `<button class="chip" data-st="${v}" aria-pressed="${ci.status === v}">${l}</button>`).join('')}</div><span class="muted" id="ci-count" style="font-size:13px"></span></div>
+  <div id="ci-list"></div>`;
+  let t;
+  $('#ci-q').addEventListener('input', (e) => { ci.q = e.target.value; clearTimeout(t); t = setTimeout(loadCheckins, 300); });
+  $('#ci-date').addEventListener('change', (e) => { ci.date = e.target.value || istToday(); loadCheckins(); });
+  main.addEventListener('click', (e) => {
+    const tr = e.target.closest('[data-tr]'); if (tr) { ci.tracker = tr.dataset.tr; $$('[data-tr]').forEach((b) => b.setAttribute('aria-pressed', String(b === tr))); return loadCheckins(); }
+    const st = e.target.closest('[data-st]'); if (st) { ci.status = st.dataset.st; $$('[data-st]').forEach((b) => b.setAttribute('aria-pressed', String(b === st))); return loadCheckins(); }
+    const rm = e.target.closest('[data-void]'); if (rm) return voidDialog(ci.rows.find((r) => r.id === rm.dataset.void));
+  });
+  await loadCheckins();
+}
+
+async function loadCheckins() {
+  const list = $('#ci-list');
+  list.innerHTML = `<div class="skeleton" style="height:72px"></div><div class="skeleton" style="height:72px;margin-top:10px"></div>`;
+  const { data, error } = await supabase.rpc('admin_checkins', { p_date: ci.date, p_tracker: ci.tracker || null, p_status: ci.status || null, p_search: ci.q || null, p_limit: 300 });
+  if (error) return errorPanel(list, error, loadCheckins);
+  ci.rows = data || [];
+  $('#ci-count').textContent = `${ci.rows.length}${ci.rows.length === 300 ? '+' : ''} entries`;
+  if (!ci.rows.length) {
+    list.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('check-check')}</span><b>No check-ins match</b><span>${ci.q || ci.tracker || ci.status ? 'Try another filter or clear the search.' : 'When members tick habits on this day, they appear here.'}</span></div>`;
+    return;
+  }
+  list.innerHTML = `<div class="people">${ci.rows.map(checkinHTML).join('')}</div>`;
+}
+
+function checkinHTML(r) {
+  const removed = !!r.voided_at;
+  const pill = removed ? '<span class="pill bad">Removed</span>' : r.status === 'done' ? '<span class="pill ok">Done</span>' : '<span class="pill none">Not done</span>';
+  return `<article class="person ${removed ? 'paused' : ''}" style="--tc:${TRACKER_COLOR[r.tracker_slug] || 'var(--gold)'}">
+    <span class="avatar" aria-hidden="true">${esc(initials(r.member_name))}</span>
+    <div class="who"><b>${esc(r.member_name || 'Member')}</b>
+      <div class="meta"><span style="color:var(--tc);font-weight:700">${esc(r.tracker_name)} #${String(r.activity_number).padStart(2, '0')}</span><span>${esc(r.activity_name)}</span><span>${esc(timeAgo(r.updated_at))}</span></div>
+      ${r.note ? `<p style="font-size:13.5px;color:var(--ink-2);background:var(--bg-2);border-radius:10px;padding:8px 10px;margin-top:4px">“${esc(r.note)}”</p>` : ''}
+      ${removed ? `<p style="font-size:12.5px;color:var(--bad-soft)">Removed by ${esc(r.voided_by_name || 'coach')}: ${esc(r.void_reason)}</p>` : ''}</div>
+    <div class="acts">${pill}${r.status === 'done' && !removed ? `<span class="num" style="font-size:20px;color:var(--gold-hi)">+${r.points_awarded}</span>
+      <button class="btn btn-sm btn-bad" data-void="${r.id}">${icon('x')}Remove</button>` : ''}</div></article>`;
+}
+
+function voidDialog(r) {
+  formDialog({
+    title: 'Remove this tick?',
+    body: `<b>${esc(r.member_name)}</b> · ${esc(r.activity_name)}<br>Their ${r.points_awarded} points and any bonus that depended on it are taken back. They see your reason and cannot re-tick this activity today.`,
+    submitLabel: 'Remove tick', danger: true,
+    fields: `<div class="field"><label for="v-why">Reason (the member sees this)</label><textarea id="v-why" maxlength="240" rows="3" placeholder="e.g. You were in class at this time, please tick only what you did"></textarea><span class="err"></span></div>`,
+    onSubmit: async (form) => {
+      const why = form.querySelector('#v-why').value.trim();
+      if (!fieldErr(form, '#v-why', why.length >= 5 ? '' : 'Write a reason of at least 5 characters.')) return false;
+      const { error } = await supabase.rpc('admin_void_checkin', { p_checkin_id: r.id, p_reason: why });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      toast('Tick removed · member notified');
+      loadCheckins();
+      return true;
+    }
+  });
+}
+
+// ---------------- ACTIVITIES ----------------
+let acts = [], cats = [], actTracker = 'wealth';
+
+async function renderActivities() {
+  const main = $('#main');
+  main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">Names stay exactly as the program defines them</span><h1>Activities</h1></div></div>
+    <div class="skeleton" style="height:300px"></div>`;
+  const [c, a] = await Promise.all([
+    supabase.from('tracker_categories').select('id, slug, name, sort_order').order('sort_order'),
+    supabase.from('activities').select('id, category_id, number, default_name, description, image_path, icon, points, is_active').order('number')
+  ]);
+  if (c.error || a.error) return errorPanel(main, c.error || a.error, renderActivities);
+  cats = c.data; acts = a.data;
+  main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">Names stay exactly as the program defines them</span><h1>Activities</h1></div></div>
+    <div class="chips" role="group" aria-label="Tracker">${cats.map((t) => `<button class="chip" data-at="${t.slug}" aria-pressed="${t.slug === actTracker}">${esc(t.name)}<span class="c">${acts.filter((x) => x.category_id === t.id).length}</span></button>`).join('')}</div>
+    <div id="act-list"></div>`;
+  main.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-at]'); if (t) { actTracker = t.dataset.at; $$('[data-at]').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); return drawActs(); }
+    const ed = e.target.closest('[data-edit]'); if (ed) return editActivity(acts.find((x) => x.id === ed.dataset.edit));
+  });
+  drawActs();
+}
+
+function drawActs() {
+  const cat = cats.find((c) => c.slug === actTracker);
+  const list = acts.filter((a) => a.category_id === cat.id);
+  $('#act-list').innerHTML = `<div class="people">${list.map((a) => {
+    const img = activityImageUrl(a.image_path);
+    return `<article class="person ${a.is_active ? '' : 'paused'}" style="--tc:${TRACKER_COLOR[cat.slug]}">
+      <span style="width:72px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--bg-2);display:grid;place-items:center;flex:none">${img ? `<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : icon(a.icon || 'image')}</span>
+      <div class="who"><b>#${String(a.number).padStart(2, '0')} · ${esc(a.default_name)}</b>
+        <div class="meta"><span>${esc(a.description || 'No description')}</span></div>
+        <div class="meta"><span class="pill gold" style="text-transform:none;letter-spacing:0">${a.points} pts</span>${a.is_active ? '' : '<span class="pill bad">Hidden</span>'}</div></div>
+      <div class="acts"><button class="btn btn-sm btn-ghost" data-edit="${a.id}">${icon('pencil')}Edit</button></div></article>`; }).join('')}</div>`;
+}
+
+// Resize/crop to 640×480 and encode as WebP (JPEG where WebP encoding is unsupported).
+async function prepareImage(file) {
+  if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) throw new Error('Choose a JPG, PNG or WebP image.');
+  if (file.size > 15 * 1024 * 1024) throw new Error('That image is over 15 MB. Choose a smaller one.');
+  const bmp = await createImageBitmap(file);
+  const W = 640, H = 480, scale = Math.max(W / bmp.width, H / bmp.height);
+  const sw = W / scale, sh = H / scale;
+  const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  canvas.getContext('2d').drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, W, H);
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/webp', 0.78));
+  if (blob && blob.type === 'image/webp') return { blob, ext: 'webp', type: 'image/webp' };
+  const jpg = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.82));
+  return { blob: jpg, ext: 'jpg', type: 'image/jpeg' };
+}
+
+function editActivity(a) {
+  const cat = cats.find((c) => c.id === a.category_id);
+  let picked = null;
+  const scrim = formDialog({
+    title: `#${String(a.number).padStart(2, '0')} ${a.default_name}`,
+    body: 'The activity name is fixed. You can change the picture, description, points and whether members see it.',
+    submitLabel: 'Save changes',
+    fields: `<div style="display:flex;gap:12px;align-items:center">
+        <img id="e-prev" src="${esc(activityImageUrl(a.image_path) || '')}" alt="" style="width:120px;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:var(--bg-2)">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">${icon('image')}Change picture<input id="e-img" type="file" accept="image/jpeg,image/png,image/webp" class="visually-hidden"></label></div>
+      <div class="field"><label for="e-desc">Short description</label><textarea id="e-desc" maxlength="400" rows="3">${esc(a.description || '')}</textarea><span class="err"></span></div>
+      <div class="field"><label for="e-pts">Points when done (0–100)</label><input id="e-pts" type="number" inputmode="numeric" min="0" max="100" value="${a.points}"><span class="err"></span></div>
+      <label class="check"><input type="checkbox" id="e-active" ${a.is_active ? 'checked' : ''}>Show this activity to members</label>`,
+    onSubmit: async (form) => {
+      const desc = form.querySelector('#e-desc').value.trim();
+      const pts = Number(form.querySelector('#e-pts').value);
+      const active = form.querySelector('#e-active').checked;
+      if (!fieldErr(form, '#e-pts', Number.isInteger(pts) && pts >= 0 && pts <= 100 ? '' : 'Enter a whole number from 0 to 100.')) return false;
+      const patch = { description: desc || null, points: pts, is_active: active };
+      if (picked) {
+        const path = `${cat.slug}-${String(a.number).padStart(2, '0')}-${Date.now()}.${picked.ext}`;
+        const up = await supabase.storage.from('activity-images').upload(path, picked.blob, { contentType: picked.type, cacheControl: '31536000', upsert: false });
+        if (up.error) { toast(friendlyError(up.error), 'bad'); return false; }
+        patch.image_path = supabase.storage.from('activity-images').getPublicUrl(path).data.publicUrl;
+      }
+      const { data, error } = await supabase.from('activities').update(patch).eq('id', a.id)
+        .select('id, category_id, number, default_name, description, image_path, icon, points, is_active').single();
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      Object.assign(a, data); drawActs(); toast('Activity saved');
+      return true;
+    }
+  });
+  scrim.querySelector('#e-img').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { picked = await prepareImage(f); scrim.querySelector('#e-prev').src = URL.createObjectURL(picked.blob); toast(`Picture ready (${Math.round(picked.blob.size / 1024)} KB). Tap Save to upload.`, 'info'); }
+    catch (err) { picked = null; toast(err.message, 'bad'); }
+  });
+}
+
 // ---------------- boot ----------------
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome(page === 'admin-members' ? 'members' : 'dashboard');
+    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
+    if (page === 'admin-checkins') await renderCheckins();
+    if (page === 'admin-activities') await renderActivities();
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

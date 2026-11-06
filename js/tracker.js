@@ -22,6 +22,7 @@ let me, today, cats = [], cat = null, acts = [];
 const rows = new Map();          // `${activity_id}|${date}` -> checkin row
 let view = 'week', weekStart = null;
 const busy = new Set();
+const lastTap = new Map();   // ignore accidental double taps on the same button
 
 function chrome(current) {
   const p = me.profile;
@@ -207,6 +208,9 @@ function setView(v) {
 async function mark(card, value) {
   const id = card.dataset.id;
   if (busy.has(id)) return;
+  const tapKey = `${id}|${value}`, now = Date.now();
+  if (now - (lastTap.get(tapKey) || 0) < 700) return;
+  lastTap.set(tapKey, now);
   const key = `${id}|${today}`;
   const before = rows.get(key);
   const current = before && !before.voided_at ? before.status : null;
@@ -222,6 +226,7 @@ async function mark(card, value) {
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
   busy.delete(id);
   if (error) {
+    lastTap.delete(tapKey);   // let the member retry straight away
     if (before) rows.set(key, before); else rows.delete(key);
     refreshCard(id);
     if (/removed today/i.test(error.message)) { await loadWeek().catch(() => {}); renderWeek(); }

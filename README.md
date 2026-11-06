@@ -18,14 +18,15 @@
 | 2 | Supabase database | ✅ live, see `supabase/` |
 | 3 | Authentication & roles | ✅ login, register, forgot/reset, role guards, member & coach pages |
 | 4–5 | Trackers & daily check-in | ✅ 4 tracker pages: ✓ / ✗ today, notes, week grid, month calendar, history |
-| 6–12 | Coach check-in feed, scoring settings, leaderboard, analytics, PWA, security tests, deploy | planned |
+| 6 | Coach tools | ✅ check-in feed with remove + reason, activity editor with image upload, special bonus |
+| 7–12 | Scoring settings, leaderboard, analytics, PWA, security tests, deploy | planned |
 
 ## Folders
 ```
 index.html            Landing page
 login.html, register.html, forgot.html, reset.html
 member/               dashboard.html, trackers.html, tracker-detail.html, profile.html   (members only)
-admin/                dashboard.html, members.html   (coaches & super admin)
+admin/                dashboard.html, checkins.html, members.html, activities.html   (coaches & super admin)
 css/                  style.css, dashboard.css, admin.css, responsive.css
 js/                   supabase.js, auth.js, ui.js, icons.js, dashboard.js, admin.js, auth-pages.js, stadium.js
 js/vendor/            supabase-js 2.45.4 browser build (MIT)

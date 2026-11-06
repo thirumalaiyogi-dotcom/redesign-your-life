@@ -618,6 +618,41 @@ begin
   order by case p.role when 'super_admin' then 0 when 'admin' then 1 else 2 end, p.full_name;
 end; $$;
 
+-- Coach check-in feed (server-side filtering, coaches only)
+create or replace function public.admin_checkins(
+  p_date date default null, p_tracker text default null, p_status text default null,
+  p_search text default null, p_limit int default 200)
+returns table(id uuid, checkin_date date, status text, note text, points_awarded smallint,
+              voided_at timestamptz, void_reason text, voided_by_name text, updated_at timestamptz,
+              member_id uuid, member_name text, activity_number smallint, activity_name text, tracker_slug text, tracker_name text)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := coalesce(p_date, public.app_today()); q text := nullif(trim(coalesce(p_search, '')), '');
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  if p_status is not null and p_status not in ('done','not_done','removed') then
+    raise exception 'Unknown status filter.' using errcode = '22023';
+  end if;
+  return query
+  select c.id, c.checkin_date, c.status, c.note, c.points_awarded, c.voided_at, c.void_reason, vb.full_name,
+         c.updated_at, p.id, p.full_name, a.number, a.default_name, t.slug, t.name
+  from public.daily_checkins c
+  join public.profiles p on p.id = c.member_id
+  join public.activities a on a.id = c.activity_id
+  join public.tracker_categories t on t.id = a.category_id
+  left join public.profiles vb on vb.id = c.voided_by
+  where c.checkin_date = d
+    and (p_tracker is null or t.slug = p_tracker)
+    and (p_status is null
+         or (p_status = 'removed' and c.voided_at is not null)
+         or (p_status <> 'removed' and c.voided_at is null and c.status = p_status))
+    and (q is null or p.full_name ilike '%' || q || '%' or a.default_name ilike '%' || q || '%')
+  order by c.updated_at desc
+  limit least(greatest(coalesce(p_limit, 200), 1), 500);
+end; $$;
+
+
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -630,7 +665,8 @@ grant execute on function
   public.admin_void_checkin(uuid, text), public.admin_award_bonus(uuid, int, text),
   public.admin_set_role(uuid, text), public.admin_set_active(uuid, boolean),
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
-  public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people()
+  public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people(),
+  public.admin_checkins(date, text, text, text, int)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

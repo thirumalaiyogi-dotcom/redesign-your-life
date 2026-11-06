@@ -126,9 +126,9 @@ export function memberNav(current) {
 export function adminNav(current) {
   const items = [
     [app('admin/dashboard.html'), 'layout-dashboard', 'Overview', 'dashboard'],
-    ['#', 'check-check', 'Check-ins', 'checkins', 'Check-in feed opens in Phase 6'],
+    [app('admin/checkins.html'), 'check-check', 'Check-ins', 'checkins'],
     [app('admin/members.html'), 'users', 'Members', 'members'],
-    ['#', 'list-checks', 'Activities', 'activities', 'Activity editor opens in Phase 6'],
+    [app('admin/activities.html'), 'list-checks', 'Activities', 'activities'],
     ['#', 'trophy', 'Leaderboard', 'leaderboard', 'Leaderboard opens in Phase 8'],
     ['#', 'file-chart-column', 'Reports', 'reports', 'Reports open in Phase 9'],
     ['#', 'settings', 'Settings', 'settings', 'Settings open in Phase 7']
