@@ -105,9 +105,11 @@ create trigger journals_touch before update on public.journals for each row exec
 -- every new auth user gets a member profile; role can only be raised by a super admin
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_phone text := nullif(regexp_replace(coalesce(new.raw_user_meta_data ->> 'phone', ''), '[^0-9+ ]', '', 'g'), '');
 begin
-  insert into public.profiles(id, full_name)
-  values (new.id, left(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), 80))
+  if v_phone is not null and v_phone !~ '^\+?[0-9 ]{7,16}$' then v_phone := null; end if;
+  insert into public.profiles(id, full_name, phone)
+  values (new.id, left(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), 80), v_phone)
   on conflict (id) do nothing;
   return new;
 end; $$;
@@ -601,6 +603,21 @@ begin
   order by coalesce(st.points, 0) desc, p.full_name;
 end; $$;
 
+-- everyone (members, coaches, super admins) for the role-management screen
+create or replace function public.admin_list_people()
+returns table(id uuid, full_name text, email text, phone text, role text, is_active boolean,
+              joined_on date, last_sign_in_at timestamptz, email_confirmed boolean)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query
+  select p.id, p.full_name, u.email::text, p.phone, p.role, p.is_active, p.joined_on,
+         u.last_sign_in_at, u.email_confirmed_at is not null
+  from public.profiles p join auth.users u on u.id = p.id
+  order by case p.role when 'super_admin' then 0 when 'admin' then 1 else 2 end, p.full_name;
+end; $$;
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -613,7 +630,7 @@ grant execute on function
   public.admin_void_checkin(uuid, text), public.admin_award_bonus(uuid, int, text),
   public.admin_set_role(uuid, text), public.admin_set_active(uuid, boolean),
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
-  public.admin_overview(date), public.admin_member_report(date, date)
+  public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people()
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

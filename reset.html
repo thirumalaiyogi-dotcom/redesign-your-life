@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070d1f">
+<title>New password · Redesign Your Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body data-page="reset">
+<main class="auth">
+  <div class="auth-art" aria-hidden="true">
+    <canvas id="art-canvas"></canvas>
+    <div class="quote"><span class="eyebrow" style="color:var(--gold)">Fresh start</span><h2>Set a new<br><span class="gold-text">password.</span></h2></div>
+  </div>
+  <div class="auth-form">
+    <div class="auth-card">
+      <a class="brand" href="/"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
+      <h1>New password</h1>
+      <div id="notice" hidden></div>
+      <p id="checking" class="muted">Checking your reset link…</p>
+      <form class="form" id="reset-form" novalidate hidden>
+        <div class="field">
+          <label for="password">New password</label>
+          <div class="pw"><input id="password" type="password" autocomplete="new-password" placeholder="8+ characters, letters and numbers"><button type="button"></button></div>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="password2">Confirm new password</label>
+          <div class="pw"><input id="password2" type="password" autocomplete="new-password" placeholder="Type it again"><button type="button"></button></div>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <button class="btn btn-gold btn-block" type="submit" id="reset-btn">Save new password</button>
+      </form>
+      <a id="again" class="btn btn-ghost btn-block" href="/forgot.html" hidden>Request a new link</a>
+    </div>
+  </div>
+</main>
+<script src="/js/vendor/supabase.js"></script>
+<script type="module" src="/js/auth-pages.js"></script>
+</body>
+</html>

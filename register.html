@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070d1f">
+<title>Join · Redesign Your Life</title>
+<meta name="description" content="Create your member account for Deepak's Redesign Your Life.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body data-page="register">
+<main class="auth">
+  <div class="auth-art" aria-hidden="true">
+    <canvas id="art-canvas"></canvas>
+    <div class="quote"><span class="eyebrow" style="color:var(--gold)">Day 1 of your transformation</span><h2>58 small habits.<br><span class="gold-text">One new you.</span></h2></div>
+  </div>
+  <div class="auth-form">
+    <div class="auth-card">
+      <a class="brand" href="/"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
+
+      <form class="form" id="register-form" novalidate>
+        <div><h1>Join the program</h1><p class="sub">Create your member account. It takes a minute.</p></div>
+        <div id="notice" hidden></div>
+        <div class="field">
+          <label for="full_name">Full name</label>
+          <input id="full_name" name="full_name" autocomplete="name" maxlength="80" placeholder="e.g. Priya Raman" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="phone">Mobile number <span class="opt">(optional)</span></label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="16" placeholder="+91 98765 43210">
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="pw"><input id="password" name="password" type="password" autocomplete="new-password" placeholder="8+ characters, letters and numbers" required><button type="button"></button></div>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="password2">Confirm password</label>
+          <div class="pw"><input id="password2" name="password2" type="password" autocomplete="new-password" placeholder="Type it again" required><button type="button"></button></div>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="terms">I agree to share my daily progress with my coach and to show my name and points on the group leaderboard.</label>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <button class="btn btn-gold btn-block" type="submit" id="register-btn">Create account</button>
+        <p class="muted" style="text-align:center;font-size:14px">Already a member? <a class="link" href="/login.html">Log in</a></p>
+      </form>
+
+      <section id="done" class="stack" hidden style="gap:16px">
+        <h1 tabindex="-1">Check your email</h1>
+        <div class="notice ok"><span data-icon="mail"></span><span>We sent a confirmation link to <b id="done-email"></b>. Open it on this phone to activate your account.</span></div>
+        <p class="muted">No email after 5 minutes? Check your spam folder, or <a class="link" href="/register.html">try again</a>.</p>
+        <a class="btn btn-ghost btn-block" href="/login.html">Go to log in</a>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="/js/vendor/supabase.js"></script>
+<script type="module" src="/js/auth-pages.js"></script>
+</body>
+</html>

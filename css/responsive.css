@@ -1,0 +1,15 @@
+/* Breakpoints: tablet ≤ 980px, phone ≤ 560px. Mobile layouts are the primary target. */
+@media (max-width: 980px) {
+  .auth { grid-template-columns: 1fr; }
+  .auth-art { min-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .auth-art .quote { left: 20px; right: 20px; bottom: 20px; }
+  .auth-art .quote h2 { font-size: 36px; }
+  .auth-form { padding-block: 28px 48px; align-items: flex-start; }
+}
+@media (max-width: 560px) {
+  .auth-art { min-height: 168px; }
+  .auth-art .quote .eyebrow { display: none; }
+  .auth-card h1 { font-size: 36px; }
+  .brand b { font-size: 16px; }
+  .section-h h2 { font-size: 21px; }
+}

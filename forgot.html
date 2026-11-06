@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070d1f">
+<title>Reset password · Redesign Your Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body data-page="forgot">
+<main class="auth">
+  <div class="auth-art" aria-hidden="true">
+    <canvas id="art-canvas"></canvas>
+    <div class="quote"><span class="eyebrow" style="color:var(--gold)">Willpower · Never give up</span><h2>Back on track<br><span class="gold-text">in a minute.</span></h2></div>
+  </div>
+  <div class="auth-form">
+    <form class="auth-card form" id="forgot-form" novalidate>
+      <a class="brand" href="/"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
+      <div><h1>Forgot password</h1><p class="sub">Enter your email and we'll send a link to set a new password.</p></div>
+      <div id="notice" hidden></div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+        <span class="err" aria-live="polite"></span>
+      </div>
+      <button class="btn btn-gold btn-block" type="submit" id="forgot-btn">Send reset link</button>
+      <a class="link" href="/login.html" style="text-align:center">Back to log in</a>
+    </form>
+  </div>
+</main>
+<script src="/js/vendor/supabase.js"></script>
+<script type="module" src="/js/auth-pages.js"></script>
+</body>
+</html>
