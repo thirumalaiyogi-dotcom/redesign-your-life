@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#070d1f">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gcbizlnpryihrrmjwbdv.supabase.co; connect-src 'self' https://gcbizlnpryihrrmjwbdv.supabase.co wss://gcbizlnpryihrrmjwbdv.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Deepak's Redesign Your Life</title>
 <meta name="description" content="Small habits, big transformation. Track 58 daily habits across wealth, awareness, karma and champion mindset.">
 <link rel="manifest" href="manifest.json">
@@ -102,25 +104,7 @@
 </main>
 <footer><div class="wrap row-between"><span>© 2026 Deepak's Redesign Your Life</span><span>Get 1% better every day</span></div></footer>
 <script src="js/vendor/supabase.js"></script>
-<script type="module">
-  import { icon } from './js/icons.js';
-  import { stadium } from './js/stadium.js';
-  import { getSession, fetchProfile, homeFor } from './js/auth.js';
-  document.querySelectorAll('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
-  stadium(document.getElementById('art-canvas'));
-  // Logged-in visitors get a direct way back to their dashboard.
-  getSession().then(async (s) => {
-    if (!s) return;
-    const p = await fetchProfile(s.user.id).catch(() => null);
-    if (!p?.is_active) return;
-    const home = homeFor(p.role);
-    for (const id of ['top-cta', 'main-cta']) {
-      const a = document.getElementById(id);
-      a.href = home; a.innerHTML = (id === 'main-cta' ? icon('layout-dashboard') : '') + 'Open my dashboard';
-    }
-    document.getElementById('second-cta').hidden = true;
-  }).catch(() => {});
-</script>
+<script type="module" src="js/landing.js"></script>
 <script type="module" src="js/pwa.js"></script>
 </body>
 </html>

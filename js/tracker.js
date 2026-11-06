@@ -97,7 +97,7 @@ function cardHTML(a) {
   const thisWeek = weekStart === mondayOf(today);
   const img = activityImageUrl(a.image_path);
   return `<article class="act ${st === 'done' ? 'is-done' : st === 'not_done' ? 'is-miss' : ''}" data-id="${a.id}">
-    <div class="art">${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${icon(a.icon || 'circle-dot')}
+    <div class="art">${img ? `<img src="${esc(img)}" alt="" loading="lazy" data-fallback>` : ''}${icon(a.icon || 'circle-dot')}
       <span class="no">${String(a.number).padStart(2, '0')}</span>${st === 'done' ? `<span class="stamp">${icon('check', 'icon')}</span>` : ''}</div>
     <div class="body"><h3>${esc(a.default_name)}</h3>${a.description ? `<p class="desc">${esc(a.description)}</p>` : ''}</div>
     <div class="days">${Array.from({ length: 7 }, (_, i) => dayCell(a.id, addDays(weekStart, i), i)).join('')}</div>
@@ -327,6 +327,9 @@ async function renderDetail() {
     if (today !== prev) { weekStart = mondayOf(today); if (view === 'week') showWeek(); else setView(view); }
   });
 }
+
+// Broken activity image → show the icon underneath (no inline handlers, so the CSP can stay strict).
+document.addEventListener('error', (e) => { if (e.target.matches?.('img[data-fallback]')) e.target.remove(); }, true);
 
 // ---------------- boot ----------------
 (async () => {

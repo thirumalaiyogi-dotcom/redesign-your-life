@@ -1,3 +1,6 @@
+// Refuse to run inside another site's frame (clickjacking guard; Vercel also sends X-Frame-Options).
+if (window.top !== window.self) { try { window.top.location = window.self.location.href; } catch { document.documentElement.hidden = true; } }
+
 // PWA: register the service worker and offer "Install app".
 // Load with <script type="module" src=".../js/pwa.js"></script> on every page.
 const SW_URL = new URL('../sw.js', import.meta.url);

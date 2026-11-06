@@ -24,7 +24,7 @@ create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   full_name   text not null default '' check (char_length(full_name) <= 80),
   phone       text check (phone is null or phone ~ '^\+?[0-9 ]{7,16}$'),
-  avatar_url  text check (avatar_url is null or char_length(avatar_url) <= 500),
+  avatar_url  text constraint profiles_avatar_url_check check (avatar_url is null or avatar_url ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/avatars/[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$'),
   role        text not null default 'member' check (role in ('super_admin','admin','member')),
   is_active   boolean not null default true,
   joined_on   date not null default ((now() at time zone 'Asia/Kolkata')::date),
@@ -52,7 +52,8 @@ create table if not exists public.activities (
   number        smallint not null check (number between 1 and 99),
   default_name  text not null,                      -- original client name; never editable from the app
   description   text check (description is null or char_length(description) <= 400),
-  image_path    text,                               -- 'wealth-01.webp' (bundled) or full https URL (Storage)
+  image_path    text constraint activities_image_path_check check (image_path is null or image_path ~ '^[a-z]+-[0-9]{2}\.webp$'
+                  or image_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$'),  -- bundled file or this project's Storage
   icon          text,
   points        smallint not null default 10 check (points between 0 and 100),
   is_active     boolean not null default true,

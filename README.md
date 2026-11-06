@@ -22,7 +22,8 @@
 | 7–8 | Scoring settings & leaderboard | ✅ super-admin point settings, monthly champion, podium leaderboard with recognitions |
 | 9 | Journal, progress & reports | ✅ private journal, my progress (chart, trackers, badges, points history), coach reports + CSV, shared journals |
 | 10 | PWA & Android install | ✅ manifest, app icons, service worker (no private data cached), offline screen, install card |
-| 11–12 | Security review, production deploy & domain | planned |
+| 11 | Security review | ✅ see SECURITY.md: 62/62 live attacks blocked, CSP, image URL limits, clickjacking guard |
+| 12 | Production deploy & domain | planned |
 
 ## Folders
 ```
