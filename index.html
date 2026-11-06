@@ -26,18 +26,21 @@
 </head>
 <body>
 <header class="hero">
-  <canvas id="art-canvas" aria-hidden="true"></canvas>
+  <div class="hero-bg" aria-hidden="true"><span class="ripple r1"></span><span class="ripple r2"></span><span class="ripple r3"></span><span class="glow"></span></div>
   <div class="wrap">
     <div class="top">
       <a class="brand" href="./"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
-      <div class="top-act"><button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode"></button><a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a></div>
+      <div class="top-act"><button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode"></button><a class="btn btn-sm top-cta" id="top-cta" href="login.html" data-icon="log-in"><span>Log in</span></a></div>
     </div>
     <div class="hero-grid">
       <div class="hero-copy">
-        <span class="eyebrow hero-eyebrow">A 90-day transformation program</span>
-        <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
-        <p class="hero-ta" lang="ta">சிந்தனையை மாற்று, வாழ்க்கையை மாற்று.</p>
+        <span class="eyebrow hero-eyebrow"><i></i>A 90-day transformation program</span>
+        <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span> Your&nbsp;Life</h1>
+        <p class="hero-ta" lang="ta">சிந்தனையை மாற்று,<br>வாழ்க்கையை மாற்று.</p>
         <div class="tagline">Small habits <i></i> Big transformation</div>
+      </div>
+      <figure class="hero-coach" id="hero-coach"></figure>
+      <div class="hero-act">
         <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
         <div data-install-slot style="max-width:460px"></div>
         <div class="ctas">
@@ -45,10 +48,9 @@
           <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
         </div>
         <ul class="hero-stats" aria-label="The program in numbers">
-          <li><b data-c="stories">8872+</b><span>success stories</span></li><li><b>58</b><span>daily habits</span></li><li><b>4</b><span>trackers</span></li><li><b>0</b><span>minus points</span></li>
+          <li><b>58</b><span>daily habits</span></li><li><b>4</b><span>trackers</span></li><li><b>10</b><span>badges</span></li><li><b>0</b><span>minus points</span></li>
         </ul>
       </div>
-      <figure class="hero-coach" id="hero-coach"></figure>
     </div>
   </div>
 </header>
