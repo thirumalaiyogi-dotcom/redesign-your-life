@@ -1,5 +1,5 @@
 // Login, register, forgot-password and reset-password screens.
-import { supabase } from './supabase.js';
+import { supabase, app } from './supabase.js';
 import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, EMAIL_RE, PHONE_RE, validatePassword } from './ui.js';
 import { stadium } from './stadium.js';
@@ -96,7 +96,7 @@ if (page === 'register') {
           $('#done').hidden = false;
           $('#done h1')?.focus();
         } else {
-          location.replace('/member/dashboard.html');
+          location.replace(app('member/dashboard.html'));
         }
       } catch (err) {
         showNotice('bad', friendlyError(err));
@@ -144,7 +144,7 @@ if (page === 'reset') {
       try {
         await updatePassword(pw.value);
         await supabase.auth.signOut();
-        location.replace('/login.html?msg=reset');
+        location.replace(app('login.html?msg=reset'));
       } catch (err) { showNotice('bad', friendlyError(err)); }
     });
   });

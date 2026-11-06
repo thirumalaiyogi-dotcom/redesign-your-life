@@ -1,5 +1,5 @@
 // Member dashboard and profile pages.
-import { supabase } from './supabase.js';
+import { supabase, app } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav, brandHTML,
          initials, firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword } from './ui.js';
@@ -15,8 +15,8 @@ function avatarHTML(profile, email, cls = 'avatar') {
 }
 
 function chrome(profile, user, current) {
-  $('#top').innerHTML = `<div class="topbar">${brandHTML('/member/dashboard.html')}
-    <div class="actions"><a href="/member/profile.html" aria-label="My profile" style="text-decoration:none">${avatarHTML(profile, user.email)}</a></div></div>`;
+  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('member/dashboard.html'))}
+    <div class="actions"><a href="${app('member/profile.html')}" aria-label="My profile" style="text-decoration:none">${avatarHTML(profile, user.email)}</a></div></div>`;
   document.body.insertAdjacentHTML('beforeend', memberNav(current));
 }
 
@@ -73,7 +73,7 @@ async function renderDashboard(profile, user) {
     <div class="tcards">${(d.trackers || []).map((t) => {
       const pct = t.total ? Math.round(100 * t.done_today / t.total) : 0;
       return `<a class="tcard" href="#" data-soon="Daily tracking opens in Phase 4" style="--tc:${TRACKER_COLOR[t.slug] || 'var(--gold)'}">
-        <div class="art"><img src="/assets/images/${TRACKER_ART[t.slug] || 'wealth-01.webp'}" alt="" loading="lazy"><span class="n">${t.total}</span></div>
+        <div class="art"><img src="${app('assets/images/' + (TRACKER_ART[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="n">${t.total}</span></div>
         <h3>${esc(t.name)}</h3>
         <div class="stats"><div><b class="num">${t.total}</b>Total</div><div><b class="num" style="color:var(--ok)">${t.done_today}</b>Done</div><div><b class="num">${t.total - t.done_today}</b>Left</div></div>
         <div class="progress"><i style="width:${pct}%"></i></div>

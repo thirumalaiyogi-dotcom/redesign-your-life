@@ -1,5 +1,5 @@
 // Coach console: overview + member & role management.
-import { supabase } from './supabase.js';
+import { supabase, app } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, adminNav, brandHTML, initials,
          formatDate, formatToday, formatNumber } from './ui.js';
@@ -9,7 +9,7 @@ const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious
 let me = null;   // { profile, user }
 
 function chrome(current) {
-  $('#top').innerHTML = `<div class="topbar">${brandHTML('/admin/dashboard.html', 'Coach Console', 'Redesign Your Life')}
+  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
     <div class="actions"><span class="pill ${me.profile.role === 'super_admin' ? 'gold' : 'blue'}">${ROLE_LABEL[me.profile.role]}</span>
     <button class="iconbtn" id="logout" aria-label="Log out" title="Log out">${icon('log-out')}</button></div></div>${adminNav(current)}`;
   $('#logout').addEventListener('click', () => signOut());
@@ -47,7 +47,7 @@ async function renderOverview() {
   const recent = o.recent || [];
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${esc(formatToday())}</span><h1>Program overview</h1></div>
-    <a class="btn btn-gold btn-sm" href="/admin/members.html">${icon('users')}Manage members</a></div>
+    <a class="btn btn-gold btn-sm" href="${app('admin/members.html')}">${icon('users')}Manage members</a></div>
   <section class="akpis">${kpis.map(([l, v, s, c]) => `<div class="panel akpi ${c || ''}"><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
     <section class="panel"><div class="panel-h"><h3>Latest check-ins</h3><small class="muted">Live</small></div>
@@ -112,7 +112,7 @@ function renderList() {
 
 async function renderMembers() {
   const main = $('#main');
-  const joinUrl = `${location.origin}/register.html`;
+  const joinUrl = app('register.html');
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${me.profile.role === 'super_admin' ? 'You can change roles and pause anyone' : 'You can pause or activate members'}</span><h1>Members</h1></div></div>
   <section class="panel panel-pad stack" style="gap:10px">

@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/css/style.css">
-<link rel="stylesheet" href="/css/responsive.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
 <style>
   .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
   .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -46,6 +46,7 @@
     .loop { grid-template-columns: repeat(2, 1fr); }
     .loop div:nth-child(2) { border-right: 0; }
     .loop div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .tagline { letter-spacing: .14em; font-size: 11px; gap: 10px; }
     .showcase { gap: 10px; } .show-card .body { padding: 12px; } .show-card .big { font-size: 40px; } .show-card h3 { font-size: 18px; } .show-card p { display: none; }
   }
 </style>
@@ -55,16 +56,16 @@
   <canvas id="art-canvas" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="top">
-      <a class="brand" href="/"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
-      <a class="btn btn-ghost btn-sm" id="top-cta" href="/login.html">Log in</a>
+      <a class="brand" href="./"><span class="crest" data-icon="crown"></span><span><b>Redesign Your Life</b><small>Deepak's Program</small></span></a>
+      <a class="btn btn-ghost btn-sm" id="top-cta" href="login.html">Log in</a>
     </div>
     <span class="eyebrow" style="color:var(--gold)">A 90-day transformation program</span>
     <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
     <div class="tagline">Small habits <i></i> Big transformation</div>
     <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
     <div class="ctas">
-      <a class="btn btn-gold" id="main-cta" href="/register.html" data-icon="user-plus">Join the program</a>
-      <a class="btn btn-ghost" href="/login.html" id="second-cta" data-icon="log-in">Member login</a>
+      <a class="btn btn-gold" id="main-cta" href="register.html" data-icon="user-plus">Join the program</a>
+      <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
     </div>
   </div>
 </header>
@@ -79,10 +80,10 @@
   </section>
   <section><div class="section-h"><h2>Four trackers · 58 activities</h2></div>
     <div class="showcase">
-      <article class="show-card" style="--tc:var(--t-wealth)"><img src="/assets/images/wealth-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Wealth Habits</h3><p>Morning-to-night habits that build health, focus and abundance.</p></div></article>
-      <article class="show-card" style="--tc:var(--t-conscious)"><img src="/assets/images/conscious-02.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">10</span><h3>Conscious Habits</h3><p>Stop, reduce and take control of the habits that hold you back.</p></div></article>
-      <article class="show-card" style="--tc:var(--t-karma)"><img src="/assets/images/karma-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Karma Activities</h3><p>Aware, apply, reflect, transform: action and its consequence.</p></div></article>
-      <article class="show-card" style="--tc:var(--t-champion)"><img src="/assets/images/champion-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Champion Mindsets</h3><p>Train your mind like an athlete, one mindset a day.</p></div></article>
+      <article class="show-card" style="--tc:var(--t-wealth)"><img src="assets/images/wealth-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Wealth Habits</h3><p>Morning-to-night habits that build health, focus and abundance.</p></div></article>
+      <article class="show-card" style="--tc:var(--t-conscious)"><img src="assets/images/conscious-02.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">10</span><h3>Conscious Habits</h3><p>Stop, reduce and take control of the habits that hold you back.</p></div></article>
+      <article class="show-card" style="--tc:var(--t-karma)"><img src="assets/images/karma-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Karma Activities</h3><p>Aware, apply, reflect, transform: action and its consequence.</p></div></article>
+      <article class="show-card" style="--tc:var(--t-champion)"><img src="assets/images/champion-01.webp" alt="" loading="lazy" width="640" height="480"><div class="body"><span class="big">16</span><h3>Champion Mindsets</h3><p>Train your mind like an athlete, one mindset a day.</p></div></article>
     </div>
   </section>
   <section class="features">
@@ -92,11 +93,11 @@
   </section>
 </main>
 <footer><div class="wrap row-between"><span>© 2026 Deepak's Redesign Your Life</span><span>Get 1% better every day</span></div></footer>
-<script src="/js/vendor/supabase.js"></script>
+<script src="js/vendor/supabase.js"></script>
 <script type="module">
-  import { icon } from '/js/icons.js';
-  import { stadium } from '/js/stadium.js';
-  import { getSession, fetchProfile, homeFor } from '/js/auth.js';
+  import { icon } from './js/icons.js';
+  import { stadium } from './js/stadium.js';
+  import { getSession, fetchProfile, homeFor } from './js/auth.js';
   document.querySelectorAll('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
   stadium(document.getElementById('art-canvas'));
   // Logged-in visitors get a direct way back to their dashboard.

@@ -1,5 +1,6 @@
 // Shared UI helpers: escaping, toast, busy buttons, confirm dialog, navigation chrome.
 import { icon } from './icons.js';
+import { app } from './supabase.js';
 export { icon };
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -112,11 +113,11 @@ export function brandHTML(href, title = 'Redesign Your Life', sub = "Deepak's Pr
 const SOON = 'data-soon';
 export function memberNav(current) {
   const items = [
-    ['/member/dashboard.html', 'layout-dashboard', 'Home', 'dashboard'],
+    [app('member/dashboard.html'), 'layout-dashboard', 'Home', 'dashboard'],
     ['#', 'list-checks', 'Trackers', 'trackers', 'Trackers open in Phase 4'],
     ['#', 'trophy', 'Ranks', 'leaderboard', 'Leaderboard opens in Phase 8'],
     ['#', 'notebook-pen', 'Journal', 'journal', 'Journal opens in Phase 9'],
-    ['/member/profile.html', 'user-round', 'Profile', 'profile']
+    [app('member/profile.html'), 'user-round', 'Profile', 'profile']
   ];
   return `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, key, soon]) =>
     `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} ${soon ? `${SOON}="${esc(soon)}"` : ''}>${icon(ic)}${label}</a>`).join('')}</div></nav>`;
@@ -124,9 +125,9 @@ export function memberNav(current) {
 
 export function adminNav(current) {
   const items = [
-    ['/admin/dashboard.html', 'layout-dashboard', 'Overview', 'dashboard'],
+    [app('admin/dashboard.html'), 'layout-dashboard', 'Overview', 'dashboard'],
     ['#', 'check-check', 'Check-ins', 'checkins', 'Check-in feed opens in Phase 6'],
-    ['/admin/members.html', 'users', 'Members', 'members'],
+    [app('admin/members.html'), 'users', 'Members', 'members'],
     ['#', 'list-checks', 'Activities', 'activities', 'Activity editor opens in Phase 6'],
     ['#', 'trophy', 'Leaderboard', 'leaderboard', 'Leaderboard opens in Phase 8'],
     ['#', 'file-chart-column', 'Reports', 'reports', 'Reports open in Phase 9'],

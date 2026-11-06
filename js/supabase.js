@@ -7,6 +7,10 @@ export const SUPABASE_URL = 'https://gcbizlnpryihrrmjwbdv.supabase.co';
 export const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjYml6bG5wcnlpaHJybWp3YmR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5MjM0NjYsImV4cCI6MjEwOTQ5OTQ2Nn0.MVwEg7dP0ivSxtVyy58uV1brPfbdIGlaYhhpUTRwIHM';
 
+// App root (the folder that holds index.html). Works on Vercel (/) and GitHub Pages (/redesign-your-life/).
+export const APP_ROOT = new URL('../', import.meta.url);
+export const app = (path = '') => new URL(String(path).replace(/^\//, ''), APP_ROOT).href;
+
 const REMEMBER_KEY = 'ryl.remember';
 
 function safe(fn, fallback = null) { try { return fn(); } catch { return fallback; } }
@@ -37,5 +41,5 @@ export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON
 export function activityImageUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//.test(path)) return path;
-  return `/assets/images/${encodeURIComponent(path)}`;
+  return app(`assets/images/${encodeURIComponent(path)}`);
 }

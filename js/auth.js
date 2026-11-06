@@ -1,10 +1,10 @@
 // Authentication & role-based access for every page.
 // Roles come only from public.profiles (set by the database), never from the browser.
-import { supabase, setRemember } from './supabase.js';
+import { supabase, setRemember, app, APP_ROOT } from './supabase.js';
 
 export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Coach', member: 'Member' };
 export const isCoach = (role) => role === 'admin' || role === 'super_admin';
-export const homeFor = (role) => (isCoach(role) ? '/admin/dashboard.html' : '/member/dashboard.html');
+export const homeFor = (role) => app(isCoach(role) ? 'admin/dashboard.html' : 'member/dashboard.html');
 
 // Turn Supabase/network errors into plain instructions.
 export function friendlyError(error) {
@@ -45,8 +45,8 @@ export function safeNext(raw) {
   if (!raw) return null;
   try {
     const url = new URL(raw, location.origin);
-    if (url.origin !== location.origin) return null;
-    if (/^\/(login|register|forgot|reset)\.html/.test(url.pathname)) return null;
+    if (url.origin !== location.origin || !url.pathname.startsWith(APP_ROOT.pathname)) return null;
+    if (/\/(login|register|forgot|reset)\.html$/.test(url.pathname)) return null;
     return url.pathname + url.search + url.hash;
   } catch { return null; }
 }
@@ -57,7 +57,7 @@ function goLogin(message) {
   if (leaving) return;
   const params = new URLSearchParams({ next: location.pathname + location.search });
   if (message) params.set('msg', message);
-  location.replace(`/login.html?${params}`);
+  location.replace(app(`login.html?${params}`));
 }
 
 /**
@@ -101,7 +101,7 @@ export async function signUp({ fullName, email, phone, password }) {
     password,
     options: {
       data: { full_name: fullName.trim(), phone: phone ? phone.trim() : null },
-      emailRedirectTo: `${location.origin}/login.html?msg=confirmed`
+      emailRedirectTo: app('login.html?msg=confirmed')
     }
   });
   if (error) throw error;
@@ -114,7 +114,7 @@ export async function signUp({ fullName, email, phone, password }) {
 
 export async function sendPasswordReset(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${location.origin}/reset.html`
+    redirectTo: app('reset.html')
   });
   if (error) throw error;
 }
@@ -127,5 +127,5 @@ export async function updatePassword(password) {
 export async function signOut() {
   leaving = true;
   await supabase.auth.signOut();
-  location.replace('/login.html?msg=signedout');
+  location.replace(app('login.html?msg=signedout'));
 }
