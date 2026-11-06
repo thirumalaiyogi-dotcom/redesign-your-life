@@ -1,6 +1,7 @@
 // Shared UI helpers: escaping, toast, busy buttons, confirm dialog, navigation chrome.
 import { icon } from './icons.js';
 import { app } from './supabase.js';
+import { toggleTheme, currentTheme } from './theme.js';
 export { icon };
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -144,4 +145,57 @@ export function adminNav(current) {
 document.addEventListener('click', (e) => {
   const a = e.target.closest(`[${SOON}]`);
   if (a) { e.preventDefault(); toast(a.getAttribute(SOON), 'info'); }
+});
+
+// ---------------- 2.0 shared pieces ----------------
+
+// Circular progress (SVG), pct 0–100. Starts empty; animateIn() moves it to its value.
+export function ringHTML(pct, { size = 120, stroke = 12, mid = '', gradient = '' } = {}) {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return `<div class="pring" style="--size:${size}px" role="img" aria-label="${Math.round(pct)}% complete">
+    <svg viewBox="0 0 ${size} ${size}" aria-hidden="true">${gradient}
+      <circle class="bg" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}"/>
+      <circle class="fg" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${c.toFixed(2)}" data-off="${off.toFixed(2)}"/></svg>
+    <div class="mid">${mid}</div></div>`;
+}
+// Animate rings ([data-off]), bars ([data-w]) and columns ([data-h]) inside root to their values.
+export function animateIn(root = document) {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $$('.pring .fg[data-off]', root).forEach((el) => { el.style.strokeDashoffset = el.dataset.off; });
+    $$('[data-w]', root).forEach((el) => { el.style.width = el.dataset.w; });
+    $$('[data-h]', root).forEach((el) => { el.style.height = el.dataset.h; });
+  }));
+}
+export function setRing(el, pct) {
+  const fg = el?.querySelector('.fg'); if (!fg) return;
+  const c = Number(fg.getAttribute('stroke-dasharray'));
+  fg.style.strokeDashoffset = (c * (1 - Math.max(0, Math.min(100, pct)) / 100)).toFixed(2);
+  el.setAttribute('aria-label', `${Math.round(pct)}% complete`);
+  const mid = el.querySelector('.mid[data-pct]'); if (mid) mid.textContent = `${Math.round(pct)}%`;
+}
+
+export function avatarHTML(profile, email = '', cls = 'avatar') {
+  return profile?.avatar_url
+    ? `<span class="${cls}"><img src="${esc(profile.avatar_url)}" alt=""></span>`
+    : `<span class="${cls}" aria-hidden="true">${esc(initials(profile?.full_name, email))}</span>`;
+}
+
+// Member page header: logo, theme toggle, avatar → profile. extraHTML goes before the toggle.
+export function memberTopbar(profile, email, extraHTML = '') {
+  const dark = currentTheme() === 'dark';
+  return `<div class="dash-top">${brandHTML(app('member/dashboard.html'))}
+    <div class="actions">${extraHTML}
+      <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
+      <a class="avatar-link" href="${app('member/profile.html')}" aria-label="My profile">${avatarHTML(profile, email)}</a>
+    </div></div>`;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#theme-btn')) toggleTheme(); });
+document.addEventListener('themechange', () => {
+  const b = $('#theme-btn'); if (!b) return;
+  const dark = currentTheme() === 'dark';
+  b.innerHTML = icon(dark ? 'sun' : 'moon');
+  b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  b.title = dark ? 'Light mode' : 'Dark mode';
 });

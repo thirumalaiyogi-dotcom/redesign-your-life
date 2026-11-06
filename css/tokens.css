@@ -29,7 +29,7 @@
   --c-danger-ink: #B94141;
   --c-text: #202923;
   --c-text-2: #47524B;
-  --c-muted: #737D76;
+  --c-muted: #67716A;          /* brief: #737D76 — darkened slightly so small text passes WCAG AA (4.26:1 → 5.06:1 on white) */
   --c-border: #E8ECE8;
   --c-border-strong: #D5DCD6;
   --c-track: #E6ECE7;

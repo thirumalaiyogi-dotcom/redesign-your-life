@@ -6,9 +6,10 @@
 // Ticking goes only through mark_activity() (today only, server-side points), exactly like the tracker page.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL } from './auth.js';
-import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav, brandHTML,
-         initials, firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword } from './ui.js';
-import { toggleTheme, currentTheme, getThemePref, setThemePref } from './theme.js';
+import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
+         firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
+         ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
+import { getThemePref, setThemePref } from './theme.js';
 
 const page = document.body.dataset.page;
 const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
@@ -22,42 +23,11 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDa
 const mondayOf = (iso) => addDays(iso, -((new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7));
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } } };
 
-function avatarHTML(profile, email, cls = 'avatar') {
-  return profile.avatar_url
-    ? `<span class="${cls}"><img src="${esc(profile.avatar_url)}" alt=""></span>`
-    : `<span class="${cls}" aria-hidden="true">${esc(initials(profile.full_name, email))}</span>`;
-}
-
 function errorPanel(target, err, retry, title = "Couldn't load your data") {
   target.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('alert-triangle')}</span>
     <b>${esc(title)}</b><span>${esc(friendlyError(err))}</span>
     <button class="btn btn-ghost btn-sm" data-retry>${icon('rotate-ccw')}Try again</button></div>`;
   $('[data-retry]', target).addEventListener('click', retry);
-}
-
-// Circular progress (SVG). pct 0–100. The ring animates from 0 on first paint.
-function ringHTML(pct, { size = 120, stroke = 12, mid = '', gradient = '' } = {}) {
-  const r = (size - stroke) / 2, c = 2 * Math.PI * r;
-  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
-  return `<div class="pring" style="--size:${size}px" role="img" aria-label="${Math.round(pct)}% complete">
-    <svg viewBox="0 0 ${size} ${size}" aria-hidden="true">${gradient}
-      <circle class="bg" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}"/>
-      <circle class="fg" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" stroke-linecap="round"
-        stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${c.toFixed(2)}" data-off="${off.toFixed(2)}"/></svg>
-    <div class="mid">${mid}</div></div>`;
-}
-function animateRings(root = document) {
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    $$('.pring .fg[data-off]', root).forEach((el) => { el.style.strokeDashoffset = el.dataset.off; });
-    $$('[data-w]', root).forEach((el) => { el.style.width = el.dataset.w; });
-    $$('[data-h]', root).forEach((el) => { el.style.height = el.dataset.h; });
-  }));
-}
-function setRing(el, pct) {
-  const fg = el?.querySelector('.fg'); if (!fg) return;
-  const c = Number(fg.getAttribute('stroke-dasharray'));
-  fg.style.strokeDashoffset = (c * (1 - Math.max(0, Math.min(100, pct)) / 100)).toFixed(2);
-  el.setAttribute('aria-label', `${Math.round(pct)}% complete`);
 }
 
 // =====================================================================
@@ -86,23 +56,10 @@ function message(pct, done) {
 }
 
 function header() {
-  const dark = currentTheme() === 'dark';
-  $('#top').innerHTML = `<div class="dash-top">${brandHTML(app('member/dashboard.html'))}
-    <div class="actions">
-      <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
-      <button class="iconbtn" id="bell-btn" type="button" aria-label="Notifications" aria-haspopup="dialog">${icon('bell')}<span class="count" id="bell-count" hidden></span></button>
-      <a class="avatar-link" href="${app('member/profile.html')}" aria-label="My profile">${avatarHTML(S.profile, S.user.email)}</a>
-    </div></div>`;
-  $('#theme-btn').addEventListener('click', () => toggleTheme());
+  const bell = `<button class="iconbtn" id="bell-btn" type="button" aria-label="Notifications" aria-haspopup="dialog">${icon('bell')}<span class="count" id="bell-count" hidden></span></button>`;
+  $('#top').innerHTML = memberTopbar(S.profile, S.user.email, bell);
   $('#bell-btn').addEventListener('click', openNotifications);
 }
-document.addEventListener('themechange', () => {
-  const b = $('#theme-btn'); if (!b) return;
-  const dark = currentTheme() === 'dark';
-  b.innerHTML = icon(dark ? 'sun' : 'moon');
-  b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-  b.title = dark ? 'Light mode' : 'Dark mode';
-});
 
 function skeleton() {
   $('#main').innerHTML = `
@@ -509,8 +466,7 @@ function wireDashboard() {
 // PROFILE
 // =====================================================================
 function chrome(current) {
-  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('member/dashboard.html'))}
-    <div class="actions"><a href="${app('member/profile.html')}" aria-label="My profile" style="text-decoration:none">${avatarHTML(S.profile, S.user.email)}</a></div></div>`;
+  $('#top').innerHTML = memberTopbar(S.profile, S.user.email);
   document.body.insertAdjacentHTML('beforeend', memberNav(current));
 }
 
@@ -561,6 +517,11 @@ function renderProfile() {
     const b = e.target.closest('[data-theme-pref]'); if (!b) return;
     setThemePref(b.dataset.themePref);
     $$('[data-theme-pref]', main).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  });
+  // keep the picker in step with the header toggle
+  document.addEventListener('themechange', () => {
+    const pref = getThemePref();
+    $$('[data-theme-pref]', main).forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.themePref === pref)));
   });
 
   $('#profile-form').addEventListener('submit', async (e) => {

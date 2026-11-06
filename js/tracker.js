@@ -3,11 +3,12 @@
 // one row per activity per day, never negative.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
-import { $, $$, icon, esc, toast, memberNav, brandHTML, initials, formatNumber } from './ui.js';
+import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 
 const page = document.body.dataset.page;
 const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
 const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp' };
+const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target' };
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ---- date helpers (ISO yyyy-mm-dd, IST day comes from the server) ----
@@ -25,10 +26,7 @@ const busy = new Set();
 const lastTap = new Map();   // ignore accidental double taps on the same button
 
 function chrome(current) {
-  const p = me.profile;
-  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('member/dashboard.html'))}
-    <div class="actions"><a href="${app('member/profile.html')}" aria-label="My profile" style="text-decoration:none">
-    <span class="avatar" aria-hidden="true">${esc(initials(p.full_name, me.user.email))}</span></a></div></div>`;
+  $('#top').innerHTML = memberTopbar(me.profile, me.user.email);
   document.body.insertAdjacentHTML('beforeend', memberNav(current));
 }
 
@@ -53,25 +51,34 @@ async function loadCats() {
 // ================= TRACKER LIST =================
 async function renderList() {
   const main = $('#main');
-  main.innerHTML = `<div class="skeleton" style="height:120px"></div><div class="skeleton" style="height:300px"></div>`;
-  const [{ data: d, error }] = await Promise.all([supabase.rpc('get_my_dashboard')]);
+  main.innerHTML = `<div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:120px"></div>
+    <div class="tlist">${'<div class="skeleton" style="height:150px"></div>'.repeat(4)}</div>`;
+  const { data: d, error } = await supabase.rpc('get_my_dashboard');
   if (error) return errorPanel(main, error, renderList);
   const done = d.done_today || 0, total = d.total_activities || 0;
+  const miss = (d.trackers || []).reduce((n, t) => n + (t.not_done_today || 0), 0);
+  const pct = total ? Math.round(100 * done / total) : 0;
   main.innerHTML = `
-    <div><span class="eyebrow">${esc(fmtLong(d.today))}</span><h1 style="font-size:var(--fs-page);margin-top:6px">Today's trackers</h1></div>
-    <div class="today-bar"><div class="txt"><b>${done}</b>/${total} done today</div>
-      <div class="progress" style="--tc:var(--gold)"><i style="width:${total ? Math.round(100 * done / total) : 0}%"></i></div>
-      <span class="pts">+${formatNumber(d.today_points)} pts</span></div>
-    <div class="tcards">${(d.trackers || []).map((t) => {
-      const pct = t.total ? Math.round(100 * t.done_today / t.total) : 0;
-      const left = t.total - t.done_today - (t.not_done_today || 0);
-      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${COLOR[t.slug] || 'var(--gold)'}">
-        <div class="art"><img src="${app('assets/images/' + (COVER[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="n">${t.total}</span></div>
-        <h3>${esc(t.name)}</h3>
-        <div class="stats"><div><b class="num" style="color:var(--ok)">${t.done_today}</b>Done</div><div><b class="num" style="color:var(--c-danger-ink)">${t.not_done_today || 0}</b>Not done</div><div><b class="num">${Math.max(0, left)}</b>To mark</div></div>
-        <div class="progress"><i style="width:${pct}%"></i></div>
-        <div class="foot">${pct}% done<span>Open →</span></div></a>`; }).join('')}</div>
-    <p class="muted" style="font-size:13px">Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</p>`;
+    <div class="page-h"><span class="date">${esc(fmtLong(d.today))}</span><h1>Track</h1><p>Choose a tracker and mark today's habits.</p></div>
+    <section class="card card-pad today-sum" aria-label="Today across all trackers">
+      ${ringHTML(pct, { size: 76, stroke: 8, mid: `${pct}%` })}
+      <div class="txt"><b><span id="sum-done">${done}</span> of ${total} done today</b>
+        <div class="counts"><span class="c-ok"><i></i>${done} done</span><span class="c-no"><i></i>${miss} not done</span><span class="c-left"><i></i>${Math.max(0, total - done - miss)} to mark</span></div></div>
+      <span class="pts">+${formatNumber(d.today_points)}<small>pts today</small></span>
+    </section>
+    <div class="tlist">${(d.trackers || []).map((t) => {
+      const p = t.total ? Math.round(100 * t.done_today / t.total) : 0;
+      const nd = t.not_done_today || 0, left = Math.max(0, t.total - t.done_today - nd);
+      const state = t.total && t.done_today === t.total ? ['s-done', 'Complete'] : t.done_today || nd ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
+      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${COLOR[t.slug] || 'var(--c-primary)'}">
+        <div class="art"><img src="${app('assets/images/' + (COVER[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="ic">${icon(ICON[t.slug] || 'list-checks')}</span></div>
+        <div class="body">
+          <div class="row"><div><h3>${esc(t.name)}</h3><span class="state ${state[0]}">${state[1]}</span></div>${ringHTML(p, { size: 48, stroke: 5, mid: `${p}%` })}</div>
+          <div class="pbar"><i data-w="${p}%"></i></div>
+          <div class="counts"><span class="c-ok"><i></i><b>${t.done_today}</b> done</span><span class="c-no"><i></i><b>${nd}</b> not done</span><span class="c-left"><i></i><b>${left}</b> to mark</span></div>
+        </div><span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`; }).join('')}</div>
+    <p class="hint-line">${icon('info')}<span>Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</span></p>`;
+  animateIn(main);
 }
 
 // ================= TRACKER DETAIL =================
@@ -96,25 +103,27 @@ function cardHTML(a) {
   const voided = r?.voided_at;
   const thisWeek = weekStart === mondayOf(today);
   const img = activityImageUrl(a.image_path);
-  return `<article class="act ${st === 'done' ? 'is-done' : st === 'not_done' ? 'is-miss' : ''}" data-id="${a.id}">
-    <div class="art">${img ? `<img src="${esc(img)}" alt="" loading="lazy" data-fallback>` : ''}${icon(a.icon || 'circle-dot')}
-      <span class="no">${String(a.number).padStart(2, '0')}</span>${st === 'done' ? `<span class="stamp">${icon('check', 'icon')}</span>` : ''}</div>
+  return `<article class="act ${st === 'done' ? 'is-done' : st === 'not_done' ? 'is-miss' : ''} ${voided ? 'is-locked' : ''}" data-id="${a.id}">
+    <div class="art">${icon(a.icon || 'circle-dot')}${img ? `<img src="${esc(img)}" alt="" loading="lazy" data-fallback>` : ''}
+      <span class="no">${String(a.number).padStart(2, '0')}</span>${st === 'done' ? `<span class="stamp">${icon('check', 'icon')}</span>` : ''}
+      ${thisWeek && !voided ? `<span class="ptag">${st === 'done' ? '+' + a.points : st === 'not_done' ? '0' : '+' + a.points} pts</span>` : ''}</div>
     <div class="body"><h3>${esc(a.default_name)}</h3>${a.description ? `<p class="desc">${esc(a.description)}</p>` : ''}</div>
     <div class="days">${Array.from({ length: 7 }, (_, i) => dayCell(a.id, addDays(weekStart, i), i)).join('')}</div>
     ${voided ? `<p class="void">${icon('alert-triangle', 'icon')} Your coach removed today's entry: ${esc(r.void_reason || '')}</p>`
       : thisWeek ? `<div class="mark" role="group" aria-label="${esc(a.default_name)} today">
         <button class="mk mk-ok" data-mark="done" aria-pressed="${st === 'done'}">${icon('check', '')}<span>Done</span></button>
         <button class="mk mk-no" data-mark="not_done" aria-pressed="${st === 'not_done'}">${icon('x', '')}<span>Not done</span></button></div>` : ''}
-    ${thisWeek && !voided ? `<div class="foot">${r?.note ? `<span class="note">“${esc(r.note)}”</span>` : `<span>${st === 'done' ? '+' + a.points + ' pts' : st === 'not_done' ? '0 pts' : 'Tap ✓ or ✗'}</span>`}
-      ${st ? `<button data-note>${icon('pencil')}${r?.note ? 'Edit' : 'Note'}</button>` : ''}</div>` : ''}
+    ${thisWeek && !voided && st ? `<div class="foot">${r?.note ? `<span class="note">“${esc(r.note)}”</span>` : `<span>${st === 'done' ? 'Done today' : 'Not done today'}</span>`}
+      <button data-note>${icon('pencil')}${r?.note ? 'Edit note' : 'Add note'}</button></div>` : ''}
   </article>`;
 }
 
 function todayBar() {
   const done = acts.filter((a) => rows.get(`${a.id}|${today}`)?.status === 'done' && !rows.get(`${a.id}|${today}`)?.voided_at).length;
   const pts = acts.reduce((s, a) => { const r = rows.get(`${a.id}|${today}`); return s + (r?.status === 'done' && !r.voided_at ? a.points : 0); }, 0);
-  return `<div class="txt"><b>${done}</b>/${acts.length} done today</div>
-    <div class="progress"><i style="width:${acts.length ? Math.round(100 * done / acts.length) : 0}%"></i></div>
+  const pct = acts.length ? Math.round(100 * done / acts.length) : 0;
+  return `${ringHTML(pct, { size: 44, stroke: 5, mid: `${pct}%` })}<div class="txt"><span><b>${done}</b>/${acts.length} done today</span>
+      <div class="progress"><i style="width:${pct}%"></i></div></div>
     <span class="pts">+${pts} pts</span>`;
 }
 
@@ -138,7 +147,7 @@ function renderWeek() {
       <span>${fmtShort(weekStart)} – ${fmtShort(addDays(weekStart, 6))}</span>
       <button id="next-w" aria-label="Next week" ${weekStart >= thisWeek ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
       ${weekStart !== thisWeek ? `<button class="btn btn-ghost btn-sm" id="this-w">Back to this week</button>` : ''}</div>
-    <div class="legend"><span><i style="background:var(--ok)"></i>Done</span><span><i style="background:color-mix(in srgb, var(--c-danger) 35%, transparent)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
+    <div class="legend"><span><i style="background:var(--c-success)"></i>Done</span><span><i style="background:color-mix(in srgb, var(--c-danger) 35%, transparent)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
     <div class="acts">${acts.map(cardHTML).join('')}</div>
     ${weekStart !== thisWeek ? `<p class="muted" style="font-size:13px">Past weeks are view-only. Only today can be marked.</p>` : ''}`;
   $('#prev-w')?.addEventListener('click', () => shiftWeek(-7));
@@ -247,7 +256,11 @@ function refreshCard(id, pending = false) {
   const a = acts.find((x) => x.id === id);
   old.outerHTML = cardHTML(a);
   if (pending) $$(`.act[data-id="${id}"] .mk`).forEach((b) => { b.disabled = true; });
-  $('#today-bar').innerHTML = todayBar();
+  const bar = $('#today-bar'), oldFg = bar.querySelector('.fg');
+  const prev = oldFg ? oldFg.style.strokeDashoffset : '';
+  bar.innerHTML = todayBar();
+  const fg = bar.querySelector('.fg'); if (fg && prev) fg.style.strokeDashoffset = prev;
+  animateIn(bar);
 }
 
 function noteDialog(card) {
@@ -299,21 +312,25 @@ async function renderDetail() {
   main.style.setProperty('--tc', COLOR[cat.slug] || cat.color || 'var(--gold)');
   main.innerHTML = `
     <header class="t-head">
-      <div class="crumbs"><a href="${app('member/dashboard.html')}">Home</a>›<a href="${app('member/trackers.html')}">Trackers</a></div>
-      <div class="title"><span class="n">${acts.length}</span><h1>${esc(cat.name)}<small>Tracker</small></h1></div>
-      ${cat.tagline ? `<p class="tagline">${esc(cat.tagline)}</p>` : ''}
-      <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''}>${esc(c.name)}</a>`).join('')}</nav>
+      <img class="cover" src="${app('assets/images/' + (COVER[cat.slug] || 'wealth-01.webp'))}" alt="">
+      <div class="inner">
+        <div class="crumbs"><a href="${app('member/dashboard.html')}">Home</a>${icon('chevron-right')}<a href="${app('member/trackers.html')}">Track</a></div>
+        <div class="title"><span class="ic">${icon(ICON[cat.slug] || 'list-checks')}</span><div><h1>${esc(cat.name)}</h1>
+          <small><span class="n">${acts.length}</span> daily activities</small></div></div>
+        ${cat.tagline ? `<p class="tagline">${esc(cat.tagline)}</p>` : ''}
+      </div>
     </header>
+    <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''} style="--tc:${COLOR[c.slug] || 'var(--c-primary)'}"><i></i>${esc(c.name)}</a>`).join('')}</nav>
     <div class="today-bar" id="today-bar"></div>
     <div class="seg" role="tablist" aria-label="View"><button role="tab" data-view="week" aria-selected="true">Week</button><button role="tab" data-view="month" aria-selected="false">Month</button><button role="tab" data-view="history" aria-selected="false">History</button></div>
     <div id="t-body" class="stack" style="gap:14px"></div>`;
-  $('#today-bar').innerHTML = todayBar();
+  $('#today-bar').innerHTML = todayBar(); animateIn($('#today-bar'));
   if (!acts.length) {
     $('#t-body').innerHTML = `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>No activities in this tracker yet</b><span>Your coach will add them soon.</span></div>`;
     return;
   }
   await showWeek();
-  $('#today-bar').innerHTML = todayBar();
+  $('#today-bar').innerHTML = todayBar(); animateIn($('#today-bar'));
   main.addEventListener('click', (e) => {
     const v = e.target.closest('[data-view]'); if (v) return setView(v.dataset.view);
     const m = e.target.closest('[data-mark]'); if (m) return mark(m.closest('.act'), m.dataset.mark);

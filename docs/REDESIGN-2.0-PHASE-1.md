@@ -59,7 +59,7 @@ Date: 6 Nov 2026. Scope: the design system, both themes, the Home Dashboard and 
 | 9 | Streak calculation correct | ✅ | unchanged `_streak()`; new `get_my_streaks()` tested locally and live |
 | 10 | Leaderboard functional | ✅ | browser `run78` 23/23, both themes |
 | 11 | Journal functional | ✅ | browser `run9` 22/22, both themes |
-| 12 | Light mode | ✅ | browser: colours and contrast measured |
+| 12 | Light mode | ✅ | browser: colours and contrast measured (Phase 2 fixed a contrast-measuring bug in the test and darkened light secondary text to #67716A to pass AA) |
 | 13 | Dark mode | ✅ | browser: colours and contrast measured on every member page |
 | 14 | Theme persists | ✅ | reload and other pages; no flash (theme set before `<body>` exists) |
 | 15 | Bottom nav works | ✅ | 5 items, active state, no dead links (all 200) |

@@ -19,6 +19,12 @@
 .sec-h a, .sec-h button.lnk { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 650; color: var(--c-primary); text-decoration: none; background: none; border: 0; padding: 6px 0; }
 .sec-h a .icon, .sec-h button.lnk .icon { width: 16px; height: 16px; }
 
+/* ---------- page header ---------- */
+.page-h { display: flex; flex-direction: column; gap: 4px; }
+.page-h .date { font-size: var(--fs-small); color: var(--c-muted); font-weight: 500; }
+.page-h h1 { font-size: var(--fs-page); font-weight: 800; letter-spacing: -.03em; }
+.page-h p { color: var(--c-text-2); font-size: 14.5px; }
+
 /* ---------- statistic ---------- */
 .stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .stat b { font-family: var(--f-display); font-weight: 750; font-size: 22px; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
@@ -79,6 +85,7 @@
 .arow .acts2 { display: flex; gap: 6px; align-items: center; }
 .arow.is-done { background: color-mix(in srgb, var(--c-success) 7%, var(--c-surface)); border-color: color-mix(in srgb, var(--c-success) 35%, var(--c-border)); }
 .arow.is-done .txt b { color: var(--c-text); }
+.arow.is-done .txt span, .arow.is-miss .txt span { color: var(--c-text-2); }
 .arow.is-miss { border-color: color-mix(in srgb, var(--c-danger) 30%, var(--c-border)); }
 .arow.is-locked { background: var(--c-sunken); }
 .arow.is-locked .thumb { filter: grayscale(.8); opacity: .7; }

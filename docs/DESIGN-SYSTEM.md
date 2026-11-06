@@ -39,13 +39,13 @@ One design system with two themes. Components use **semantic tokens only**, so e
 | `--c-warning` | #E5A447 | #E9B65C | removed by coach |
 | `--c-danger` | #D95C5C | #F07878 | not done, errors |
 | `--c-text` | #202923 | #F2F6F2 | main text |
-| `--c-muted` | #737D76 | #A2B0A7 | secondary text |
+| `--c-muted` | #67716A* | #A2B0A7 | secondary text |
 | `--c-border` | #E8ECE8 | #2D3A32 | borders |
 | `--t-wealth / conscious / karma / champion` | tuned per theme | tuned per theme | tracker identities |
 
-The palette values given in the brief are used as is. The extra tokens (`-ink`, `sunken`, `track`, `streak`, `hero-*`) exist so text stays readable: gold #D5AD62 is too light for text on white, so text uses `--c-accent-ink`.
+The palette values given in the brief are used as is, with one exception: *secondary text in Light mode is #67716A instead of #737D76, because #737D76 measures only 4.26:1 on white and 4.0:1 on the page background, below the WCAG AA minimum of 4.5:1 for small text; #67716A measures 5.06:1 and 4.75:1 and looks almost the same. The extra tokens (`-ink`, `sunken`, `track`, `streak`, `hero-*`) exist so text stays readable: gold #D5AD62 is too light for text on white, so text uses `--c-accent-ink`.
 
-Measured contrast (browser test): body text 14.0:1 light and 13.5:1 dark; secondary text 4.9:1 light and 9.3:1 dark.
+Measured contrast (browser tests): body text 14.0:1 light and 14.0:1 dark; card titles 14.2:1 light and 13.5:1 dark; secondary text ≥ 4.75:1 on every light surface and ≥ 7:1 in dark.
 
 **Legacy aliases.** v1 names (`--bg`, `--surface`, `--ink`, `--muted`, `--gold`, `--gold-hi`, `--ok`, `--bad`, …) now point at these tokens, so pages not yet redesigned still follow both themes. `.btn-gold` is now the primary (green) button, with `.btn-primary` as its alias.
 

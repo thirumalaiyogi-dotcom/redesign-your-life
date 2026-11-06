@@ -217,3 +217,4 @@ body:not(.guarding) .boot { display: none; }
 .auth-card .sub { color: var(--c-muted); margin-top: 8px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.stack > .seg { align-self: flex-start; }
