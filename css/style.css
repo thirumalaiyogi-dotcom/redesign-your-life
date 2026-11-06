@@ -218,3 +218,4 @@ body:not(.guarding) .boot { display: none; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 .stack > .seg { align-self: flex-start; }
+[data-install-slot]:empty { display: none; }

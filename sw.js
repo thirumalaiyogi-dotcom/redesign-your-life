@@ -1,14 +1,14 @@
 // Service worker — Deepak's Redesign Your Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v6';
+const VERSION = 'ryl-v7';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;
 
 const PRECACHE = [
   './', 'index.html', 'login.html', 'register.html', 'forgot.html', 'offline.html', 'manifest.json',
-  'css/tokens.css', 'css/style.css', 'css/components.css', 'css/responsive.css', 'css/dashboard.css', 'css/tracker.css', 'css/journal.css', 'css/leaderboard.css', 'css/admin.css',
+  'css/tokens.css', 'css/style.css', 'css/components.css', 'css/responsive.css', 'css/dashboard.css', 'css/tracker.css', 'css/journal.css', 'css/progress.css', 'css/leaderboard.css', 'css/admin.css',
   'js/theme-init.js', 'js/theme.js', 'js/vendor/supabase.js', 'js/supabase.js', 'js/landing.js', 'js/auth.js', 'js/ui.js', 'js/icons.js', 'js/stadium.js', 'js/pwa.js',
   'js/auth-pages.js', 'js/dashboard.js', 'js/tracker.js', 'js/leaderboard.js', 'js/journal.js', 'js/admin.js',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/favicon-32.png'

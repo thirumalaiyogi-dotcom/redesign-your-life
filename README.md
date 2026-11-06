@@ -27,6 +27,7 @@
 | 2.0 · 1 | Design system, Light/Dark, Home Dashboard | ✅ see `docs/DESIGN-SYSTEM.md` and `docs/REDESIGN-2.0-PHASE-1.md` |
 | 2.0 · 2 | Track page + tracker pages | ✅ see `docs/REDESIGN-2.0-PHASE-2.md` |
 | 2.0 · 3 | Leaderboard + Journal | ✅ see `docs/REDESIGN-2.0-PHASE-3.md` |
+| 2.0 · 4 | My progress + Profile | ✅ see `docs/REDESIGN-2.0-PHASE-4.md` |
 
 ## Folders
 ```
@@ -34,9 +35,9 @@ index.html            Landing page
 login.html, register.html, forgot.html, reset.html
 member/               dashboard.html, trackers.html, tracker-detail.html, leaderboard.html, journal.html, progress.html, profile.html
 admin/                dashboard.html, checkins.html, members.html, activities.html, leaderboard.html, reports.html, settings.html
-css/                  tokens.css (theme tokens), style.css, components.css, dashboard.css, tracker.css, journal.css, leaderboard.css, admin.css, responsive.css
+css/                  tokens.css (theme tokens), style.css, components.css, dashboard.css, tracker.css, journal.css, progress.css, leaderboard.css, admin.css, responsive.css
 js/                   theme-init.js, theme.js, supabase.js, auth.js, ui.js, icons.js, dashboard.js, tracker.js, leaderboard.js, journal.js, admin.js, auth-pages.js, stadium.js, pwa.js
-docs/                 DESIGN-SYSTEM.md, REDESIGN-2.0-PHASE-1/2/3.md
+docs/                 DESIGN-SYSTEM.md, REDESIGN-2.0-PHASE-1…4.md
 js/vendor/            supabase-js 2.45.4 browser build (MIT)
 design/               design-preview.html (v1 Phase 1 mock-up, SAMPLE data only, old look), image-prompts.html
 assets/images/        58 activity images (WebP, 640×480)

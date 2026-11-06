@@ -472,8 +472,8 @@ function chrome(current) {
 
 function themePickHTML() {
   const pref = getThemePref();
-  return `<section class="panel panel-pad stack" style="gap:12px" aria-labelledby="th-h">
-    <h2 id="th-h" style="font-size:18px">Appearance</h2>
+  return `<section class="card card-pad stack" style="gap:12px" aria-labelledby="th-h">
+    <div class="set-h"><span class="si">${icon('sun')}</span><h2 id="th-h">Appearance</h2></div>
     <div class="theme-pick" role="group" aria-label="Theme">
       ${[['light', 'sun', 'Light'], ['dark', 'moon', 'Dark'], ['system', 'smartphone', 'Phone setting']].map(([v, ic, l]) =>
         `<button type="button" data-theme-pref="${v}" aria-pressed="${pref === v}">${icon(ic)}${l}</button>`).join('')}
@@ -483,34 +483,51 @@ function themePickHTML() {
 function renderProfile() {
   const profile = S.profile, user = S.user;
   const main = $('#main');
+  const link = (href, ic, label, sub) => `<a class="set-link" href="${app(href)}"><span class="si">${icon(ic)}</span><span><b>${label}</b><small>${sub}</small></span>${icon('chevron-right')}</a>`;
   main.innerHTML = `
-  <section class="panel profile-head">${avatarHTML(profile, user.email, 'avatar lg')}
-    <div style="min-width:0"><span class="pill ${profile.role === 'member' ? 'gold' : 'blue'}">${ROLE_LABEL[profile.role]}</span>
-    <h1 style="margin-top:8px">${esc(profile.full_name || user.email)}</h1><p class="muted" style="overflow-wrap:anywhere">${esc(user.email)}</p></div></section>
+  <section class="card profile-head">
+    <div class="ph-top">${avatarHTML(profile, user.email, 'avatar lg')}
+      <div class="ph-id"><span class="pill ${profile.role === 'member' ? 'gold' : 'blue'}">${ROLE_LABEL[profile.role]}</span>
+        <h1>${esc(profile.full_name || user.email)}</h1><p>${esc(user.email)}</p><small>Member since ${esc(formatDate(profile.joined_on))}</small></div></div>
+    <div class="ph-stats" id="ph-stats" aria-live="polite">
+      <div class="stat"><small>Total points</small><b class="sk-v">–</b></div><div class="stat"><small>Streak</small><b class="sk-v">–</b></div><div class="stat"><small>Badges</small><b class="sk-v">–</b></div></div>
+  </section>
   <div data-install-slot></div>
   <div class="profile-grid">
-    <form class="panel panel-pad form" id="profile-form" novalidate>
-      <h2 style="font-size:18px">My details</h2>
-      <div class="field"><label for="full_name">Full name</label><input id="full_name" autocomplete="name" maxlength="80" value="${esc(profile.full_name)}"><span class="err"></span></div>
-      <div class="field"><label for="phone">Mobile number <span class="opt">(optional)</span></label><input id="phone" type="tel" inputmode="tel" maxlength="16" autocomplete="tel" placeholder="+91 98765 43210" value="${esc(profile.phone || '')}"><span class="err"></span></div>
-      <div class="field"><label for="email_ro">Email</label><input id="email_ro" value="${esc(user.email)}" readonly><span class="hint">Ask your coach if you need to change your login email.</span></div>
-      <button class="btn btn-primary" id="save-btn" type="submit">Save details</button>
-    </form>
     <div class="stack" style="gap:14px">
+      <form class="card card-pad form" id="profile-form" novalidate>
+        <div class="set-h"><span class="si">${icon('user-round')}</span><h2>My details</h2></div>
+        <div class="field"><label for="full_name">Full name</label><input id="full_name" autocomplete="name" maxlength="80" value="${esc(profile.full_name)}"><span class="err"></span></div>
+        <div class="field"><label for="phone">Mobile number <span class="opt">(optional)</span></label><input id="phone" type="tel" inputmode="tel" maxlength="16" autocomplete="tel" placeholder="+91 98765 43210" value="${esc(profile.phone || '')}"><span class="err"></span></div>
+        <div class="field"><label for="email_ro">Email</label><input id="email_ro" value="${esc(user.email)}" readonly><span class="hint">Ask your coach if you need to change your login email.</span></div>
+        <button class="btn btn-primary" id="save-btn" type="submit">Save details</button>
+      </form>
       ${themePickHTML()}
-      <form class="panel panel-pad form" id="pw-form" novalidate>
-        <h2 style="font-size:18px">Change password</h2>
+    </div>
+    <div class="stack" style="gap:14px">
+      <form class="card card-pad form" id="pw-form" novalidate>
+        <div class="set-h"><span class="si">${icon('key-round')}</span><h2>Change password</h2></div>
         <div class="field"><label for="password">New password</label><div class="pw"><input id="password" type="password" autocomplete="new-password" placeholder="8+ characters, letters and numbers"><button type="button"></button></div><span class="err"></span></div>
         <div class="field"><label for="password2">Confirm new password</label><div class="pw"><input id="password2" type="password" autocomplete="new-password"><button type="button"></button></div><span class="err"></span></div>
         <button class="btn btn-ghost" id="pw-btn" type="submit">Update password</button>
       </form>
-      <section class="panel panel-pad stack" style="gap:12px">
-        <a class="btn btn-ghost" href="${app('member/progress.html')}">${icon('trending-up')}My progress & badges</a>
-        <dl class="facts"><dt>Member since</dt><dd>${esc(formatDate(profile.joined_on))}</dd><dt>Role</dt><dd>${ROLE_LABEL[profile.role]}</dd></dl>
-        <button class="btn btn-bad" id="logout-btn" type="button">${icon('log-out')}Log out</button>
+      <section class="card set-links" aria-label="More">
+        ${link('member/progress.html', 'trending-up', 'My progress', 'Points chart, trackers and badges')}
+        ${link('member/journal.html', 'notebook-pen', 'Journal', 'Your evening reflections')}
+        ${link('member/leaderboard.html', 'trophy', 'Leaderboard', 'See where you stand')}
+        <div class="set-out"><button class="btn btn-bad btn-block" id="logout-btn" type="button">${icon('log-out')}Log out</button></div>
       </section>
     </div>
   </div>`;
+  // Summary numbers from the server (the page works without them).
+  supabase.rpc('get_my_dashboard').then(({ data, error }) => {
+    const box = $('#ph-stats'); if (!box) return;
+    if (error || !data) { box.hidden = true; return; }
+    const earned = (data.badges || []).filter((b) => b.earned_at).length;
+    box.innerHTML = `<div class="stat pts"><small>Total points</small><b>${formatNumber(data.total_points)}</b></div>
+      <div class="stat"><small>Streak</small><b>${data.streak} ${data.streak === 1 ? 'day' : 'days'}</b></div>
+      <div class="stat"><small>Badges</small><b>${earned}/${(data.badges || []).length}</b></div>`;
+  });
   wirePasswordToggles(main);
 
   main.addEventListener('click', (e) => {

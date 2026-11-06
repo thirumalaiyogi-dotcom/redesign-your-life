@@ -1,7 +1,7 @@
 // Member journal (member/journal.html) and progress (member/progress.html).
 import { supabase, app } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
-import { $, $$, icon, esc, toast, withBusy, memberNav, formatNumber, formatDate, memberTopbar } from './ui.js';
+import { $, $$, icon, esc, toast, withBusy, memberNav, formatNumber, formatDate, memberTopbar, animateIn } from './ui.js';
 
 const page = document.body.dataset.page;
 const QUESTIONS = [
@@ -112,12 +112,17 @@ const timeAgo = (iso) => {
 };
 
 // ======================= PROGRESS =======================
+const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target' };
+const KIND = { activity: ['Habit done', 'check-circle-2'], daily_bonus: ['All habits done', 'sparkles'], streak7_bonus: ['7-day streak', 'flame'],
+  perfect_week_bonus: ['Perfect week', 'trophy'], special_bonus: ['Coach bonus', 'gift'] };
+
 async function renderProgress() {
   const main = $('#main');
-  main.innerHTML = `<div class="skeleton" style="height:200px"></div><div class="skeleton" style="height:240px"></div>`;
+  main.innerHTML = `<div class="skeleton" style="height:64px"></div><div class="stat-grid">${'<div class="skeleton" style="height:96px"></div>'.repeat(4)}</div><div class="skeleton" style="height:260px"></div>`;
   const from30 = addDays(today, -29), monthStart = today.slice(0, 8) + '01';
-  const [dash, scores, checks, cats] = await Promise.all([
+  const [dash, streaks, scores, checks, cats] = await Promise.all([
     supabase.rpc('get_my_dashboard'),
+    supabase.rpc('get_my_streaks'),
     supabase.from('score_history').select('kind, points, score_date, reason, created_at').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(400),
     supabase.from('daily_checkins').select('checkin_date, status, voided_at, activities(category_id)').eq('member_id', me.user.id).gte('checkin_date', monthStart < from30 ? monthStart : from30).lte('checkin_date', today),
     supabase.from('tracker_categories').select('id, slug, name').order('sort_order')
@@ -125,8 +130,9 @@ async function renderProgress() {
   const err = dash.error || scores.error || checks.error || cats.error;
   if (err) return errorPanel(main, err, renderProgress);
   const d = dash.data;
+  const longest = streaks.error ? null : Math.max(streaks.data.longest, d.streak);
 
-  // points per day, last 30 days
+  // points per day, last 30 days (server ledger)
   const perDay = {};
   for (const s of scores.data) if (s.score_date >= from30) perDay[s.score_date] = (perDay[s.score_date] || 0) + s.points;
   const days = Array.from({ length: 30 }, (_, i) => addDays(from30, i));
@@ -144,41 +150,54 @@ async function renderProgress() {
     const slug = cats.data.find((k) => k.id === c.activities?.category_id)?.slug; if (slug) catDone[slug] = (catDone[slug] || 0) + 1;
   }
 
-  const W = 600, H = 190, bw = W / 30;
-  const y = (v) => H - 30 - (v / max) * (H - 56);
-  const chart = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Points per day for the last 30 days, ${sum30} points in total" style="width:100%;height:auto;display:block">
-    ${[0, 0.5, 1].map((f) => `<line x1="0" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" style="stroke:var(--c-border)"/><text x="${W - 2}" y="${y(max * f) - 4}" style="fill:var(--c-muted)" font-size="19" text-anchor="end">${Math.round(max * f)}</text>`).join('')}
-    ${vals.map((v, i) => `<rect x="${i * bw + bw * .18}" y="${y(v)}" width="${bw * .64}" height="${Math.max(0, H - 30 - y(v))}" rx="3" style="fill:${days[i] === today ? 'var(--c-primary)' : v ? 'var(--c-accent)' : 'var(--c-track)'}"><title>${nice(days[i])}: ${v} pts</title></rect>`).join('')}
-    ${[0, 10, 20, 29].map((i) => `<text x="${i === 0 ? 0 : i === 29 ? W : i * bw + bw / 2}" y="${H - 6}" style="fill:var(--c-muted)" font-size="19" text-anchor="${i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}">${Number(days[i].slice(8))}/${Number(days[i].slice(5, 7))}</text>`).join('')}
+  // Chart drawn at the container's real pixel width, so labels stay 12px on every screen.
+  const chartSVG = (W) => {
+    const H = 180, L = 34, bw = (W - L) / 30;
+    const y = (v) => H - 26 - (v / max) * (H - 44);
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Points per day for the last 30 days, ${sum30} points in total" class="pchart">
+    ${[0, 0.5, 1].map((f) => `<line x1="${L}" x2="${W}" y1="${y(max * f)}" y2="${y(max * f)}" class="gl"/><text x="${L - 6}" y="${y(max * f) + 4}" class="ax" text-anchor="end">${Math.round(max * f)}</text>`).join('')}
+    ${vals.map((v, i) => `<rect x="${(L + i * bw + bw * .18).toFixed(1)}" y="${y(v).toFixed(1)}" width="${Math.max(2, bw * .64).toFixed(1)}" height="${Math.max(0, H - 26 - y(v)).toFixed(1)}" rx="${Math.min(4, bw * .25).toFixed(1)}" class="${days[i] === today ? 'b-today' : v ? 'b-on' : 'b-off'}"><title>${nice(days[i])}: ${v} pts</title></rect>`).join('')}
+    ${[0, 10, 20, 29].map((i) => `<text x="${i === 0 ? L : i === 29 ? W : L + i * bw + bw / 2}" y="${H - 6}" class="ax" text-anchor="${i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}">${Number(days[i].slice(8))}/${Number(days[i].slice(5, 7))}</text>`).join('')}
   </svg>`;
+  };
+  const chart = `<div class="pchart-box" id="pchart">${chartSVG(320)}</div>`;
 
-  const kindLabel = { activity: 'Habit done', daily_bonus: 'All habits done', streak7_bonus: '7-day streak', perfect_week_bonus: 'Perfect week', special_bonus: 'Coach bonus' };
   const hist = scores.data.filter((s) => s.kind !== 'activity').slice(0, 15);
   const byDay = {};
   for (const s of scores.data.filter((x) => x.kind === 'activity')) byDay[s.score_date] = (byDay[s.score_date] || 0) + 1;
+  const rows = [...hist.map((s) => ({ date: s.score_date, at: s.created_at, kind: s.kind, label: KIND[s.kind]?.[0] || s.kind, detail: s.reason, pts: s.points })),
+    ...Object.entries(byDay).slice(0, 15).map(([date, n]) => ({ date, at: date + 'T23:59:00', kind: 'activity', label: `${n} habit${n > 1 ? 's' : ''} done`, detail: '', pts: scores.data.filter((s) => s.kind === 'activity' && s.score_date === date).reduce((a, b) => a + b.points, 0) }))]
+    .sort((a, b) => (a.date === b.date ? (a.at < b.at ? 1 : -1) : a.date < b.date ? 1 : -1)).slice(0, 25);
+  const earned = (d.badges || []).filter((b) => b.earned_at).length;
 
   main.innerHTML = `
-  <div><span class="eyebrow">Your journey</span><h1 style="font-size:var(--fs-page);margin-top:6px">My progress</h1></div>
-  <section class="kpis">
-    <div class="kpi"><small>Total points</small><b class="num gold-text">${formatNumber(d.total_points)}</b></div>
-    <div class="kpi"><small>Current streak</small><b class="num" style="color:var(--c-streak)">${d.streak} days</b></div>
-    <div class="kpi"><small>Weekly completion</small><b class="num">${d.weekly_pct}%</b><div class="bar"><i style="width:${Math.min(100, d.weekly_pct)}%"></i></div></div>
-    <div class="kpi"><small>Monthly completion</small><b class="num">${d.monthly_pct}%</b><div class="bar"><i style="width:${Math.min(100, d.monthly_pct)}%"></i></div></div>
+  <div class="page-h"><span class="date">Your journey · member since ${esc(formatDate(me.profile.joined_on))}</span><h1>My progress</h1>
+    <p>Every number here comes from your ticks and points.</p></div>
+  <section class="stat-grid" aria-label="Summary">
+    <div class="card stat-card s-pts"><span class="si">${icon('coins')}</span><small>Total points</small><b>${formatNumber(d.total_points)}</b><span class="sub">${d.rank ? 'Rank #' + d.rank : 'Not ranked yet'}</span></div>
+    <div class="card stat-card s-streak"><span class="si">${icon('flame')}</span><small>Current streak</small><b>${d.streak} ${d.streak === 1 ? 'day' : 'days'}</b><span class="sub">Longest ${longest === null ? '–' : longest + (longest === 1 ? ' day' : ' days')}</span></div>
+    <div class="card stat-card"><span class="si">${icon('calendar')}</span><small>This week</small><b>${d.weekly_pct}%</b><div class="pbar"><i data-w="${Math.min(100, d.weekly_pct)}%"></i></div></div>
+    <div class="card stat-card"><span class="si">${icon('trending-up')}</span><small>This month</small><b>${d.monthly_pct}%</b><div class="pbar"><i data-w="${Math.min(100, d.monthly_pct)}%"></i></div></div>
   </section>
-  <section class="panel"><div class="panel-h"><h3>Points, last 30 days</h3><small class="muted">${formatNumber(sum30)} pts · active ${activeDays}/30 days</small></div>
-    <div style="padding:14px 16px">${chart}${sum30 ? `<p class="muted" style="font-size:12.5px;margin-top:6px">Best day: ${esc(nice(best))}, ${Math.max(...vals)} pts.</p>` : ''}</div></section>
-  <section class="panel"><div class="panel-h"><h3>Trackers this month</h3><small class="muted">% of possible ticks</small></div>
+  <section class="card card-pad"><div class="card-h"><h3>Points, last 30 days</h3><span class="sub-r">${formatNumber(sum30)} pts</span></div>
+    <div class="chips-info"><span>${icon('activity')}Active ${activeDays}/30 days</span><span>${icon('target')}Average ${formatNumber(Math.round(sum30 / 30))} pts/day</span>${sum30 ? `<span>${icon('trophy')}Best ${esc(nice(best))} · ${Math.max(...vals)} pts</span>` : ''}</div>
+    ${chart}
+    <div class="legend"><span><i class="lg-on"></i>Points earned</span><span><i class="lg-today"></i>Today</span></div></section>
+  <section class="card card-pad"><div class="card-h"><h3>Trackers this month</h3><span class="sub-r">% of possible ticks</span></div>
     <div class="catbars">${cats.data.map((c) => { const pct = total[c.slug] ? Math.min(100, Math.round(100 * (catDone[c.slug] || 0) / (total[c.slug] * elapsed))) : 0;
-      return `<div class="catbar"><div class="lbl">${esc(c.name)}<span>${pct}% · ${catDone[c.slug] || 0} done</span></div><div class="track"><i style="width:${pct}%;background:${COLOR[c.slug] || 'var(--c-accent)'}"></i></div></div>`; }).join('')}</div></section>
-  <section><div class="section-h"><h2>Badges</h2><span class="eyebrow">${(d.badges || []).filter((b) => b.earned_at).length} of ${(d.badges || []).length}</span></div>
-    <div class="badge-grid">${(d.badges || []).map((b) => `<div class="badge ${b.earned_at ? '' : 'locked'}"><span class="medal" style="background:linear-gradient(135deg,${esc(b.color_from)},${esc(b.color_to)})">${esc(b.glyph)}</span>
+      return `<div class="catbar" style="--tc:${COLOR[c.slug] || 'var(--c-accent)'}"><span class="ci">${icon(ICON[c.slug] || 'list-checks')}</span><div class="cb">
+        <div class="lbl">${esc(c.name)}<span><b>${pct}%</b> · ${catDone[c.slug] || 0} done</span></div><div class="track"><i data-w="${pct}%" style="background:var(--tc)"></i></div></div></div>`; }).join('')}</div></section>
+  <section><div class="sec-h"><h2>Badges</h2><span class="sub">${earned} of ${(d.badges || []).length} earned</span></div>
+    <div class="badge-grid">${(d.badges || []).map((b) => `<div class="badge ${b.earned_at ? '' : 'locked'}"><span class="medal" style="--from:${esc(b.color_from)};--to:${esc(b.color_to)}">${b.earned_at ? esc(b.glyph) : icon('lock')}</span>
       <b>${esc(b.name)}</b><small>${b.earned_at ? 'Earned ' + esc(formatDate(b.earned_at)) : 'Not yet'}</small></div>`).join('')}</div></section>
-  <section class="panel"><div class="panel-h"><h3>Points history</h3><small class="muted">Bonuses and daily habit totals</small></div>
-    <div class="feed">${[...hist.map((s) => ({ date: s.score_date, at: s.created_at, label: kindLabel[s.kind], detail: s.reason, pts: s.points })),
-      ...Object.entries(byDay).slice(0, 15).map(([date, n]) => ({ date, at: date + 'T23:59:00', label: `${n} habit${n > 1 ? 's' : ''} done`, detail: '', pts: scores.data.filter((s) => s.kind === 'activity' && s.score_date === date).reduce((a, b) => a + b.points, 0) }))]
-      .sort((a, b) => (a.date === b.date ? (a.at < b.at ? 1 : -1) : a.date < b.date ? 1 : -1)).slice(0, 25)
-      .map((r) => `<div class="row"><span class="txt"><b>${esc(r.label)}</b>${r.detail && r.label !== 'Habit done' ? ' · ' + esc(r.detail) : ''}<br><small class="muted">${esc(nice(r.date))}</small></span><b class="num" style="color:var(--gold-hi);font-size:18px">+${r.pts}</b></div>`).join('')
+  <section class="card"><div class="card-h card-pad" style="margin:0;padding-bottom:8px"><h3>Points history</h3><span class="sub-r">Bonuses and daily totals</span></div>
+    <div class="feed">${rows.map((r) => `<div class="row k-${esc(r.kind)}"><span class="fi">${icon(KIND[r.kind]?.[1] || 'sparkles')}</span>
+      <span class="txt"><b>${esc(r.label)}</b>${r.detail && r.kind !== 'activity' ? ' · ' + esc(r.detail) : ''}<br><small class="muted">${esc(nice(r.date))}</small></span><b class="pp">+${formatNumber(r.pts)}</b></div>`).join('')
       || `<div class="empty-state"><span class="ic">${icon('sparkles')}</span><b>No points yet</b><span>Tick your first habit to start.</span></div>`}</div></section>`;
+  const drawChart = () => { const box = $('#pchart'); if (box) box.innerHTML = chartSVG(Math.max(240, Math.floor(box.clientWidth))); };
+  drawChart();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawChart, 150); });
+  animateIn(main);
 }
 
 (async () => {
