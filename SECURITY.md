@@ -9,7 +9,7 @@ Method: a permission audit of the live database, attack tests run as a real memb
 |---|---|
 | Live attack test (member account) | **62 of 62 attempts blocked** |
 | Local SQL security & scoring suite | **52 of 52 pass** (2.0 Phase 1) |
-| Browser suites (auth, trackers, coach tools, leaderboard, journal, PWA, 2.0 dashboard & themes) | **321 of 321 pass** (2.0 Phase 2), with the CSP active and no violations |
+| Browser suites (auth, trackers, coach tools, leaderboard, journal, PWA, 2.0 dashboard & themes) | **393 of 393 pass** (2.0 Phase 3), with the CSP active and no violations |
 | Injected script, `onerror` XSS, outside image | all refused by the CSP |
 | App loaded inside another site's frame | hides itself |
 

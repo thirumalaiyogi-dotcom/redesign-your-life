@@ -1,7 +1,7 @@
 // Member journal (member/journal.html) and progress (member/progress.html).
 import { supabase, app } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
-import { $, $$, icon, esc, toast, withBusy, memberNav, brandHTML, initials, formatNumber, formatDate } from './ui.js';
+import { $, $$, icon, esc, toast, withBusy, memberNav, formatNumber, formatDate, memberTopbar } from './ui.js';
 
 const page = document.body.dataset.page;
 const QUESTIONS = [
@@ -17,9 +17,7 @@ const nice = (iso) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-IN', {
 let me, today;
 
 function chrome(current) {
-  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('member/dashboard.html'))}
-    <div class="actions"><a href="${app('member/profile.html')}" aria-label="My profile" style="text-decoration:none">
-    <span class="avatar" aria-hidden="true">${esc(initials(me.profile.full_name, me.user.email))}</span></a></div></div>`;
+  $('#top').innerHTML = memberTopbar(me.profile, me.user.email);
   document.body.insertAdjacentHTML('beforeend', memberNav(current));
 }
 function errorPanel(target, err, retry) {
@@ -42,36 +40,51 @@ async function renderJournal() {
   draw();
 }
 
+const ICONS = { learned: 'lightbulb', improved: 'trending-up', challenges: 'mountain', grateful: 'heart', tomorrow: 'sunrise' };
+const preview = (x) => { const k = QUESTIONS.find(([q]) => x[q]); return k ? x[k[0]] : ''; };
+const answered = (x) => QUESTIONS.filter(([k]) => x[k]).length;
+
 function draw() {
   const main = $('#main');
   const e = entries.find((x) => x.entry_date === editing) || { entry_date: editing, share_with_coach: true };
   const canEdit = editing >= addDays(today, -1);
   const yest = addDays(today, -1);
+  const past = entries.filter((x) => x.entry_date < yest);
   main.innerHTML = `
-  <div><span class="eyebrow">Evening reflection · 5 questions</span><h1 style="font-size:var(--fs-page);margin-top:6px">Journal</h1></div>
-  <div class="seg" role="tablist" aria-label="Day" style="align-self:flex-start">
+  <div class="page-h"><span class="date">Evening reflection · 5 questions</span><h1>Journal</h1>
+    <p>A few honest lines each evening. Private unless you choose to share.</p></div>
+  <div class="seg seg-2" role="tablist" aria-label="Day">
     <button role="tab" data-day="${today}" aria-selected="${editing === today}">Today</button>
     <button role="tab" data-day="${yest}" aria-selected="${editing === yest}">Yesterday</button></div>
-  ${canEdit ? `<form class="panel panel-pad form" id="j-form" novalidate>
-    <div class="row-between"><b>${esc(nice(editing))}</b><span class="muted" style="font-size:12.5px">${e.id ? 'Saved ' + esc(timeAgo(e.updated_at)) : 'Not saved yet'}</span></div>
-    ${QUESTIONS.map(([k, q, hint]) => `<div class="field"><label for="j-${k}">${q}</label>
+  ${canEdit ? `<form class="card j-form form" id="j-form" novalidate>
+    <div class="j-top"><div><b>${esc(nice(editing))}</b><span class="j-saved">${e.id ? icon('check-circle-2') + 'Saved ' + esc(timeAgo(e.updated_at)) : 'Not saved yet'}</span></div>
+      <div class="j-prog"><span id="j-count">0 of 5</span><div class="pbar"><i id="j-bar"></i></div></div></div>
+    ${QUESTIONS.map(([k, q, hint], i) => `<div class="field j-q"><label for="j-${k}"><span class="qn" aria-hidden="true">${icon(ICONS[k])}</span><span><small>Question ${i + 1}</small>${q}</span></label>
       <textarea id="j-${k}" data-k="${k}" rows="3" maxlength="1000" placeholder="${esc(hint)}">${esc(e[k] || '')}</textarea>
       <span class="hint" data-count="${k}"></span></div>`).join('')}
-    <label class="check"><input type="checkbox" id="j-share" ${e.share_with_coach !== false ? 'checked' : ''}>Share this entry with my coach</label>
-    <p class="muted" style="font-size:12.5px">Your journal is private. Only you can read it, plus your coach when sharing is on.</p>
-    <button class="btn btn-gold" id="j-save" type="submit">${icon('check')}Save journal</button>
+    <label class="j-share" for="j-share"><span class="ic">${icon('users')}</span><span><b>Share with my coach</b><small>Your coach can read this entry. Turn off to keep it just for you.</small></span>
+      <input type="checkbox" id="j-share" role="switch" ${e.share_with_coach !== false ? 'checked' : ''}><span class="sw" aria-hidden="true"></span></label>
+    <p class="hint-line">${icon('lock')}<span>Your journal is private. Only you can read it, plus your coach when sharing is on.</span></p>
+    <button class="btn btn-primary btn-block" id="j-save" type="submit">${icon('check')}Save journal</button>
   </form>` : ''}
-  <section><div class="section-h"><h2>Past entries</h2><span class="eyebrow">${entries.length} saved</span></div>
-    ${entries.filter((x) => x.entry_date < yest).length ? `<div class="stack" style="gap:10px">${entries.filter((x) => x.entry_date < yest).map((x) => `
-      <details class="panel j-entry"><summary><b>${esc(nice(x.entry_date))}</b><span class="muted" style="font-size:12.5px">${x.share_with_coach ? 'Shared with coach' : 'Private'}</span></summary>
+  <section><div class="sec-h"><h2>Past entries</h2><span class="sub">${entries.length} saved</span></div>
+    ${past.length ? `<div class="stack" style="gap:10px">${past.map((x) => `
+      <details class="card j-entry"><summary><span class="j-d"><b>${esc(nice(x.entry_date))}</b><small>${esc(preview(x).slice(0, 90))}</small></span>
+        <span class="j-meta"><span class="pill ${x.share_with_coach ? 'ok' : 'none'}">${x.share_with_coach ? 'Shared' : 'Private'}</span><small>${answered(x)}/5</small></span></summary>
       <div class="j-body">${QUESTIONS.filter(([k]) => x[k]).map(([k, q]) => `<p><b>${q}</b><br>${esc(x[k])}</p>`).join('') || '<p class="muted">Empty entry</p>'}</div></details>`).join('')}</div>`
-      : `<div class="panel empty-state"><span class="ic">${icon('notebook-pen')}</span><b>No past entries yet</b><span>Write a few lines every evening. They show up here.</span></div>`}
+      : `<div class="card empty-state"><span class="ic">${icon('notebook-pen')}</span><b>No past entries yet</b><span>Write a few lines every evening. They show up here.</span></div>`}
   </section>`;
   $$('[data-day]').forEach((b) => b.addEventListener('click', () => { editing = b.dataset.day; draw(); }));
   const form = $('#j-form');
   if (!form) return;
+  const progress = () => {
+    const n = $$('textarea', form).filter((t) => t.value.trim()).length;
+    $('#j-count').textContent = `${n} of 5 answered`;
+    $('#j-bar').style.width = `${n * 20}%`;
+  };
   const count = (ta) => { $(`[data-count="${ta.dataset.k}"]`).textContent = ta.value.length > 800 ? `${ta.value.length}/1000` : ''; };
-  $$('textarea', form).forEach((ta) => { count(ta); ta.addEventListener('input', () => count(ta)); });
+  $$('textarea', form).forEach((ta) => { count(ta); ta.addEventListener('input', () => { count(ta); progress(); }); });
+  requestAnimationFrame(progress);
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const vals = Object.fromEntries(QUESTIONS.map(([k]) => [k, $(`#j-${k}`).value.trim() || null]));

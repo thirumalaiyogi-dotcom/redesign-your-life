@@ -37,8 +37,6 @@
 .tcard .pbar { height: 6px; --bar: var(--tc); }
 .tcard .state { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: var(--r-pill); }
 .tcard .go { display: grid; place-items: center; padding-right: 10px; color: var(--c-muted); }
-.hint-line { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--c-muted); }
-.hint-line .icon { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 @media (min-width: 720px) {
   .tlist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tcard { grid-template-columns: minmax(0, 1fr); }

@@ -4,15 +4,6 @@
    trackers, progress and profile pages.
    ===================================================================== */
 
-/* ---------- dashboard header ---------- */
-.dash-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-block: var(--s-3); }
-.dash-top .actions { display: flex; align-items: center; gap: var(--s-2); flex: none; }
-.dash-top .avatar-link { text-decoration: none; border-radius: 50%; }
-.dash-top .avatar-link .avatar { width: 42px; height: 42px; box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 3.5px var(--c-accent); }
-.dash-top .brand { flex: 1 1 auto; min-width: 0; }
-.dash-top .brand span:last-child { min-width: 0; overflow: hidden; }
-.dash-top .brand b, .dash-top .brand small { overflow: hidden; text-overflow: ellipsis; }
-
 .hello { display: flex; flex-direction: column; gap: 4px; padding-top: var(--s-1); }
 .hello .date { font-size: var(--fs-small); color: var(--c-muted); font-weight: 500; }
 .hello h1 { font-size: var(--fs-greeting); font-weight: 800; letter-spacing: -.03em; overflow-wrap: anywhere; }
@@ -149,7 +140,6 @@
   .tk h3 { font-size: 14px; }
   .arow { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; padding: 8px; }
   .arow .thumb { width: 44px; height: 44px; border-radius: 12px; }
-  .dash-top .brand span:last-child { display: none; }
   .mini-stats .stat { padding: 8px 10px; }
   .mini-stats .stat b { font-size: 16px; }
 }

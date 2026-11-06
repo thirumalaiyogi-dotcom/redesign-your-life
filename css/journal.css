@@ -1,0 +1,53 @@
+/* =====================================================================
+   Journal — Redesign 2.0 Phase 3 (token-based, Light + Dark)
+   ===================================================================== */
+.seg-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 320px; }
+
+.j-form { padding: var(--s-5); gap: var(--s-5); }
+.j-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); flex-wrap: wrap; padding-bottom: var(--s-4); border-bottom: 1px solid var(--c-border); }
+.j-top > div:first-child { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.j-top b { font-family: var(--f-display); font-size: 17px; font-weight: 750; }
+.j-saved { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--c-muted); }
+.j-saved .icon { width: 15px; height: 15px; color: var(--c-success); }
+.j-prog { display: flex; flex-direction: column; gap: 6px; min-width: 150px; flex: 0 1 220px; }
+.j-prog span { font-size: 12.5px; font-weight: 650; color: var(--c-text-2); text-align: right; }
+.j-prog .pbar i { width: 0; transition: width var(--t-med) var(--ease); }
+
+.j-q { gap: 10px; }
+.j-q label { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 650; color: var(--c-text); }
+.j-q label small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-muted); margin-bottom: 1px; }
+.j-q .qn { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--c-primary-light); color: var(--c-primary); flex: none; }
+.j-q .qn .icon { width: 19px; height: 19px; }
+.j-q textarea { min-height: 88px; resize: vertical; line-height: 1.5; background: var(--c-sunken); border-color: var(--c-border); }
+.j-q textarea:focus { background: var(--c-surface); }
+
+.j-share { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--c-border); background: var(--c-sunken); cursor: pointer; }
+.j-share .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--c-surface); color: var(--c-primary); }
+.j-share .ic .icon { width: 18px; height: 18px; }
+.j-share b { display: block; font-size: 14px; font-weight: 650; }
+.j-share small { display: block; font-size: 12.5px; color: var(--c-text-2); }
+.j-share input { position: absolute; right: 14px; top: 50%; width: 48px; height: 28px; margin: -14px 0 0; opacity: 0; cursor: pointer; z-index: 1; }
+.j-share .sw { position: relative; width: 48px; height: 28px; border-radius: 14px; background: var(--c-border-strong); transition: background-color var(--t-fast); flex: none; }
+.j-share .sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform var(--t-fast) var(--ease); }
+.j-share input:checked + .sw { background: var(--c-primary); }
+.j-share input:checked + .sw::after { transform: translateX(20px); }
+:root[data-theme="dark"] .j-share input:checked + .sw::after { background: var(--c-on-primary); }
+.j-share input:focus-visible + .sw { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+details.card.j-entry { border: 1px solid var(--c-border); overflow: hidden; }
+.j-entry summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; }
+.j-entry summary::after { content: none; }
+.j-entry summary::-webkit-details-marker { display: none; }
+.j-entry .j-d { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.j-entry .j-d b { font-size: 14.5px; font-weight: 650; }
+.j-entry .j-d small { font-size: 12.5px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.j-entry .j-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.j-entry .j-meta small { font-size: 11.5px; color: var(--c-muted); font-variant-numeric: tabular-nums; }
+.j-entry[open] summary { border-bottom: 1px solid var(--c-border); }
+.j-entry .j-body { padding: 14px 16px; }
+
+@media (max-width: 400px) {
+  .j-form { padding: var(--s-4); }
+  .j-prog { flex-basis: 100%; }
+  .j-prog span { text-align: left; }
+}
