@@ -114,7 +114,7 @@ const SOON = 'data-soon';
 export function memberNav(current) {
   const items = [
     [app('member/dashboard.html'), 'layout-dashboard', 'Home', 'dashboard'],
-    ['#', 'list-checks', 'Trackers', 'trackers', 'Trackers open in Phase 4'],
+    [app('member/trackers.html'), 'list-checks', 'Trackers', 'trackers'],
     ['#', 'trophy', 'Ranks', 'leaderboard', 'Leaderboard opens in Phase 8'],
     ['#', 'notebook-pen', 'Journal', 'journal', 'Journal opens in Phase 9'],
     [app('member/profile.html'), 'user-round', 'Profile', 'profile']

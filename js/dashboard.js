@@ -60,7 +60,7 @@ async function renderDashboard(profile, user) {
       <div><b class="gold-text num">${formatNumber(d.total_points)}</b><small>Total pts</small></div>
       <div><b class="num">${d.rank ? '#' + d.rank : '–'}</b><small>Rank${mvHTML}</small></div>
       <div class="streak"><b class="num">${d.streak}</b><small>Day streak</small></div>
-      <div class="hs-today"><span>${total - done} habits left today · +${formatNumber(d.today_points)} pts earned</span></div>
+      <div class="hs-today"><span>${total - done} habits left today · +${formatNumber(d.today_points)} pts earned</span><a class="link" href="${app('member/trackers.html')}">Tick now →</a></div>
     </div>
   </section>
   <section class="kpis" aria-label="Progress">
@@ -72,7 +72,7 @@ async function renderDashboard(profile, user) {
   <section><div class="section-h"><h2>Your trackers</h2><span class="eyebrow">Today</span></div>
     <div class="tcards">${(d.trackers || []).map((t) => {
       const pct = t.total ? Math.round(100 * t.done_today / t.total) : 0;
-      return `<a class="tcard" href="#" data-soon="Daily tracking opens in Phase 4" style="--tc:${TRACKER_COLOR[t.slug] || 'var(--gold)'}">
+      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${TRACKER_COLOR[t.slug] || 'var(--gold)'}">
         <div class="art"><img src="${app('assets/images/' + (TRACKER_ART[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="n">${t.total}</span></div>
         <h3>${esc(t.name)}</h3>
         <div class="stats"><div><b class="num">${t.total}</b>Total</div><div><b class="num" style="color:var(--ok)">${t.done_today}</b>Done</div><div><b class="num">${t.total - t.done_today}</b>Left</div></div>
