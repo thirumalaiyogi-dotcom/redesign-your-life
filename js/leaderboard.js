@@ -2,7 +2,7 @@
 // Ranks come from get_leaderboard(): approved = ticked "done" points + bonuses only; never negative.
 import { supabase, app } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
-import { $, $$, icon, esc, memberNav, adminNav, brandHTML, initials, formatNumber, memberTopbar } from './ui.js';
+import { $, $$, icon, esc, memberNav, coachTopbar, initials, formatNumber, memberTopbar } from './ui.js';
 
 const page = document.body.dataset.page;
 const isAdminPage = page === 'admin-leaderboard';
@@ -12,9 +12,8 @@ try { period = sessionStorage.getItem('ryl.lb') || 'weekly'; } catch { /* storag
 
 function chrome() {
   if (isAdminPage) {
-    $('#top').innerHTML = `<div class="topbar">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
-      <div class="actions"><span class="pill ${me.profile.role === 'super_admin' ? 'gold' : 'blue'}">${ROLE_LABEL[me.profile.role]}</span>
-      <button class="iconbtn" id="logout" aria-label="Log out">${icon('log-out')}</button></div></div>${adminNav('leaderboard')}`;
+    $('#top').innerHTML = coachTopbar(me.profile.role, ROLE_LABEL[me.profile.role], 'leaderboard');
+  { const cur = document.querySelector('.admin-nav a[aria-current]'), bar = document.querySelector('.admin-nav .an-inner'); if (cur && bar) bar.scrollLeft = cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2; }
     $('#logout').addEventListener('click', () => signOut());
   } else {
     $('#top').innerHTML = memberTopbar(me.profile, me.user.email);

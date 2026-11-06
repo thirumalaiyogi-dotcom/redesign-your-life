@@ -1,7 +1,7 @@
 // Coach console: overview + member & role management.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
-import { $, $$, icon, esc, toast, withBusy, confirmDialog, adminNav, brandHTML, initials,
+import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber } from './ui.js';
 
 const page = document.body.dataset.page;
@@ -9,9 +9,8 @@ const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious
 let me = null;   // { profile, user }
 
 function chrome(current) {
-  $('#top').innerHTML = `<div class="topbar">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
-    <div class="actions"><span class="pill ${me.profile.role === 'super_admin' ? 'gold' : 'blue'}">${ROLE_LABEL[me.profile.role]}</span>
-    <button class="iconbtn" id="logout" aria-label="Log out" title="Log out">${icon('log-out')}</button></div></div>${adminNav(current)}`;
+  $('#top').innerHTML = coachTopbar(me.profile.role, ROLE_LABEL[me.profile.role], current);
+  { const cur = document.querySelector('.admin-nav a[aria-current]'), bar = document.querySelector('.admin-nav .an-inner'); if (cur && bar) bar.scrollLeft = cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2; }
   $('#logout').addEventListener('click', () => signOut());
 }
 
@@ -37,27 +36,34 @@ async function renderOverview() {
   if (error) return errorPanel(main, error, renderOverview);
 
   const kpis = [
-    ['Total members', o.total_members, 'Active accounts'],
-    ['Active today', o.active_today, o.total_members ? Math.round(100 * o.active_today / o.total_members) + '% of members' : '—'],
-    ['Not active today', o.inactive_today, 'May need a reminder', o.inactive_today > 0 ? 'warn' : ''],
-    ['Ticks today', o.ticks_today, 'Habits marked done'],
-    ['Avg completion', o.avg_completion_week + '%', 'This week'],
-    ['Points this week', o.points_week, 'All members']
+    ['Total members', o.total_members, 'Active accounts', '', 'users'],
+    ['Active today', o.active_today, o.total_members ? Math.round(100 * o.active_today / o.total_members) + '% of members' : '—', 'ok', 'activity'],
+    ['Not active today', o.inactive_today, 'May need a reminder', o.inactive_today > 0 ? 'warn' : '', 'hourglass'],
+    ['Ticks today', o.ticks_today, 'Habits marked done', '', 'check-check'],
+    ['Avg completion', o.avg_completion_week + '%', 'This week', '', 'trending-up'],
+    ['Points this week', o.points_week, 'All members', 'gold', 'coins']
   ];
+  const activePct = o.total_members ? Math.round(100 * o.active_today / o.total_members) : 0;
   const recent = o.recent || [];
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${esc(formatToday())}</span><h1>Program overview</h1></div>
     <a class="btn btn-gold btn-sm" href="${app('admin/members.html')}">${icon('users')}Manage members</a></div>
-  <section class="akpis">${kpis.map(([l, v, s, c]) => `<div class="panel akpi ${c || ''}"><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
+  <section class="card today-pulse" aria-label="Today at a glance">
+    <div class="tp-ring" role="img" aria-label="${activePct}% of members active today" style="--p:${activePct}"><b>${activePct}%</b><small>active</small></div>
+    <div class="tp-txt"><b>${formatNumber(o.active_today)} of ${formatNumber(o.total_members)} members ticked today</b>
+      <span>${formatNumber(o.ticks_today)} habits done · ${o.avg_completion_week}% average completion this week</span>
+      ${o.inactive_today > 0 ? `<a class="tp-link" href="${app('admin/members.html')}">${icon('hourglass')}${formatNumber(o.inactive_today)} not active yet today →</a>` : `<span class="tp-ok">${icon('check-circle-2')}Everyone has ticked today</span>`}</div>
+  </section>
+  <section class="akpis">${kpis.map(([l, v, s, c, ic]) => `<div class="card akpi ${c || ''}"><span class="ai">${icon(ic)}</span><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
-    <section class="panel"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
+    <section class="card"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
       ${recent.length ? `<div class="feed">${recent.map((r) => `<div class="row">${r.status === 'done' && !r.voided ? `<span class="pill ok">Done</span>` : r.voided ? `<span class="pill bad">Removed</span>` : `<span class="pill none">Not done</span>`}
         <span class="txt"><b>${esc(r.member)}</b> · ${esc(r.activity)}</span><time>${esc(timeAgo(r.at))}</time></div>`).join('')}</div>`
       : `<div class="empty-state"><span class="ic">${icon('check-check')}</span><b>No check-ins yet</b><span>When members tick habits, they appear here.</span></div>`}
     </section>
-    <section class="panel"><div class="panel-h"><h3>Category completion</h3><small class="muted">This week</small></div>
-      <div class="catbars">${(o.category_week || []).map((c) => `<div class="catbar"><div class="lbl">${esc(c.name)}<span>${c.pct}%</span></div>
-        <div class="track"><i style="width:${Math.min(100, c.pct)}%;background:${TRACKER_COLOR[c.slug] || 'var(--gold)'}"></i></div></div>`).join('')}</div>
+    <section class="card"><div class="panel-h"><h3>Category completion</h3><small class="muted">This week</small></div>
+      <div class="catbars">${(o.category_week || []).map((c) => `<div class="catbar"><div class="lbl"><span class="nm"><i class="dot" style="background:${TRACKER_COLOR[c.slug] || 'var(--c-accent)'}"></i>${esc(c.name)}</span><span>${c.pct}%</span></div>
+        <div class="track"><i style="width:${Math.min(100, c.pct)}%;background:${TRACKER_COLOR[c.slug] || 'var(--c-accent)'}"></i></div></div>`).join('')}</div>
     </section>
   </div>`;
 }
@@ -92,7 +98,7 @@ function personHTML(p) {
     <span class="avatar" aria-hidden="true">${esc(initials(p.full_name, p.email))}</span>
     <div class="who"><b>${esc(p.full_name || '(no name yet)')}${isMe ? ' <span class="muted" style="font-weight:600">(you)</span>' : ''}</b>
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
-      <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--warn)">Email not confirmed</span>'}</div></div>
+      <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
       ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
@@ -275,7 +281,7 @@ function checkinHTML(r) {
       <div class="meta"><span style="color:var(--tc);font-weight:700">${esc(r.tracker_name)} #${String(r.activity_number).padStart(2, '0')}</span><span>${esc(r.activity_name)}</span><span>${esc(timeAgo(r.updated_at))}</span></div>
       ${r.note ? `<p style="font-size:13.5px;color:var(--ink-2);background:var(--bg-2);border-radius:10px;padding:8px 10px;margin-top:4px">“${esc(r.note)}”</p>` : ''}
       ${removed ? `<p style="font-size:12.5px;color:var(--bad-soft)">Removed by ${esc(r.voided_by_name || 'coach')}: ${esc(r.void_reason)}</p>` : ''}</div>
-    <div class="acts">${pill}${r.status === 'done' && !removed ? `<span class="num" style="font-size:20px;color:var(--gold-hi)">+${r.points_awarded}</span>
+    <div class="acts">${pill}${r.status === 'done' && !removed ? `<span class="pts-chip">+${r.points_awarded}</span>
       <button class="btn btn-sm btn-bad" data-void="${r.id}">${icon('x')}Remove</button>` : ''}</div></article>`;
 }
 

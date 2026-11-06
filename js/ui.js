@@ -137,8 +137,17 @@ export function adminNav(current) {
     [app('admin/reports.html'), 'file-chart-column', 'Reports', 'reports'],
     [app('admin/settings.html'), 'settings', 'Settings', 'settings']
   ];
-  return `<nav class="admin-nav" aria-label="Coach menu">${items.map(([href, ic, label, key, soon]) =>
-    `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} ${soon ? `${SOON}="${esc(soon)}"` : ''}>${icon(ic)}${label}</a>`).join('')}</nav>`;
+  return `<nav class="admin-nav" aria-label="Coach menu"><div class="an-inner">${items.map(([href, ic, label, key]) =>
+    `<a href="${href}" ${key === current ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></a>`).join('')}</div></nav>`;
+}
+
+// Coach console header: logo, role, theme toggle, log out, then the coach menu.
+export function coachTopbar(role, roleLabel, current) {
+  const dark = currentTheme() === 'dark';
+  return `<div class="dash-top coach-top">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
+    <div class="actions"><span class="pill ${role === 'super_admin' ? 'gold' : 'blue'}">${esc(roleLabel)}</span>
+      <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
+      <button class="iconbtn" id="logout" type="button" aria-label="Log out" title="Log out">${icon('log-out')}</button></div></div>${adminNav(current)}`;
 }
 
 // Links to screens built in later phases explain themselves instead of 404-ing.
