@@ -51,6 +51,7 @@ async function renderDashboard(profile, user) {
   const mvHTML = mv > 0 ? ` · <span style="color:var(--ok)">▲${mv}</span>` : mv < 0 ? ` · <span style="color:var(--bad-soft)">▼${-mv}</span>` : '';
   main.innerHTML = `
   <div class="greet">${avatarHTML(profile, user.email)}<div><p>Vanakkam, ${esc(formatToday())}</p><h1>Hi, ${esc(firstName(profile.full_name, user.email))}</h1></div></div>
+  <div data-install-slot></div>
   <section class="hero-stat" aria-label="Today's summary">
     <div class="ring"><svg viewBox="0 0 128 128" aria-hidden="true"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#f7e5a6"/><stop offset="1" stop-color="#9a7227"/></linearGradient></defs>
       <circle cx="64" cy="64" r="54" fill="none" stroke="#26325a" stroke-width="12"/>
@@ -91,6 +92,7 @@ function renderProfile(profile, user) {
   <section class="panel profile-head">${avatarHTML(profile, user.email, 'avatar lg')}
     <div style="min-width:0"><span class="pill ${profile.role === 'member' ? 'gold' : 'blue'}">${ROLE_LABEL[profile.role]}</span>
     <h1 style="margin-top:8px">${esc(profile.full_name || user.email)}</h1><p class="muted" style="overflow-wrap:anywhere">${esc(user.email)}</p></div></section>
+  <div data-install-slot></div>
   <div class="profile-grid">
     <form class="panel panel-pad form" id="profile-form" novalidate>
       <h2 style="font-size:22px">My details</h2>

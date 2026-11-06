@@ -145,6 +145,14 @@ details.panel.j-entry { border: 1px solid var(--line-2); }
 .j-body { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
 .j-body b { color: var(--ink); font-size: 12.5px; letter-spacing: .04em; }
 
+/* ---------- install card ---------- */
+.install { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(160deg, #17265a, #0e1838); border: 1px solid var(--line); }
+.install .crest { width: 40px; height: 40px; border-radius: 11px; background: url("../assets/icons/icon-192.png") center / cover; flex: none; }
+.install div { flex: 1; min-width: 0; }
+.install b { display: block; font-size: 14px; }
+.install small { display: block; color: var(--muted); font-size: 12.5px; }
+.install .x { background: none; border: 0; color: var(--muted); font-size: 22px; line-height: 1; padding: 6px 8px; border-radius: 8px; }
+
 /* ---------- app chrome ---------- */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 14px; }
 .topbar .actions { display: flex; gap: 8px; align-items: center; flex: none; }

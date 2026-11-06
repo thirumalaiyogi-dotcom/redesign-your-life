@@ -21,7 +21,8 @@
 | 6 | Coach tools | ✅ check-in feed with remove + reason, activity editor with image upload, special bonus |
 | 7–8 | Scoring settings & leaderboard | ✅ super-admin point settings, monthly champion, podium leaderboard with recognitions |
 | 9 | Journal, progress & reports | ✅ private journal, my progress (chart, trackers, badges, points history), coach reports + CSV, shared journals |
-| 10–12 | PWA & Android install, security tests, deploy | planned |
+| 10 | PWA & Android install | ✅ manifest, app icons, service worker (no private data cached), offline screen, install card |
+| 11–12 | Security review, production deploy & domain | planned |
 
 ## Folders
 ```

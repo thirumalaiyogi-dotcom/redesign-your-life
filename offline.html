@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070d1f">
+<title>Offline · Redesign Your Life</title>
+<!-- Self-contained on purpose: it is shown in place of pages in any folder, so it must not depend on other files. -->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #070d1f; color: #f4efe3; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .off { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); text-align: center; box-sizing: border-box;
+    background: radial-gradient(90% 60% at 50% 110%, rgba(240,170,70,.28), transparent 60%); }
+  .card { max-width: 380px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .crest { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; color: #1a1204; background: linear-gradient(135deg,#f7e5a6 0%,#d9b35c 45%,#9a7227 100%); }
+  h1 { margin: 0; font-size: 34px; font-weight: 900; text-transform: uppercase; letter-spacing: .01em; }
+  p { margin: 0; color: #8a94b2; line-height: 1.5; }
+  button { width: 100%; min-height: 48px; border: 0; border-radius: 12px; font: inherit; font-weight: 800; color: #1a1204; cursor: pointer;
+    background: linear-gradient(135deg,#f7e5a6 0%,#d9b35c 45%,#9a7227 100%); }
+  button:focus-visible { outline: 2px solid #f6e0a0; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="off">
+  <div class="card">
+    <span class="crest"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></span>
+    <h1>You're offline</h1>
+    <p>Ticking habits needs the internet so your points are saved safely. Turn on mobile data or Wi-Fi, then try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </div>
+</main>
+<script>addEventListener('online', () => location.reload());</script>
+</body>
+</html>

@@ -6,6 +6,13 @@
 <meta name="theme-color" content="#070d1f">
 <title>Deepak's Redesign Your Life</title>
 <meta name="description" content="Small habits, big transformation. Track 58 daily habits across wealth, awareness, karma and champion mindset.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Redesign Life">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap">
@@ -63,6 +70,7 @@
     <h1><span class="who">Deepak's</span><span class="gold-text">Redesign</span><br>Your Life</h1>
     <div class="tagline">Small habits <i></i> Big transformation</div>
     <p class="lede">Track 58 daily habits across wealth, awareness, karma and champion mindset. Tick a habit and it counts straight away. Miss a day and you just see a cross, never a minus score.</p>
+    <div data-install-slot style="max-width:460px"></div>
     <div class="ctas">
       <a class="btn btn-gold" id="main-cta" href="register.html" data-icon="user-plus">Join the program</a>
       <a class="btn btn-ghost" href="login.html" id="second-cta" data-icon="log-in">Member login</a>
@@ -113,5 +121,6 @@
     document.getElementById('second-cta').hidden = true;
   }).catch(() => {});
 </script>
+<script type="module" src="js/pwa.js"></script>
 </body>
 </html>
