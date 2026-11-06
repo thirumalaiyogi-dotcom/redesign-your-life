@@ -79,7 +79,7 @@ async function renderDashboard(profile, user) {
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="foot">${pct}% complete<span>Open →</span></div></a>`; }).join('')}</div>
   </section>
-  <section><div class="section-h"><h2>Achievements</h2><span class="eyebrow">${(d.badges || []).filter((b) => b.earned_at).length} of ${(d.badges || []).length}</span></div>
+  <section><div class="section-h"><h2>Achievements</h2><a class="link" href="${app('member/progress.html')}" style="font-size:13px">${(d.badges || []).filter((b) => b.earned_at).length} of ${(d.badges || []).length} · My progress →</a></div>
     <div class="badges">${(d.badges || []).map(medal).join('')}</div>
   </section>`;
 }
@@ -107,6 +107,7 @@ function renderProfile(profile, user) {
         <button class="btn btn-ghost" id="pw-btn" type="submit">Update password</button>
       </form>
       <section class="panel panel-pad stack" style="gap:12px">
+        <a class="btn btn-ghost" href="${app('member/progress.html')}">${icon('trending-up')}My progress & badges</a>
         <dl class="facts"><dt>Member since</dt><dd>${esc(formatDate(profile.joined_on))}</dd><dt>Role</dt><dd>${ROLE_LABEL[profile.role]}</dd></dl>
         <button class="btn btn-bad" id="logout-btn" type="button">${icon('log-out')}Log out</button>
       </section>

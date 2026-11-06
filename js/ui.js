@@ -116,7 +116,7 @@ export function memberNav(current) {
     [app('member/dashboard.html'), 'layout-dashboard', 'Home', 'dashboard'],
     [app('member/trackers.html'), 'list-checks', 'Trackers', 'trackers'],
     [app('member/leaderboard.html'), 'trophy', 'Ranks', 'leaderboard'],
-    ['#', 'notebook-pen', 'Journal', 'journal', 'Journal opens in Phase 9'],
+    [app('member/journal.html'), 'notebook-pen', 'Journal', 'journal'],
     [app('member/profile.html'), 'user-round', 'Profile', 'profile']
   ];
   return `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, key, soon]) =>
@@ -130,7 +130,7 @@ export function adminNav(current) {
     [app('admin/members.html'), 'users', 'Members', 'members'],
     [app('admin/activities.html'), 'list-checks', 'Activities', 'activities'],
     [app('admin/leaderboard.html'), 'trophy', 'Leaderboard', 'leaderboard'],
-    ['#', 'file-chart-column', 'Reports', 'reports', 'Reports open in Phase 9'],
+    [app('admin/reports.html'), 'file-chart-column', 'Reports', 'reports'],
     [app('admin/settings.html'), 'settings', 'Settings', 'settings']
   ];
   return `<nav class="admin-nav" aria-label="Coach menu">${items.map(([href, ic, label, key, soon]) =>

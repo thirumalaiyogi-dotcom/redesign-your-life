@@ -470,16 +470,109 @@ async function renderSettings() {
   });
 }
 
+// ---------------- REPORTS ----------------
+const isoIST = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
+const addD = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+function presetRange(p) {
+  const t = isoIST(), dow = (new Date(t + 'T00:00:00Z').getUTCDay() + 6) % 7;
+  if (p === 'week') return [addD(t, -dow), t];
+  if (p === 'lastweek') return [addD(t, -dow - 7), addD(t, -dow - 1)];
+  if (p === 'month') return [t.slice(0, 8) + '01', t];
+  if (p === 'lastmonth') { const first = t.slice(0, 8) + '01'; const end = addD(first, -1); return [end.slice(0, 8) + '01', end]; }
+  return [addD(t, -29), t];
+}
+let rep = { preset: 'month', start: null, end: null, rows: [] };
+
+async function renderReports() {
+  const main = $('#main');
+  [rep.start, rep.end] = rep.start ? [rep.start, rep.end] : presetRange(rep.preset);
+  main.innerHTML = `
+  <div class="admin-head"><div><span class="eyebrow">Member performance and shared journals</span><h1>Reports</h1></div>
+    <button class="btn btn-gold btn-sm" id="csv" disabled>${icon('file-chart-column')}Download CSV</button></div>
+  <div class="chips" role="group" aria-label="Period">${[['week', 'This week'], ['lastweek', 'Last week'], ['month', 'This month'], ['lastmonth', 'Last month'], ['30', 'Last 30 days']].map(([v, l]) =>
+    `<button class="chip" data-pre="${v}" aria-pressed="${rep.preset === v}">${l}</button>`).join('')}</div>
+  <div class="tools"><div class="row-between" style="gap:8px;justify-content:flex-start">
+    <label class="visually-hidden" for="r-start">From</label><input id="r-start" type="date" value="${rep.start}" max="${isoIST()}" class="date-in">
+    <span class="muted">to</span>
+    <label class="visually-hidden" for="r-end">To</label><input id="r-end" type="date" value="${rep.end}" max="${isoIST()}" class="date-in"></div>
+    <span class="muted" id="r-sum" style="font-size:13px"></span></div>
+  <section class="panel" id="r-table"></section>
+  <section class="panel"><div class="panel-h"><h3>Shared journals</h3>
+    <input id="j-date" type="date" value="${isoIST()}" max="${isoIST()}" class="date-in" aria-label="Journal date"></div>
+    <div id="j-list"></div></section>`;
+  main.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pre]'); if (!b) return;
+    rep.preset = b.dataset.pre; [rep.start, rep.end] = presetRange(rep.preset);
+    $$('[data-pre]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $('#r-start').value = rep.start; $('#r-end').value = rep.end; loadReport();
+  });
+  const onDate = () => {
+    const s = $('#r-start').value, e = $('#r-end').value; if (!s || !e) return;
+    if (e < s) return toast('The end date is before the start date.', 'bad');
+    rep.start = s; rep.end = e; rep.preset = ''; $$('[data-pre]').forEach((x) => x.setAttribute('aria-pressed', 'false')); loadReport();
+  };
+  $('#r-start').addEventListener('change', onDate); $('#r-end').addEventListener('change', onDate);
+  $('#csv').addEventListener('click', downloadCSV);
+  $('#j-date').addEventListener('change', (e) => loadJournals(e.target.value));
+  await Promise.all([loadReport(), loadJournals(isoIST())]);
+}
+
+async function loadReport() {
+  const box = $('#r-table');
+  box.innerHTML = `<div class="skeleton" style="height:220px;margin:12px"></div>`;
+  $('#csv').disabled = true;
+  const { data, error } = await supabase.rpc('admin_member_report', { p_start: rep.start, p_end: rep.end });
+  if (error) return errorPanel(box, error, loadReport);
+  rep.rows = data || [];
+  const active = rep.rows.filter((r) => r.activities_done > 0).length;
+  const avg = rep.rows.length ? Math.round(rep.rows.reduce((a, r) => a + Number(r.consistency), 0) / rep.rows.length) : 0;
+  $('#r-sum').textContent = `${rep.rows.length} members · ${active} active · avg consistency ${avg}%`;
+  if (!rep.rows.length) { box.innerHTML = `<div class="empty-state"><span class="ic">${icon('users')}</span><b>No members yet</b></div>`; return; }
+  $('#csv').disabled = false;
+  box.innerHTML = `<div class="table-wrap"><table class="rtable"><thead><tr><th>#</th><th>Member</th><th class="n">Points</th><th class="n">Done</th><th class="n">Active days</th><th class="n">Consistency</th><th class="n">Streak</th></tr></thead>
+    <tbody>${rep.rows.map((r, i) => `<tr class="${r.is_active ? '' : 'off'}"><td>${i + 1}</td><td><b>${esc(r.full_name || '(no name)')}</b><small>${esc(r.email)}${r.is_active ? '' : ' · paused'}</small></td>
+      <td class="n num">${formatNumber(r.points)}</td><td class="n">${formatNumber(r.activities_done)}</td><td class="n">${r.active_days}</td><td class="n">${Math.round(r.consistency)}%</td><td class="n">${r.streak}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function csvCell(v) {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;            // stop spreadsheet formula injection
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function downloadCSV() {
+  const head = ['Rank', 'Name', 'Email', 'Phone', 'Joined', 'Status', 'Points', 'Activities done', 'Active days', 'Consistency %', 'Current streak'];
+  const lines = [head, ...rep.rows.map((r, i) => [i + 1, r.full_name, r.email, r.phone, r.joined_on, r.is_active ? 'Active' : 'Paused', r.points, r.activities_done, r.active_days, Math.round(r.consistency), r.streak])]
+    .map((row) => row.map(csvCell).join(','));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `redesign-your-life_${rep.start}_to_${rep.end}.csv` });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('CSV downloaded');
+}
+
+const JQ = [['learned', 'Learned'], ['improved', 'Improved'], ['challenges', 'Challenges'], ['grateful', 'Grateful for'], ['tomorrow', 'Tomorrow']];
+async function loadJournals(date) {
+  const box = $('#j-list');
+  box.innerHTML = `<div class="skeleton" style="height:90px;margin:12px"></div>`;
+  const { data, error } = await supabase.from('journals').select('id, entry_date, learned, improved, challenges, grateful, tomorrow, updated_at, profiles(full_name)')
+    .eq('entry_date', date).eq('share_with_coach', true).order('updated_at', { ascending: false });
+  if (error) return errorPanel(box, error, () => loadJournals(date));
+  box.innerHTML = data?.length ? `<div class="stack" style="gap:0">${data.map((j) => `<details class="j-entry"><summary><b>${esc(j.profiles?.full_name || 'Member')}</b><span class="muted" style="font-size:12.5px">${esc(timeAgo(j.updated_at))}</span></summary>
+      <div class="j-body">${JQ.filter(([k]) => j[k]).map(([k, l]) => `<p><b>${l}</b><br>${esc(j[k])}</p>`).join('')}</div></details>`).join('')}</div>`
+    : `<div class="empty-state"><span class="ic">${icon('notebook-pen')}</span><b>No shared journals for this day</b><span>Members choose whether to share each entry.</span></div>`;
+}
+
 // ---------------- boot ----------------
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings' }[page] || 'dashboard');
+    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
     if (page === 'admin-checkins') await renderCheckins();
     if (page === 'admin-activities') await renderActivities();
     if (page === 'admin-settings') await renderSettings();
+    if (page === 'admin-reports') await renderReports();
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

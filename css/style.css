@@ -124,6 +124,27 @@ p { margin: 0; }
 .seg button { border: 0; background: none; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 800; color: var(--muted); min-height: 34px; }
 .seg button[aria-selected="true"] { background: var(--raise); color: var(--gold-hi); }
 
+/* ---------- shared bars & feeds ---------- */
+.feed { display: flex; flex-direction: column; }
+.feed .row { display: flex; gap: 10px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line-2); font-size: 13.5px; min-width: 0; }
+.feed .row:first-child { border-top: 0; }
+.feed .row .txt { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed time { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.catbars { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.catbar .lbl { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.catbar .lbl span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.catbar .track { height: 10px; border-radius: 10px; background: #26325a; overflow: hidden; }
+.catbar .track i { display: block; height: 100%; border-radius: 10px; }
+.j-entry { border-top: 1px solid var(--line-2); }
+.j-entry:first-child { border-top: 0; }
+details.panel.j-entry { border: 1px solid var(--line-2); }
+.j-entry summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; list-style: none; }
+.j-entry summary::-webkit-details-marker { display: none; }
+.j-entry summary::after { content: "+"; color: var(--gold); font-weight: 800; font-size: 18px; }
+.j-entry[open] summary::after { content: "–"; }
+.j-body { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.j-body b { color: var(--ink); font-size: 12.5px; letter-spacing: .04em; }
+
 /* ---------- app chrome ---------- */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 14px; }
 .topbar .actions { display: flex; gap: 8px; align-items: center; flex: none; }

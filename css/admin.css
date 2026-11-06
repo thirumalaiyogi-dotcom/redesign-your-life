@@ -8,16 +8,6 @@
 .akpi span { font-size: 12px; font-weight: 700; color: var(--muted); }
 .akpi.warn b { color: var(--warn); }
 .admin-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
-.feed { display: flex; flex-direction: column; }
-.feed .row { display: flex; gap: 10px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line-2); font-size: 13.5px; min-width: 0; }
-.feed .row:first-child { border-top: 0; }
-.feed .row .txt { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.feed time { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.catbars { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
-.catbar .lbl { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-.catbar .lbl span { color: var(--muted); font-variant-numeric: tabular-nums; }
-.catbar .track { height: 10px; border-radius: 10px; background: #26325a; overflow: hidden; }
-.catbar .track i { display: block; height: 100%; border-radius: 10px; }
 
 .tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -47,3 +37,14 @@
   .person { grid-template-columns: auto 1fr; }
   .person .acts { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* reports */
+.date-in { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; min-height: 40px; color: var(--ink); max-width: 100%; }
+.table-wrap { overflow-x: auto; }
+.rtable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 560px; }
+.rtable th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+.rtable td { padding: 10px 14px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+.rtable td small { display: block; color: var(--muted); font-size: 12px; }
+.rtable .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rtable td.num { font-family: var(--f-display); font-size: 18px; color: var(--gold-hi); }
+.rtable tr.off { opacity: .55; }
