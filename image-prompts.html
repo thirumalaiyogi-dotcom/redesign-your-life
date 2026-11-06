@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Activity Image Prompts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: one column prompt sheet; each tracker is a band, each activity a row with a copy button. */
+:root{
+  color-scheme:dark;
+  --bg:#070d1f; --surface:#101b3b; --surface-2:#16234a; --line:rgba(160,175,215,.14);
+  --ink:#f4efe3; --ink-2:#c9cfdf; --muted:#8a94b2; --gold:#d9b35c; --gold-hi:#f6e0a0; --ok:#3fbf7f;
+  --f-display:"Big Shoulders Display","Arial Narrow",sans-serif; --f-body:"Manrope",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:820px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 60px;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--f-display);text-transform:uppercase;line-height:.95;margin:0;text-wrap:balance}
+h1{font-size:44px} h1 span{color:var(--gold-hi)}
+h2{font-size:28px}
+p{margin:0}
+.lede{color:var(--ink-2)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.box h3{margin:0;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.box ul{margin:0;padding-left:18px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
+.style{font-size:13.5px;color:var(--ink-2);background:#0b1430;border-radius:10px;padding:12px;border-left:3px solid var(--tc,var(--gold))}
+.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:10px;z-index:5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.tabs a{flex:none;text-decoration:none;font-size:13px;font-weight:800;padding:8px 14px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.tabs a:hover{border-color:var(--gold)}
+section{display:flex;flex-direction:column;gap:12px;scroll-margin-top:70px}
+.sec-h{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.sec-h .n{font-family:var(--f-display);font-size:56px;font-weight:900;line-height:.8;color:var(--tc)}
+.sec-h div{display:flex;gap:12px;align-items:end}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.row .no{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-size:16px;color:#1a1204;background:linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227)}
+.row b{display:block;font-size:15px}
+.row .file{font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace}
+.row p{font-size:13.5px;color:var(--ink-2);margin-top:4px}
+.cp{border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:9px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;min-width:76px}
+.cp.ok{background:var(--ok);border-color:var(--ok);color:#03200f}
+.cp:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+.cp-all{background:linear-gradient(135deg,#f7e5a6,#d9b35c 45%,#9a7227);color:#1a1204;border:0}
+@media (max-width:520px){.row{grid-template-columns:auto 1fr}.row .cp{grid-column:1/-1}h1{font-size:36px}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <span style="font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)">Redesign Your Life · 58 activities</span>
+    <h1>Activity <span>image prompts</span></h1>
+    <p class="lede">Copy button அழுத்தினா, அந்த activity prompt-ஓட tracker style-ம் சேர்ந்தே copy ஆகும். ChatGPT, Gemini அல்லது Ideogram-ல paste பண்ணி image உருவாக்குங்க.</p>
+  </header>
+
+  <div class="box">
+    <h3>Image rules</h3>
+    <ul>
+      <li>Size: <b>4:3 landscape</b> (1024×768). Subject நடுவில், ஓரங்களில் கொஞ்சம் இடம் விடுங்க.</li>
+      <li>Image-க்குள்ள <b>எழுத்து வேண்டாம்</b>. Activity பெயரை app தானே மேல காட்டும்.</li>
+      <li>உண்மையான பிரபலங்களின் முகம் வேண்டாம். Kohli, Arnold மாதிரி யாரும் வேண்டாம், அனுமதி இல்லாம client app-ல போட முடியாது.</li>
+      <li>Save பண்ணும்போது file பெயர்: <code>wealth-01.webp</code> மாதிரி. WebP-ஆ, 150 KB-க்குள்ள இருக்கணும்.</li>
+      <li>Phase 2-ல Admin → Activities page-ல upload பண்ணலாம். Image இல்லைன்னா icon தானா தெரியும்.</li>
+    </ul>
+  </div>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div id="list" style="display:flex;flex-direction:column;gap:34px"></div>
+</div>
+
+<script>
+const T=[
+ {k:'wealth',n:16,name:'Wealth Habits',c:'#e7b54a',
+  style:'Bright, warm golden-hour photorealistic scene, soft sunrise light, misty green mountains or a sunlit cosy room in the background, rich gold and cream highlights, uplifting and fresh mood, shallow depth of field, cinematic, high detail, no text, no logos, 4:3 landscape.',
+  a:[
+  ['E Wakeup','a young Indian man stretching his arms joyfully beside his bed at sunrise, digital clock showing 5:00, sunlight streaming through the window, potted plants'],
+  ['E Bowel','a spotless modern white bathroom with a clean toilet, a small green plant and soft morning light, calm and hygienic feel'],
+  ['Hydrate','a crystal clear glass of water with a big splash, sunlit leaves in the background, sparkling droplets'],
+  ['Forgiveness','two open cupped hands holding a glowing red heart, warm golden bokeh behind'],
+  ['Gratitude','an open spiral notebook on a wooden desk with a handwritten heart doodle, a pen, green leaves, warm light'],
+  ['Affirmations','a calm young Indian man with headphones, eyes closed, smiling peacefully, soft golden sound waves around him'],
+  ['Journaling','a hand writing in a spiral journal with a fountain pen, warm desk lamp glow, cosy wooden table'],
+  ['Revision','a neat stack of three hardcover books in blue, gold and navy on a desk, a small plant, morning light'],
+  ['Move Body EFT','a fit young Indian man doing a deep lunge stretch on a riverside walkway at sunrise, city skyline behind'],
+  ['Meditate CBV','a silhouette of a person meditating cross-legged on a hilltop facing a golden sunrise over layered mountains'],
+  ['E Be Happy','a glossy yellow 3D smiley ball resting on a wooden table, glowing sunlit green background'],
+  ['Live VBS','a young man pinning photos on a vision board with images of a beach, a car and a house, warm room light, seen from behind'],
+  ['Ikigai L','a man seen from behind looking at a wooden signpost with four blank arrows pointing different ways, mountains at sunrise'],
+  ['Unique Skill','a glowing light bulb above an open laptop surrounded by floating icons of a camera, music note, chart and book, dark desk with golden glow'],
+  ['Giving','one hand gently placing a red heart into another open hand, soft green and gold bokeh'],
+  ['80/20 To Do List','a spiral notepad with three neat ticked checkboxes, a pen and a plant, top-down view on a wooden desk']]},
+ {k:'conscious',n:10,name:'Conscious Habits',c:'#e0605a',
+  style:'Cinematic photorealistic scene showing the person in control of the habit, deep navy and charcoal tones with a subtle warm red rim light, moody but hopeful, calm composition, high detail, no text, no prohibition signs, no logos, 4:3 landscape.',
+  a:[
+  ['Late Night Sleep','a young Indian man sleeping peacefully in a dark bedroom, phone face-down on the side table, soft moonlight through the window'],
+  ['Mobile Distractions','a smartphone placed face-down on a desk while a person reads a paper book in warm lamp light'],
+  ['News','a TV switched off in a calm living room, a man sitting with a cup of tea looking out the window at dawn'],
+  ['Sugar','a bowl of fresh fruit in focus in front, a blurred plate of donuts and cola pushed to the background'],
+  ['Environment','a clean, organised study desk with a plant and warm light, everything neatly arranged'],
+  ['Friends','three friends laughing together on a rooftop at dusk, city lights behind, warm supportive mood'],
+  ['False Identity','a man lowering a white theatre mask from his face, revealing a calm genuine expression, dramatic side light'],
+  ['Mental Diarrhea - FAW','a man sitting calmly with eyes closed while faint grey storm clouds above his head dissolve into light'],
+  ['Excuses','a man standing up from a sofa and lacing his running shoes, morning light, sense of starting now'],
+  ['Chasing Money','a man walking toward a glowing sunrise on a path, a pile of banknotes left behind him in shadow']]},
+ {k:'karma',n:16,name:'Karma Activities',c:'#f08a3c',
+  style:'Symbolic spiritual illustration, glossy 3D photoreal style, deep navy background with warm saffron and gold glow, soft divine light rays, centred single object or silhouette, serene and meaningful, high detail, no text, no logos, 4:3 landscape.',
+  a:[
+  ['Cycle - Desire + Action + Memory - Repeat','a glowing golden infinity symbol with blue light orbs inside each loop, sparkling energy'],
+  ['Action Reaction','a chrome Newton’s cradle with one golden ball swinging out, reflective surface'],
+  ['Cause & Effect','two curved golden arrows forming a circle, a falling domino at one end and a glowing seed sprouting at the other'],
+  ['What Is in Your Cup','a hand holding a steel tea cup being shaken so tea splashes out, calm lake background'],
+  ['Thought Pattern','a side-profile human head silhouette with a colourful glowing brain and neural light patterns'],
+  ['Intention','a small figure climbing glowing steps toward a golden pillar crowned with a laurel, chalkboard texture behind'],
+  ['Tathastu','a raised open palm in blessing pose with a rudraksha bracelet, a soft saffron brush stroke behind'],
+  ['Accounts - Karmic Debt','an ornate golden balance scale perfectly level, soft spotlight from above'],
+  ['Forgiveness & Gratitude','a silhouette with arms wide open on a hill against a radiant golden sunrise'],
+  ['Responsibility','two hands holding a white card toward the viewer, warm background, sense of ownership'],
+  ['Conscious Choice','a wooden signpost with two arrows at a fork in a road through green fields at sunrise'],
+  ['God Vs Free Will','a person meditating in silhouette beneath a large glowing trishul and Om light, cosmic blue and gold sky'],
+  ['Mango Seed','a ripe golden mango cut in half showing its large seed, a small green sprout growing beside it'],
+  ['Salliyan Vs Karma Veerar Kamarajar','symbolic still life: a simple folded white khadi shawl and plain round spectacles on a wooden table, an ornate golden king’s crown pushed aside in shadow, humble warm light'],
+  ['Offering - Liberation','a single brass diya oil lamp with a bright flame, soft golden smoke, dark navy background'],
+  ['Benevolence - Selflessness','two cupped hands holding a glowing golden heart of light, rays spreading outward']]},
+ {k:'champion',n:16,name:'Champion Mindsets',c:'#5b8cf0',
+  style:'Epic sports-championship photorealistic scene, golden-hour stadium lights and lens flares, royal blue and gold palette, dramatic sunset sky, heroic and energetic mood, high detail, cinematic, no text, no logos, no real celebrities, 4:3 landscape.',
+  a:[
+  ['Winning Cup - Be Your Best Self','a shining golden trophy cup with red ribbons on a pedestal in a floodlit stadium'],
+  ['Challenges / Risks - Part of Game','one climber pulling another up a steep rocky ridge at sunset, mountains behind'],
+  ['Burning Desire - Dream Big','a man raising his fist on a mountain summit with a small red flag, glowing sunset'],
+  ['Willpower - Never Give Up','a close-up of a strong hand gripping a thick rope tightly, warm light'],
+  ['Nothing Is Impossible - Keep Trying New','an athlete leaping across a gap between two rocks against a golden sky'],
+  ['Process - Steps - Don\'t Cut Corners','golden stone steps rising up a hill to a small red flag at the top, each step clear and solid'],
+  ['Enjoy Pain - No Pain No Gain','a muscular athlete pushing a huge tractor tyre on a field at sunset'],
+  ['Collective Responsibility','a cricket team in blue jerseys in a tight huddle, arms around each other, seen from behind'],
+  ['Sportsmanship - Learn from Competitors','two cricketers from opposite teams, one in blue and one in yellow, shaking hands warmly in a stadium'],
+  ['Preparation - Practice - Push Consistently','a cricketer batting in practice nets with a basket of balls, evening light'],
+  ['No Ego - No Fear - Make Country Proud','a person seen from behind holding an Indian flag over their shoulders, facing a floodlit stadium'],
+  ['Physical Fitness - Diet','dumbbells beside a bowl of colourful fresh fruit and a shaker bottle, clean studio light'],
+  ['Perform Under Pressure - Last Minute Comeback','a cricketer roaring in celebration with a glowing stadium scoreboard behind showing only numbers'],
+  ['Self Worth - Emotional Detachment','a calm meditating silhouette with a softly glowing golden crown floating above the head, sunset'],
+  ['Focus Next Ball - Present Moment - Meditation','a red cricket ball in sharp focus on green grass, a meditating figure softly blurred behind'],
+  ['Self Awareness - Self Control','a calm man meditating inside a soft circle of light, faint icons of phone, junk food and game controller fading around him']]}
+];
+const pad=n=>String(n).padStart(2,'0');
+const full=(t,a)=>`${a[1]}. ${t.style}`;
+document.getElementById('tabs').innerHTML=T.map(t=>`<a href="#${t.k}" style="border-color:${t.c}">${t.n} ${t.name}</a>`).join('');
+document.getElementById('list').innerHTML=T.map(t=>`
+<section id="${t.k}" style="--tc:${t.c}">
+ <div class="sec-h"><div><span class="n">${t.n}</span><h2>${t.name}</h2></div><button class="cp cp-all" data-all="${t.k}">Copy all ${t.n}</button></div>
+ <p class="style"><b style="color:var(--ink)">Style (auto-added):</b> ${t.style}</p>
+ ${t.a.map((a,i)=>`<div class="row"><span class="no">${pad(i+1)}</span><div style="min-width:0"><b>${a[0]}</b><span class="file">${t.k}-${pad(i+1)}.webp</span><p>${a[1]}</p></div><button class="cp" data-k="${t.k}" data-i="${i}">Copy</button></div>`).join('')}
+</section>`).join('');
+async function copy(text,btn){
+  const done=()=>{const o=btn.textContent;btn.textContent='Copied ✓';btn.classList.add('ok');setTimeout(()=>{btn.textContent=o;btn.classList.remove('ok')},1600)};
+  try{await navigator.clipboard.writeText(text);done()}
+  catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(_){btn.textContent='Long-press to copy'}ta.remove()}
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.cp');if(!b)return;
+  if(b.dataset.all){const t=T.find(x=>x.k===b.dataset.all);copy(t.a.map((a,i)=>`${t.k}-${pad(i+1)} · ${a[0]}\n${full(t,a)}`).join('\n\n'),b)}
+  else{const t=T.find(x=>x.k===b.dataset.k);copy(full(t,t.a[+b.dataset.i]),b)}
+});
+</script>
