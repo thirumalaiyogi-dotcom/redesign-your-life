@@ -4,6 +4,11 @@
 // After editing, push to GitHub; the site updates in 1–2 minutes.
 // =====================================================================
 
+// Landing page (index.html) on/off.
+//   false → the site opens straight on the login screen; program/coach details are hidden.
+//   true  → the full landing page with Deepak's details comes back. Nothing else to change.
+export const LANDING_PAGE = false;
+
 export const COACH = {
   name: 'Deepak Rajkumar',
   title: 'Certified EFT Tapping Specialist',

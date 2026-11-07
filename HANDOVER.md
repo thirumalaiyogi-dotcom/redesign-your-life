@@ -22,6 +22,8 @@
 
 ## Coach details, testimonials and the next workshop
 All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: open the file → pencil icon → edit → Commit). The site updates in 1–2 minutes.
+
+**Landing page on/off:** at the top of that file, `LANDING_PAGE = false` means the site opens straight on the login screen (no program/coach page). Change it to `true` to bring the full landing page back.
 - **Next workshop:** change `title`, `start` (yyyy-mm-dd), `days`, `time`, `where`. It shows on the landing page and on members' Home from today until the last day, then hides by itself. Set `WORKSHOP = null` to hide it.
 - **Payment link:** paste the Razorpay page link into `registerUrl`; a "Register & pay" button appears next to WhatsApp.
 - **Testimonials:** add or remove lines in `TESTIMONIALS` (name, photo in `assets/coach/`, quote). Show only people who agreed to be shown.

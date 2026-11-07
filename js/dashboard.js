@@ -10,7 +10,7 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
-import { COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
+import { LANDING_PAGE, COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
 
 const page = document.body.dataset.page;
 const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
@@ -526,7 +526,7 @@ function renderProfile() {
         <img src="${app(COACH.face)}" alt="" width="56" height="56">
         <div><small>Your coach</small><b>${esc(COACH.name)}</b><span>${esc(COACH.title)}</span></div>
         <div class="cm-acts"><a class="btn btn-sm btn-wa" href="${waLink()}" target="_blank" rel="noopener">${icon('message-square')}WhatsApp</a>
-          <a class="btn btn-sm btn-ghost" href="${app('index.html')}#coach-sec">About</a></div>
+          ${LANDING_PAGE ? `<a class="btn btn-sm btn-ghost" href="${app('index.html')}#coach-sec">About</a>` : ''}</div>
       </section>
       <section class="card set-links" aria-label="More">
         ${link('member/progress.html', 'trending-up', 'My progress', 'Points chart, trackers and badges')}

@@ -1,3 +1,5 @@
+/* hidden until js/index.js decides whether the landing page is on */
+body.gate { visibility: hidden; }
 /* =====================================================================
    Landing page — Redesign 2.0 Phase 6
    The hero is a fixed deep-green brand panel (same in both themes);
