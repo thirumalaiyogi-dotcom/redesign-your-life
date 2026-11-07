@@ -56,10 +56,10 @@
 .hc-photo { position: absolute; inset: 7%; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, #2B5A4B, #102A21 70%); box-shadow: 0 30px 60px -24px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(230, 201, 140, .25); }
 .hc-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 72% 16%; transform: scale(1.32); transform-origin: 72% 30%; }
 .hc-chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(12, 32, 25, .78); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .7); animation: floaty 6s ease-in-out infinite; }
-.hc-stories { left: -2%; top: 10%; flex-direction: column; align-items: flex-start; gap: 0; }
+.hc-stories { right: -4%; top: 0; flex-direction: column; align-items: flex-start; gap: 0; }
 .hc-stories b { font-family: var(--f-display); font-size: 24px; font-weight: 800; color: #F1D597; line-height: 1; }
 .hc-stories span { font-size: 11.5px; color: #CBD5CE; }
-.hc-tick { right: -4%; top: 46%; animation-delay: -3s; }
+.hc-tick { left: -6%; bottom: 20%; animation-delay: -3s; }
 .hc-tick .ok { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #56C995; color: #062015; flex: none; }
 .hc-tick .ok .icon { width: 17px; height: 17px; stroke-width: 3; }
 .hc-tick b { display: block; font-size: 13px; color: #fff; }
@@ -82,7 +82,8 @@
   .hero-coach { width: min(100%, 320px); }
   .hc-chip { padding: 8px 11px; border-radius: 14px; }
   .hc-stories b { font-size: 19px; }
-  .hc-tick { right: -2%; }
+  .hc-tick { left: -3%; }
+  .hc-stories { right: -2%; }
   .hc-tick b { font-size: 12px; }
   .hero-stats li { padding: 10px 8px 8px; border-radius: 14px; }
   .hero-stats b { font-size: 20px; }
