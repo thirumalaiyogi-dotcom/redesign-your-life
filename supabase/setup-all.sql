@@ -835,6 +835,56 @@ end; $$;
 
 
 -- ---------------------------------------------------------------------
+-- COACH: per-member progress (read-only). Coaches and super admins only.
+-- ---------------------------------------------------------------------
+-- One row per member for a day: how many of the active activities they
+-- marked done / not done, removed ticks, and points from habits that day.
+create or replace function public.admin_day_summary(p_date date default null)
+returns table(member_id uuid, full_name text, avatar_url text, is_active boolean, joined_on date,
+              done int, not_done int, removed int, points int, last_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := coalesce(p_date, public.app_today());
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query
+  select p.id, p.full_name, p.avatar_url, p.is_active, p.joined_on,
+         coalesce(count(*) filter (where c.status = 'done' and c.voided_at is null), 0)::int,
+         coalesce(count(*) filter (where c.status = 'not_done' and c.voided_at is null), 0)::int,
+         coalesce(count(*) filter (where c.voided_at is not null), 0)::int,
+         coalesce(sum(c.points_awarded) filter (where c.voided_at is null), 0)::int,
+         max(c.updated_at)
+  from public.profiles p
+  left join (public.daily_checkins c
+             join public.activities a on a.id = c.activity_id and a.is_active
+             join public.tracker_categories t on t.id = a.category_id and t.is_active)
+         on c.member_id = p.id and c.checkin_date = d
+  where p.role = 'member' and p.joined_on <= d
+  group by p.id
+  order by max(c.updated_at) desc nulls last, p.full_name;
+end; $$;
+
+-- One member's check-ins for a date range (max 62 days), for the coach's member page.
+create or replace function public.admin_member_checkins(p_member uuid, p_start date, p_end date)
+returns table(id uuid, checkin_date date, activity_id uuid, status text, note text, points_awarded smallint,
+              voided_at timestamptz, void_reason text, voided_by_name text, updated_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  if p_member is null or p_start is null or p_end is null or p_end < p_start or p_end - p_start > 62 then
+    raise exception 'Choose a member and a date range of up to 62 days.' using errcode = '22023';
+  end if;
+  return query
+  select c.id, c.checkin_date, c.activity_id, c.status, c.note, c.points_awarded,
+         c.voided_at, c.void_reason, vb.full_name, c.updated_at
+  from public.daily_checkins c
+  left join public.profiles vb on vb.id = c.voided_by
+  where c.member_id = p_member and c.checkin_date between p_start and p_end
+  order by c.checkin_date desc, c.updated_at desc;
+end; $$;
+
+-- ---------------------------------------------------------------------
 -- MEMBER: streak summary (Redesign 2.0 dashboard). Read-only, own data only.
 -- Uses the same rule as _streak(): a day counts when it has >= streak_min_daily
 -- done (not removed) ticks. Longest = the longest such run of consecutive days.
@@ -877,7 +927,8 @@ grant execute on function
   public.admin_set_role(uuid, text), public.admin_set_active(uuid, boolean),
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
   public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people(),
-  public.admin_checkins(date, text, text, text, int)
+  public.admin_checkins(date, text, text, text, int),
+  public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

@@ -8,8 +8,8 @@ Method: a permission audit of the live database, attack tests run as a real memb
 | Area | Result |
 |---|---|
 | Live attack test (member account) | **62 of 62 attempts blocked** |
-| Local SQL security & scoring suite | **52 of 52 pass** (2.0 Phase 1) |
-| Browser suites (auth, trackers, coach tools, leaderboard, journal, PWA, 2.0 dashboard & themes) | **606 of 606 pass** (2.0 + coach content + new landing hero), with the CSP active and no violations |
+| Local SQL security & scoring suite | **55 of 55 pass** (incl. coach progress functions: members and visitors refused) |
+| Browser suites (auth, trackers, coach tools, leaderboard, journal, PWA, 2.0 dashboard & themes) | **633 of 633 pass** (2.0 + coach content + per-member progress), with the CSP active and no violations |
 | Injected script, `onerror` XSS, outside image | all refused by the CSP |
 | App loaded inside another site's frame | hides itself |
 
@@ -28,7 +28,7 @@ Method: a permission audit of the live database, attack tests run as a real memb
 - **Row Level Security on all 11 tables.** Members see only their own rows. Coaches see members' data, but journals only when the member shares them.
 - **No direct writes to scores or check-ins.** They change only through `mark_activity()` (today only, one row per activity per day, never negative points) and the coach functions.
 - **Column-level grants.** Members can edit only their own name, phone and avatar, never their role or status. Coaches can edit only an activity's description, image, points and visibility; names and numbers are locked by a trigger.
-- **19 `SECURITY DEFINER` functions** (2.0 added the read-only `get_my_streaks()`). Each checks the caller's role first and pins `search_path = ''`. Nothing is executable by `anon`. Supabase's advisor lists these as "callable by signed-in users"; that's intended, because each one enforces its own role check.
+- **21 `SECURITY DEFINER` functions** (2.0 added the read-only `get_my_streaks()` for members, and the read-only coach-only `admin_day_summary()` and `admin_member_checkins()` for the per-member progress view). Each checks the caller's role first and pins `search_path = ''`. Nothing is executable by `anon`. Supabase's advisor lists these as "callable by signed-in users"; that's intended, because each one enforces its own role check.
 - **Audit log** of every coach and admin action.
 - **Images** are limited by database constraints to the app's own files or this project's storage, so no tracking pixels or outside links.
 - **Frontend.** All user text is HTML-escaped. There are no inline scripts or inline event handlers. A strict Content-Security-Policy is set (meta tag on every page; also a header on Vercel). Logins redirect only to same-site paths. CSV export guards against formula injection. A clickjacking guard is on. Only the public anon key is in the code.

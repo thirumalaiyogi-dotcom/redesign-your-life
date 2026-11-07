@@ -1,7 +1,7 @@
 // Service worker — Deepak's Redesign Your Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v11';
+const VERSION = 'ryl-v12';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;

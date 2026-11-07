@@ -2,7 +2,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
-         formatDate, formatToday, formatNumber } from './ui.js';
+         formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
 const page = document.body.dataset.page;
 const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
@@ -100,6 +100,7 @@ function personHTML(p) {
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
       <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
+      ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
   </article>`;
@@ -230,7 +231,7 @@ function bonusDialog(p) {
 }
 
 // ---------------- CHECK-INS ----------------
-let ci = { date: null, tracker: '', status: '', q: '', rows: [] };
+let ci = { date: null, tracker: '', status: '', q: '', rows: [], seq: 0, view: (() => { try { return sessionStorage.getItem('ryl.ci.view') || 'members'; } catch { return 'members'; } })(), people: [], total: 58 };
 const istToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 
 async function renderCheckins() {
@@ -238,19 +239,25 @@ async function renderCheckins() {
   ci.date = ci.date || istToday();
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">Members tick, points are instant. Remove fake ticks here.</span><h1>Check-ins</h1></div></div>
+  <div class="seg seg-2v" role="tablist" aria-label="View">
+    <button role="tab" data-view="members" aria-selected="${ci.view === 'members'}">${icon('users')}By member</button>
+    <button role="tab" data-view="entries" aria-selected="${ci.view === 'entries'}">${icon('list-checks')}All entries</button></div>
   <div class="tools">
     <label class="field" style="flex:none;gap:4px"><span class="visually-hidden">Date</span><input id="ci-date" type="date" value="${ci.date}" max="${istToday()}" style="min-height:42px;padding:8px 12px"></label>
     <label class="search">${icon('search')}<input id="ci-q" type="search" placeholder="Search member or activity" aria-label="Search check-ins" value="${esc(ci.q)}"></label>
   </div>
-  <div class="tools"><div class="chips" role="group" aria-label="Tracker">${[['', 'All trackers'], ['wealth', 'Wealth'], ['conscious', 'Conscious'], ['karma', 'Karma'], ['champion', 'Champion']].map(([v, l]) =>
+  <div class="tools ci-entries"><div class="chips" role="group" aria-label="Tracker">${[['', 'All trackers'], ['wealth', 'Wealth'], ['conscious', 'Conscious'], ['karma', 'Karma'], ['champion', 'Champion']].map(([v, l]) =>
       `<button class="chip" data-tr="${v}" aria-pressed="${ci.tracker === v}">${l}</button>`).join('')}</div></div>
-  <div class="tools"><div class="chips" role="group" aria-label="Status">${[['', 'All'], ['done', 'Done'], ['not_done', 'Not done'], ['removed', 'Removed']].map(([v, l]) =>
+  <div class="tools ci-entries"><div class="chips" role="group" aria-label="Status">${[['', 'All'], ['done', 'Done'], ['not_done', 'Not done'], ['removed', 'Removed']].map(([v, l]) =>
       `<button class="chip" data-st="${v}" aria-pressed="${ci.status === v}">${l}</button>`).join('')}</div><span class="muted" id="ci-count" style="font-size:13px"></span></div>
   <div id="ci-list"></div>`;
   let t;
-  $('#ci-q').addEventListener('input', (e) => { ci.q = e.target.value; clearTimeout(t); t = setTimeout(loadCheckins, 300); });
+  $('#ci-q').addEventListener('input', (e) => { ci.q = e.target.value; clearTimeout(t); t = setTimeout(ci.view === 'members' ? drawMembersDay : loadCheckins, ci.view === 'members' ? 0 : 300); });
   $('#ci-date').addEventListener('change', (e) => { ci.date = e.target.value || istToday(); loadCheckins(); });
   main.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-view]');
+    if (v) { ci.view = v.dataset.view; try { sessionStorage.setItem('ryl.ci.view', ci.view); } catch { /* ignore */ }
+      $$('[data-view]').forEach((b) => b.setAttribute('aria-selected', String(b === v))); return loadCheckins(); }
     const tr = e.target.closest('[data-tr]'); if (tr) { ci.tracker = tr.dataset.tr; $$('[data-tr]').forEach((b) => b.setAttribute('aria-pressed', String(b === tr))); return loadCheckins(); }
     const st = e.target.closest('[data-st]'); if (st) { ci.status = st.dataset.st; $$('[data-st]').forEach((b) => b.setAttribute('aria-pressed', String(b === st))); return loadCheckins(); }
     const rm = e.target.closest('[data-void]'); if (rm) return voidDialog(ci.rows.find((r) => r.id === rm.dataset.void));
@@ -259,9 +266,15 @@ async function renderCheckins() {
 }
 
 async function loadCheckins() {
+  const seq = ++ci.seq;   // a newer load (view or filter change) wins over an older one still in flight
+  $$('.ci-entries').forEach((el) => { el.hidden = ci.view === 'members'; });
+  $('#ci-q').placeholder = ci.view === 'members' ? 'Search member' : 'Search member or activity';
+  if (ci.view === 'members') return loadMembersDay(seq);
+  $('#ci-summary')?.remove();
   const list = $('#ci-list');
   list.innerHTML = `<div class="skeleton" style="height:72px"></div><div class="skeleton" style="height:72px;margin-top:10px"></div>`;
   const { data, error } = await supabase.rpc('admin_checkins', { p_date: ci.date, p_tracker: ci.tracker || null, p_status: ci.status || null, p_search: ci.q || null, p_limit: 300 });
+  if (seq !== ci.seq) return;
   if (error) return errorPanel(list, error, loadCheckins);
   ci.rows = data || [];
   $('#ci-count').textContent = `${ci.rows.length}${ci.rows.length === 300 ? '+' : ''} entries`;
@@ -271,6 +284,44 @@ async function loadCheckins() {
   }
   list.innerHTML = `<div class="people">${ci.rows.map(checkinHTML).join('')}</div>`;
 }
+
+// ---- By member: one card per member for the chosen day (admin_day_summary) ----
+async function loadMembersDay(seq = ++ci.seq) {
+  const list = $('#ci-list');
+  list.innerHTML = `<div class="skeleton" style="height:96px"></div><div class="skeleton" style="height:96px;margin-top:10px"></div>`;
+  const [sum, cnt] = await Promise.all([
+    supabase.rpc('admin_day_summary', { p_date: ci.date }),
+    supabase.from('activities').select('id, tracker_categories!inner(is_active)', { count: 'exact', head: true }).eq('is_active', true).eq('tracker_categories.is_active', true)
+  ]);
+  if (seq !== ci.seq) return;
+  if (sum.error) return errorPanel(list, sum.error, () => loadMembersDay());
+  ci.people = sum.data || []; ci.total = cnt.count || 58;
+  drawMembersDay();
+}
+function drawMembersDay() {
+  const list = $('#ci-list'), q = ci.q.trim().toLowerCase();
+  const rows = ci.people.filter((p) => !q || (p.full_name || '').toLowerCase().includes(q));
+  const started = ci.people.filter((p) => p.done + p.not_done > 0).length;
+  $('#ci-count').textContent = '';
+  $('#ci-summary')?.remove();
+  list.insertAdjacentHTML('beforebegin', `<p class="muted" id="ci-summary" style="font-size:13px">${started} of ${ci.people.length} members marked habits on ${esc(niceDate(ci.date))}</p>`);
+  if (!rows.length) {
+    list.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('users')}</span><b>${q ? 'No member matches' : 'No members yet'}</b><span>${q ? 'Try another name.' : 'Share the join link from Members.'}</span></div>`;
+    return;
+  }
+  list.innerHTML = `<div class="mday">${rows.map((p) => {
+    const left = Math.max(0, ci.total - p.done - p.not_done);
+    const pct = ci.total ? Math.round(100 * p.done / ci.total) : 0;
+    const state = !p.done && !p.not_done ? ['s-none', 'Not started'] : left === 0 ? ['s-done', 'All marked'] : ['s-prog', 'In progress'];
+    return `<a class="mcard ${p.is_active ? '' : 'paused'}" href="${app(`admin/member.html?id=${p.member_id}&d=${ci.date}`)}">
+      ${ringHTML(pct, { size: 52, stroke: 5, mid: `${pct}%` })}
+      <div class="mc-body"><div class="mc-top"><b>${esc(p.full_name || 'Member')}</b><span class="state ${state[0]}">${state[1]}</span></div>
+        <div class="counts"><span class="c-ok"><i></i><b>${p.done}</b> done</span><span class="c-no"><i></i><b>${p.not_done}</b> not done</span><span class="c-left"><i></i><b>${left}</b> not marked</span>${p.removed ? `<span class="c-rm"><i></i><b>${p.removed}</b> removed</span>` : ''}</div>
+        <small>${p.last_at ? `Last tick ${esc(timeAgo(p.last_at))} · +${p.points} pts` : p.is_active ? 'No ticks yet' : 'Paused'}</small></div>
+      <span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`; }).join('')}</div>`;
+  animateIn(list);
+}
+const niceDate = (iso) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 function checkinHTML(r) {
   const removed = !!r.voided_at;
@@ -285,7 +336,7 @@ function checkinHTML(r) {
       <button class="btn btn-sm btn-bad" data-void="${r.id}">${icon('x')}Remove</button>` : ''}</div></article>`;
 }
 
-function voidDialog(r) {
+function voidDialog(r, after = loadCheckins) {
   formDialog({
     title: 'Remove this tick?',
     body: `<b>${esc(r.member_name)}</b> · ${esc(r.activity_name)}<br>Their ${r.points_awarded} points and any bonus that depended on it are taken back. They see your reason and cannot re-tick this activity today.`,
@@ -297,10 +348,131 @@ function voidDialog(r) {
       const { error } = await supabase.rpc('admin_void_checkin', { p_checkin_id: r.id, p_reason: why });
       if (error) { toast(friendlyError(error), 'bad'); return false; }
       toast('Tick removed · member notified');
-      loadCheckins();
+      after();
       return true;
     }
   });
+}
+
+// ---------------- MEMBER PROGRESS (coach) ----------------
+const mp = { id: null, date: null, person: null, acts: [], cats: [], range: [], filter: 'all' };
+const addDaysIso = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+async function renderMember() {
+  const main = $('#main');
+  const qs = new URLSearchParams(location.search);
+  mp.id = qs.get('id'); mp.date = /^\d{4}-\d{2}-\d{2}$/.test(qs.get('d') || '') ? qs.get('d') : istToday();
+  if (mp.date > istToday()) mp.date = istToday();
+  main.innerHTML = `<div class="skeleton" style="height:140px"></div><div class="skeleton" style="height:120px"></div><div class="skeleton" style="height:320px"></div>`;
+  if (!/^[0-9a-f-]{36}$/.test(mp.id || '')) return errorPanel(main, new Error('Member not found.'), () => { location.href = app('admin/members.html'); }, 'Member not found');
+  const [people, cats, acts] = await Promise.all([
+    supabase.rpc('admin_list_people'),
+    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('is_active', true).order('sort_order'),
+    supabase.from('activities').select('id, category_id, number, default_name, points').eq('is_active', true).order('number')
+  ]);
+  const err = people.error || cats.error || acts.error;
+  if (err) return errorPanel(main, err, renderMember);
+  mp.person = (people.data || []).find((p) => p.id === mp.id);
+  if (!mp.person) return errorPanel(main, new Error('This member was not found.'), () => { location.href = app('admin/members.html'); }, 'Member not found');
+  mp.cats = cats.data || [];
+  const catIds = new Set(mp.cats.map((c) => c.id));
+  mp.acts = (acts.data || []).filter((a) => catIds.has(a.category_id));
+  const today = istToday(), p = mp.person;
+  const { data: rep, error: repErr } = await supabase.rpc('admin_member_report', { p_start: p.joined_on > today ? today : p.joined_on, p_end: today });
+  const st = repErr ? null : (rep || []).find((r) => r.member_id === p.id);
+  main.innerHTML = `
+    <a class="back-link" href="${app('admin/checkins.html')}">${icon('chevron-left')}Check-ins</a>
+    <section class="card mp-head">
+      <div class="mp-id"><span class="avatar lg" aria-hidden="true">${esc(initials(p.full_name, p.email))}</span>
+        <div><div class="mp-name"><h1>${esc(p.full_name || 'Member')}</h1>${p.is_active ? '' : '<span class="pill none">Paused</span>'}</div>
+          <p>${esc(p.email || '')}${p.phone ? ' · ' + esc(p.phone) : ''}</p><small>Joined ${esc(formatDate(p.joined_on))}</small></div></div>
+      ${st ? `<div class="mp-stats"><div class="stat pts"><small>Total points</small><b>${formatNumber(st.points)}</b></div>
+        <div class="stat"><small>Streak</small><b>${st.streak} ${st.streak === 1 ? 'day' : 'days'}</b></div>
+        <div class="stat"><small>Consistency</small><b>${Math.round(st.consistency)}%</b></div>
+        <div class="stat"><small>Habits done</small><b>${formatNumber(st.activities_done)}</b></div></div>` : ''}
+    </section>
+    <div class="mp-nav"><button class="iconbtn" id="mp-prev" aria-label="Previous day">${icon('chevron-left')}</button>
+      <input type="date" id="mp-date" class="date-in" value="${mp.date}" max="${today}" min="${p.joined_on}" aria-label="Day">
+      <button class="iconbtn" id="mp-next" aria-label="Next day">${icon('chevron-right')}</button>
+      <button class="btn btn-sm btn-ghost" id="mp-today">Today</button></div>
+    <section class="card card-pad" aria-label="Last 14 days"><div class="card-h"><h3>Last 14 days</h3><span class="sub-r muted" style="font-size:12.5px">Tap a day to open it</span></div><div class="mp-strip" id="mp-strip"></div></section>
+    <div id="mp-day"></div>`;
+  $('#mp-date').addEventListener('change', (e) => goDay(e.target.value));
+  $('#mp-prev').addEventListener('click', () => goDay(addDaysIso(mp.date, -1)));
+  $('#mp-next').addEventListener('click', () => goDay(addDaysIso(mp.date, 1)));
+  $('#mp-today').addEventListener('click', () => goDay(today));
+  main.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-day]'); if (d) return goDay(d.dataset.day);
+    const f = e.target.closest('[data-mf]'); if (f) { mp.filter = f.dataset.mf; return drawDay(); }
+    const rm = e.target.closest('[data-void]');
+    if (rm) { const r = mp.range.find((x) => x.id === rm.dataset.void); const a = mp.acts.find((x) => x.id === r?.activity_id);
+      if (r && a) voidDialog({ ...r, member_name: p.full_name, activity_name: a.default_name }, loadMemberDays); }
+  });
+  await loadMemberDays();
+}
+
+function goDay(d) {
+  const p = mp.person, today = istToday();
+  if (!d || d > today || d < p.joined_on) return;
+  mp.date = d; $('#mp-date').value = d;
+  history.replaceState(null, '', `?id=${mp.id}&d=${d}`);
+  const inStrip = d >= addDaysIso(today, -13);
+  inStrip ? (drawStrip(), drawDay()) : loadMemberDays();
+}
+
+async function loadMemberDays() {
+  const today = istToday();
+  const start = mp.date < addDaysIso(today, -13) ? mp.date : addDaysIso(today, -13);
+  const { data, error } = await supabase.rpc('admin_member_checkins', { p_member: mp.id, p_start: start < addDaysIso(today, -62) ? addDaysIso(today, -62) : start, p_end: today });
+  if (error) return errorPanel($('#mp-day'), error, loadMemberDays);
+  mp.range = data || [];
+  drawStrip(); drawDay();
+}
+
+function drawStrip() {
+  const today = istToday(), ids = new Set(mp.acts.map((a) => a.id)), total = mp.acts.length || 1;
+  const days = Array.from({ length: 14 }, (_, i) => addDaysIso(today, i - 13));
+  $('#mp-strip').innerHTML = days.map((d) => {
+    const pre = d < mp.person.joined_on;
+    const done = mp.range.filter((r) => r.checkin_date === d && r.status === 'done' && !r.voided_at && ids.has(r.activity_id)).length;
+    const pct = Math.round(100 * done / total);
+    return `<button type="button" class="sday ${d === mp.date ? 'on' : ''} ${pre ? 'pre' : ''}" ${pre ? 'disabled' : `data-day="${d}"`} title="${esc(niceDate(d))}: ${pre ? 'before joining' : `${done} of ${total} done`}">
+      <span class="v">${pre ? '' : pct + '%'}</span><span class="col"><i style="height:${pct}%"></i></span><small>${esc(new Date(d + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' }).slice(0, 2))}</small><small class="dn">${Number(d.slice(8))}</small></button>`;
+  }).join('');
+}
+
+function drawDay() {
+  const box = $('#mp-day');
+  const rows = new Map(mp.range.filter((r) => r.checkin_date === mp.date).map((r) => [r.activity_id, r]));
+  const stOf = (a) => { const r = rows.get(a.id); return !r ? 'none' : r.voided_at ? 'removed' : r.status === 'done' ? 'done' : 'not_done'; };
+  const all = mp.acts.map((a) => [a, stOf(a)]);
+  const n = (s) => all.filter(([, x]) => x === s).length;
+  const done = n('done'), nd = n('not_done'), none = n('none'), rm = n('removed');
+  const pts = [...rows.values()].filter((r) => !r.voided_at).reduce((t, r) => t + (r.points_awarded || 0), 0);
+  const pct = mp.acts.length ? Math.round(100 * done / mp.acts.length) : 0;
+  const LABEL = { done: ['ok', 'check', 'Done'], not_done: ['no', 'x', 'Not done'], none: ['none', 'minus', 'Not marked'], removed: ['rm', 'ban', 'Removed'] };
+  const show = (s) => mp.filter === 'all' || mp.filter === s;
+  box.innerHTML = `
+    <section class="card mp-day">
+      ${ringHTML(pct, { size: 84, stroke: 9, mid: `${pct}%` })}
+      <div class="txt"><b>${esc(niceDate(mp.date))}${mp.date === istToday() ? ' · today' : ''}</b>
+        <span>${done} of ${mp.acts.length} habits done · +${pts} pts</span></div>
+    </section>
+    <div class="chips mp-filter" role="group" aria-label="Show">${[['all', 'All', mp.acts.length], ['done', 'Done', done], ['not_done', 'Not done', nd], ['none', 'Not marked', none], ...(rm ? [['removed', 'Removed', rm]] : [])].map(([v, l, c]) =>
+      `<button class="chip" data-mf="${v}" aria-pressed="${mp.filter === v}">${l}<span class="c">${c}</span></button>`).join('')}</div>
+    ${mp.cats.map((c) => {
+      const list = all.filter(([a]) => a.category_id === c.id);
+      const shown = list.filter(([, s]) => show(s));
+      const cd = list.filter(([, s]) => s === 'done').length;
+      if (!shown.length) return '';
+      return `<section class="card mp-tr" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">
+        <div class="mp-tr-h"><span class="dot"></span><h3>${esc(c.name)}</h3><span class="cnt">${cd}/${list.length} done</span><div class="pbar"><i style="width:${list.length ? Math.round(100 * cd / list.length) : 0}%"></i></div></div>
+        <div class="mp-rows">${shown.map(([a, s]) => { const r = rows.get(a.id), L = LABEL[s];
+          return `<div class="mp-row st-${s}"><span class="num">${String(a.number).padStart(2, '0')}</span>
+            <div class="nm"><b>${esc(a.default_name)}</b>${r?.note ? `<p class="note">“${esc(r.note)}”</p>` : ''}${s === 'removed' ? `<p class="why">Removed by ${esc(r.voided_by_name || 'coach')}: ${esc(r.void_reason || '')}</p>` : ''}
+              ${r && s !== 'none' ? `<small>${esc(timeAgo(r.updated_at))}${s === 'done' ? ` · +${r.points_awarded} pts` : ''}</small>` : ''}</div>
+            <div class="rt"><span class="sc sc-${L[0]}">${icon(L[1])}${L[2]}</span>${s === 'done' ? `<button class="btn btn-sm btn-bad" data-void="${r.id}" aria-label="Remove tick: ${esc(a.default_name)}">${icon('x')}<span>Remove</span></button>` : ''}</div></div>`; }).join('')}</div></section>`; }).join('') || `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Nothing here</b><span>Choose another filter.</span></div>`}`;
+  animateIn(box);
 }
 
 // ---------------- ACTIVITIES ----------------
@@ -572,13 +744,14 @@ async function loadJournals(date) {
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome({ 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
+    chrome({ 'admin-member': 'checkins', 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
     if (page === 'admin-checkins') await renderCheckins();
     if (page === 'admin-activities') await renderActivities();
     if (page === 'admin-settings') await renderSettings();
     if (page === 'admin-reports') await renderReports();
+    if (page === 'admin-member') await renderMember();
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

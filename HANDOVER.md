@@ -11,7 +11,8 @@
 | Add members | Coach console → **Members** → **Copy link** → send it. Each person signs up and joins as a Member. |
 | Make someone a coach | Super Admin → **Members** → role dropdown → **Coach** |
 | Stop someone's access | **Members** → **Pause**. Points and history are kept; **Activate** brings them back. |
-| See who ticked what | **Check-ins** (pick a date, filter by tracker or status, search by name) |
+| See each member's progress | **Check-ins → By member**: one card per member for the day (done / not done / not marked). Tap a card for that member's page: all 58 habits by tracker, notes, the last 14 days, and Remove. Also **Members → Progress**. |
+| See who ticked what | **Check-ins → All entries** (pick a date, filter by tracker or status, search by name) |
 | Remove a fake tick | **Check-ins** → **Remove**, with a reason. The member sees the reason and the points are taken back. |
 | Give extra points | **Members** → **Bonus** (1–500 points, with a reason) |
 | Change a picture, description or points | **Activities** → **Edit**. Activity names cannot be changed. |
