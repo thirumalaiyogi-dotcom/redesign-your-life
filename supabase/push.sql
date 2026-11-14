@@ -1,6 +1,11 @@
 -- =====================================================================
 -- Phone notifications: run AFTER schema/functions/policies, once Edge Function
--- "send-push" is deployed with secrets VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT.
+-- "send-push" is deployed (Verify JWT off).
+-- The VAPID private key is kept in Supabase Vault (encrypted), never in this repo. Store it once:
+--   select vault.create_secret('<VAPID private key>', 'vapid_private_key');
+-- (To rotate: generate a new key pair, update the public key in js/push.js, and
+--  select vault.update_secret((select id from vault.secrets where name='vapid_private_key'), '<new key>');
+--  members then turn notifications on again.)
 -- Needs the pg_cron and pg_net extensions (Supabase: Database → Extensions).
 --
 -- How it works
@@ -11,6 +16,16 @@
 -- =====================================================================
 create extension if not exists pg_net;
 create extension if not exists pg_cron;
+
+-- send-push reads its signing key from Vault through this; only the service role may call it
+create or replace function public._push_config()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'private', (select decrypted_secret from vault.decrypted_secrets where name = 'vapid_private_key'),
+    'subject', 'https://thirumalaiyogi-dotcom.github.io/redesign-your-life/');
+$$;
+revoke execute on function public._push_config() from public, anon, authenticated;
+grant execute on function public._push_config() to service_role;
 
 -- after any new notifications, wake send-push (async; never blocks or fails the insert)
 create or replace function public._wake_push()

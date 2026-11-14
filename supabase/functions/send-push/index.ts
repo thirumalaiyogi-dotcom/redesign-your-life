@@ -1,18 +1,27 @@
 // send-push — delivers not-yet-pushed rows of public.notifications to members' phones (Web Push).
 // Safe to call any number of times: each row is claimed once (pushed_at) before sending.
-// Secrets (Supabase → Edge Functions → Secrets): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:…).
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase; the service key never leaves this function.
+// The VAPID private key is read from Supabase Vault (public._push_config(), service role only); the public key
+// matches js/push.js. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase and never leave this function.
 // Deploy with "Verify JWT" OFF: it takes no input and only sends what the database already queued.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import webpush from 'npm:web-push@3.6.7';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com', Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
+const VAPID_PUBLIC_KEY = 'BAU_N4h6VR07b0bRPoxI-pOrdyDPkDla7ZQ6mGOWp2Nrn_EGW700V8FRh-0eJbK2nmveODgPlRo3AM0PpX2eDFg';
+let ready = false;
+async function setup() {
+  if (ready) return;
+  const { data, error } = await db.rpc('_push_config');
+  if (error || !data?.private) throw new Error('VAPID key missing in Vault');
+  webpush.setVapidDetails(data.subject, VAPID_PUBLIC_KEY, data.private);
+  ready = true;
+}
 
 const LINK: Record<string, string> = { reminder: 'member/dashboard.html', bonus: 'member/progress.html', achievement: 'member/progress.html', void: 'member/trackers.html', info: 'member/dashboard.html' };
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('POST only', { status: 405 });
+  try { await setup(); } catch (e) { return new Response(JSON.stringify({ error: String(e) }), { status: 500 }); }
   // claim up to 300 recent rows atomically, so parallel calls never double-send
   const { data: rows, error } = await db.rpc('_claim_push_batch', { p_limit: 300 });
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });

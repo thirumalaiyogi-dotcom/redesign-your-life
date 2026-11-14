@@ -67,6 +67,7 @@ Extra trackers: "all habits done today" (+20) and "perfect week" (+50) count eac
 
 ### Phone notifications (one-time setup)
 1. Edge Functions → deploy `functions/send-push` with **Verify JWT off**.
-2. Edge Functions → Secrets: `VAPID_PUBLIC_KEY` (the key in `js/push.js`), `VAPID_PRIVATE_KEY` (kept outside the repo), `VAPID_SUBJECT` = `mailto:<coach email>`.
+2. SQL Editor → store the VAPID private key in Vault: `select vault.create_secret('<private key>', 'vapid_private_key');` (the public key is in `js/push.js` and the function).
 3. SQL Editor → run `push.sql` (turns on pg_net + pg_cron, the wake-up trigger and the daily jobs: 8 pm habit reminder, 7 am to-dos due).
+Done on 14 Nov 2026 for the live project.
 Without these steps everything else works; notifications then appear only inside the app.
