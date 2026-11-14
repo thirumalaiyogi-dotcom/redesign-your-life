@@ -49,7 +49,14 @@ export function waLink(phone, text) {
 }
 export function loginMessage(name, email, pw) {
   const first = String(name || '').trim().split(/\s+/)[0];
-  return `Hi${first ? ' ' + first : ''},\n\nRedesign Your Life app login details\n\nLink: ${app('login.html')}\nEmail: ${email}\nPassword: ${pw}\n\nFirst time login pannumbothu unga own password set panna sollum, athula pudhu password vechukonga.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
+  const gmail = /@(gmail|googlemail)\.com$/i.test(email);
+  return `Hi${first ? ' ' + first : ''},\n\nRedesign Your Life app login details\n\nLink: ${app('login.html')}\n`
+    + (gmail ? `\n"Continue with Google" click panni ${email} select pannunga, udane ulla poidalam.\n\nIllana email password vechum login pannalam:\n` : '\n')
+    + `Email: ${email}\nPassword: ${pw}\n\nPassword vechu first time login pannumbothu unga own password set panna sollum.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
+}
+// one message for the whole WhatsApp group: everyone with a Gmail just taps "Continue with Google"
+export function groupMessage() {
+  return `Redesign Your Life app ready 🙏\n\nLink: ${app('login.html')}\n\n"Continue with Google" click panni, coach kitta kudutha Gmail select pannunga. Udane ulla poidalam.\n\nGmail illathavangalukku email, password thaniya anuppurom.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
 }
 
 const B = { tab: 'batches', programs: [], steps: [], stepTrackers: [], batches: [], done: [], trackers: [], habits: [], open: null, prog: null, trk: null, added: [], signup: null };
@@ -165,9 +172,11 @@ function drawAdded() {
   const made = B.added.filter((r) => r.temp_password), other = B.added.filter((r) => !r.temp_password);
   const label = { existing: 'Already had an account, added', bad_email: 'Email looks wrong, skipped', not_member: 'Coach account, skipped' };
   box.innerHTML = `<section class="panel bt-added"><div class="panel-h"><h3>Send logins (${made.length})</h3>
-      ${made.length ? `<button class="btn btn-ghost btn-sm" data-copy-all>${icon('copy')}Copy all</button>` : ''}</div>
+      <span class="bt-h-a"><button class="btn btn-ghost btn-sm" data-copy-group>${icon('copy')}Group message</button>
+      ${made.length ? `<button class="btn btn-ghost btn-sm" data-copy-all>${icon('copy')}Copy all</button>` : ''}</span></div>
+    <p class="muted bt-warn">${icon('info')}<span>Gmail users can just tap “Continue with Google”, so one group message is enough for them. Send personal messages (with password) to the others.</span></p>
     <p class="muted bt-warn">${icon('info')}<span>Passwords are shown only now. Send them before leaving this page. (Lost one? Use “New password” in the list below.)</span></p>
-    ${made.map((r) => `<div class="bt-login"><div><b>${esc(r.full_name || r.email)}</b><small>${esc(r.email)} · <code>${esc(r.temp_password)}</code></small></div>
+    ${made.map((r) => `<div class="bt-login"><div><b>${esc(r.full_name || r.email)}</b>${/@(gmail|googlemail)\.com$/i.test(r.email) ? '<span class="pill ok" style="margin-left:6px">Google</span>' : ''}<small>${esc(r.email)} · <code>${esc(r.temp_password)}</code></small></div>
       <a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="${esc(waLink(r.phone, loginMessage(r.full_name, r.email, r.temp_password)))}">${icon('message-square')}WhatsApp</a></div>`).join('')}
     ${other.length ? `<div class="bt-other">${other.map((r) => `<small><b>${esc(r.full_name || r.email)}</b> · ${esc(label[r.status] || r.status)}</small>`).join('')}</div>` : ''}
     <button class="btn btn-ghost btn-sm" data-clear-added style="margin:0 16px 14px">Done sending</button></section>`;
@@ -251,6 +260,10 @@ async function onClick(e) {
   if ((t = g('[data-prog]'))) { B.prog = t.dataset.prog; return draw(); }
   if ((t = g('[data-trk]'))) { B.trk = t.dataset.trk; return draw(); }
   if (g('[data-clear-added]')) { B.added = []; $('#ap-result').innerHTML = ''; return; }
+  if (g('[data-copy-group]')) {
+    try { await navigator.clipboard.writeText(groupMessage()); toast('Group message copied. Paste it in the WhatsApp group.'); } catch { toast('Could not copy.', 'bad'); }
+    return;
+  }
   if (g('[data-copy-all]')) {
     const txt = B.added.filter((r) => r.temp_password).map((r) => `${r.full_name || ''}\nEmail: ${r.email}\nPassword: ${r.temp_password}`).join('\n\n');
     try { await navigator.clipboard.writeText(`Login: ${app('login.html')}\n\n${txt}`); toast('Copied'); } catch { toast('Could not copy. Long-press to select instead.', 'bad'); }

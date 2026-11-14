@@ -309,3 +309,4 @@ details.j-entry { border-top: 1px solid var(--c-border); }
   .bt-person { flex-direction: column; align-items: stretch; }
   .bt-p-a { justify-content: flex-end; }
 }
+.bt-h-a { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
