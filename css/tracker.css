@@ -19,6 +19,11 @@
 .tcard:active { transform: scale(.985); }
 .tcard .art { position: relative; min-height: 132px; background: var(--c-sunken); overflow: hidden; }
 .tcard .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* trackers without a cover photo: a soft colour field in the tracker's colour */
+.cover-fb { position: absolute; inset: 0; background:
+  radial-gradient(120% 90% at 85% 15%, color-mix(in srgb, var(--tc) 55%, #fff 0%) 0%, transparent 60%),
+  linear-gradient(140deg, color-mix(in srgb, var(--tc) 85%, #0b1a15), color-mix(in srgb, var(--tc) 45%, #0b1a15)); }
+.t-head .cover-fb.cover { z-index: -2; }
 .tcard .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--tc) 55%, transparent)); }
 .tcard .art .ic { position: absolute; left: 8px; bottom: 8px; z-index: 1; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--c-surface); color: var(--tc); box-shadow: var(--shadow-1); }
 .tcard .art .ic .icon { width: 18px; height: 18px; }

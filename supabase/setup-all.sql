@@ -4,6 +4,7 @@
 -- It is the four files below in order. Safe to run again.
 -- =====================================================================
 
+
 -- >>>>>>>>>>>>>>>>>>>> schema.sql
 -- =====================================================================
 -- Deepak's Redesign Your Life — schema.sql
@@ -50,8 +51,22 @@ create table if not exists public.tracker_categories (
   icon        text,
   sort_order  smallint not null default 0,
   is_active   boolean not null default true,
+  audience    text not null default 'all' check (audience in ('all','assigned')),  -- 'assigned' = only members the coach picks
   created_at  timestamptz not null default now()
 );
+alter table public.tracker_categories add column if not exists audience text not null default 'all'
+  check (audience in ('all','assigned'));
+
+-- which members get an 'assigned' tracker (e.g. Conscious Couple, a family member's own tracker)
+create table if not exists public.tracker_assignments (
+  category_id uuid not null references public.tracker_categories(id) on delete cascade,
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  assigned_by uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  primary key (category_id, member_id)
+);
+create index if not exists tracker_assignments_member_idx on public.tracker_assignments(member_id);
+create index if not exists tracker_assignments_by_idx on public.tracker_assignments(assigned_by) where assigned_by is not null;
 
 create table if not exists public.activities (
   id            uuid primary key default gen_random_uuid(),
@@ -177,6 +192,118 @@ create table if not exists public.audit_logs (
 create index if not exists audit_entity_idx on public.audit_logs(entity, entity_id);
 create index if not exists audit_created_idx on public.audit_logs(created_at desc);
 
+-- =====================================================================
+-- Redesign 2.1 (Nov 2026): profile details, private goals, sessions,
+-- doubts, to-dos. Everything below is additive; nothing above changes.
+-- =====================================================================
+
+-- ---------- profile details (shown to the member and coaches) ----------
+alter table public.profiles add column if not exists city       text check (city is null or char_length(city) <= 60);
+alter table public.profiles add column if not exists profession text check (profession is null or char_length(profession) <= 80);
+alter table public.profiles add column if not exists dream      text check (dream is null or char_length(dream) <= 500);
+alter table public.profiles add column if not exists hobbies    text check (hobbies is null or char_length(hobbies) <= 200);
+alter table public.profiles add column if not exists website    text check (website is null or (char_length(website) <= 200 and website ~* '^https?://[^\s/$.?#][^\s]*$'));
+
+-- ---------- private goals & business numbers: the member and coaches only ----------
+create table if not exists public.member_goals (
+  member_id     uuid primary key references public.profiles(id) on delete cascade,
+  goal_year     text check (goal_year    is null or char_length(goal_year)    <= 1000),
+  goal_month    text check (goal_month   is null or char_length(goal_month)   <= 1000),
+  goal_week     text check (goal_week    is null or char_length(goal_week)    <= 1000),
+  net_worth     text check (net_worth    is null or char_length(net_worth)    <= 60),
+  turnover      text check (turnover     is null or char_length(turnover)     <= 60),
+  profit        text check (profit       is null or char_length(profit)       <= 60),
+  problems      text check (problems     is null or char_length(problems)     <= 1500),
+  expectations  text check (expectations is null or char_length(expectations) <= 1500),
+  updated_at    timestamptz not null default now()
+);
+
+-- ---------- session contents (coach posts; every active member reads) ----------
+create table if not exists public.sessions (
+  id            uuid primary key default gen_random_uuid(),
+  title         text not null check (char_length(title) between 2 and 120),
+  session_date  date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  body          text check (body is null or char_length(body) <= 4000),          -- notes / instructions
+  is_published  boolean not null default true,
+  created_by    uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists sessions_date_idx on public.sessions(session_date desc);
+create index if not exists sessions_created_by_idx on public.sessions(created_by) where created_by is not null;
+
+-- pictures and audio live in the private "session-media" bucket; videos are links (YouTube, Drive…)
+create table if not exists public.session_media (
+  id          uuid primary key default gen_random_uuid(),
+  session_id  uuid not null references public.sessions(id) on delete cascade,
+  kind        text not null check (kind in ('image','audio','video_link','link')),
+  ref         text not null,
+  caption     text check (caption is null or char_length(caption) <= 160),
+  sort_order  smallint not null default 0,
+  created_at  timestamptz not null default now(),
+  check (case when kind in ('image','audio')
+              then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$'
+              else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end)
+);
+create index if not exists session_media_session_idx on public.session_media(session_id, sort_order);
+
+-- ---------- real-life situation vs application (member writes; member + coaches read) ----------
+create table if not exists public.session_notes (
+  id           uuid primary key default gen_random_uuid(),
+  member_id    uuid not null references public.profiles(id) on delete cascade,
+  session_id   uuid references public.sessions(id) on delete set null,
+  situation    text not null check (char_length(situation) between 2 and 1500),
+  application  text check (application is null or char_length(application) <= 1500),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists session_notes_member_idx on public.session_notes(member_id, created_at desc);
+create index if not exists session_notes_session_idx on public.session_notes(session_id) where session_id is not null;
+
+-- ---------- questions / doubts (member asks, coach answers; private to the two) ----------
+create table if not exists public.doubts (
+  id           uuid primary key default gen_random_uuid(),
+  member_id    uuid not null references public.profiles(id) on delete cascade,
+  session_id   uuid references public.sessions(id) on delete set null,
+  question     text not null check (char_length(question) between 3 and 1000),
+  answer       text check (answer is null or char_length(answer) <= 2000),
+  answered_by  uuid references public.profiles(id) on delete set null,
+  answered_at  timestamptz,
+  created_at   timestamptz not null default now(),
+  check ((answer is null) = (answered_at is null))
+);
+create index if not exists doubts_member_idx on public.doubts(member_id, created_at desc);
+create index if not exists doubts_open_idx on public.doubts(created_at desc) where answered_at is null;
+create index if not exists doubts_session_idx on public.doubts(session_id) where session_id is not null;
+create index if not exists doubts_answered_by_idx on public.doubts(answered_by) where answered_by is not null;
+
+-- ---------- personal to-do list (the member only) ----------
+create table if not exists public.todos (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  title       text not null check (char_length(title) between 1 and 200),
+  due_date    date,
+  done_at     timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index if not exists todos_member_idx on public.todos(member_id, done_at nulls first, due_date);
+
+-- ---------- phone notifications (Web Push) ----------
+-- One row per phone/browser that said "yes" to notifications. Keys are the browser's public
+-- push keys (not secrets). The server's private VAPID key lives only in the Edge Function secrets.
+create table if not exists public.push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  endpoint    text not null unique check (char_length(endpoint) <= 1000 and endpoint ~ '^https://'),
+  p256dh      text not null check (char_length(p256dh) <= 200),
+  auth        text not null check (char_length(auth) <= 100),
+  created_at  timestamptz not null default now(),
+  last_ok_at  timestamptz
+);
+create index if not exists push_subscriptions_member_idx on public.push_subscriptions(member_id);
+alter table public.notifications add column if not exists pushed_at timestamptz;
+create index if not exists notifications_unpushed_idx on public.notifications(created_at) where pushed_at is null;
+
 -- >>>>>>>>>>>>>>>>>>>> functions.sql
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
@@ -226,6 +353,32 @@ returns void language sql security definer set search_path = '' as $$
   insert into public.notifications(member_id, kind, title, body) values (p_member, p_kind, p_title, p_body);
 $$;
 
+-- can this member use this tracker? 'all' trackers: everyone; 'assigned': only members the coach picked
+create or replace function public._sees(p_member uuid, p_category uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.tracker_categories c
+                 where c.id = p_category
+                   and (c.audience = 'all'
+                        or exists (select 1 from public.tracker_assignments t
+                                   where t.category_id = c.id and t.member_id = p_member)));
+$$;
+
+-- the same check for the signed-in user (used by row-level security)
+create or replace function public.i_see_tracker(p_category uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public._sees(auth.uid(), p_category);
+$$;
+
+-- number of activities that count for one member (their trackers only), optionally one tracker
+create or replace function public._total_for(p_member uuid, p_category uuid default null)
+returns int language sql stable security definer set search_path = '' as $$
+  select count(*)::int
+  from public.activities a join public.tracker_categories c on c.id = a.category_id
+  where a.is_active and c.is_active and (p_category is null or a.category_id = p_category)
+    and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
+                                       where t.category_id = c.id and t.member_id = p_member));
+$$;
+
 -- number of activities that currently count (active activity in an active tracker)
 create or replace function public._total_active(p_category uuid default null)
 returns int language sql stable security definer set search_path = '' as $$
@@ -244,7 +397,9 @@ returns int language sql stable security definer set search_path = '' as $$
   where d.member_id = p_member and d.checkin_date = p_day
     and d.status = 'done' and d.voided_at is null
     and a.is_active and c.is_active
-    and (p_category is null or a.category_id = p_category);
+    and (p_category is null or a.category_id = p_category)
+    and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
+                                       where t.category_id = c.id and t.member_id = p_member));
 $$;
 
 -- consecutive days ending exactly on p_as_of with >= streak_min_daily done
@@ -324,7 +479,7 @@ create trigger activities_guard before update on public.activities for each row 
 create or replace function public._recalc_bonuses(p_member uuid, p_day date)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
-  v_total  int := public._total_active();
+  v_total  int := public._total_for(p_member);
   v_streak int;
   v_pts    int;
   v_perfect boolean;
@@ -428,7 +583,7 @@ begin
 
   select a.id, a.points, a.default_name into v_act
   from public.activities a join public.tracker_categories c on c.id = a.category_id
-  where a.id = p_activity_id and a.is_active and c.is_active;
+  where a.id = p_activity_id and a.is_active and c.is_active and public._sees(v_uid, c.id);
   if not found then raise exception 'This activity is not available.' using errcode = 'P0002'; end if;
 
   select * into v_row from public.daily_checkins
@@ -484,7 +639,7 @@ declare
   v_today date := public.app_today();
   v_week date := date_trunc('week', public.app_today())::date;
   v_month date := date_trunc('month', public.app_today())::date;
-  v_total int := public._total_active();
+  v_total int := public._total_for(auth.uid());
   v_joined date;
   v_wdays int; v_mdays int;
   v_rank record;
@@ -503,12 +658,15 @@ begin
     'streak', public._display_streak(v_uid, v_today),
     'total_activities', v_total,
     'done_today', public._done_on(v_uid, v_today),
-    'done_month', (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_month),
+    'done_month', (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_month and public._sees(v_uid, a.category_id)),
     'weekly_pct', case when v_total = 0 or v_wdays <= 0 then 0 else round(100.0 *
-        (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_week)
+        (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_week and public._sees(v_uid, a.category_id))
         / (v_total * v_wdays)) end,
     'monthly_pct', case when v_total = 0 or v_mdays <= 0 then 0 else round(100.0 *
-        (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_month)
+        (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_month and public._sees(v_uid, a.category_id))
         / (v_total * v_mdays)) end,
     'missed_week', greatest(0, v_total * greatest(v_wdays - 1, 0) -
         (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null
@@ -519,7 +677,7 @@ begin
           'not_done_today', (select count(*) from public.daily_checkins d join public.activities a on a.id = d.activity_id
                              where d.member_id = v_uid and d.checkin_date = v_today and d.status = 'not_done' and a.category_id = c.id))
         order by c.sort_order), '[]'::jsonb)
-        from public.tracker_categories c where c.is_active),
+        from public.tracker_categories c where c.is_active and public._sees(v_uid, c.id)),
     'badges', (select coalesce(jsonb_agg(jsonb_build_object('code', a.code, 'name', a.name, 'glyph', a.glyph,
                  'color_from', a.color_from, 'color_to', a.color_to, 'earned_at', m.earned_at) order by a.sort_order), '[]'::jsonb)
                from public.achievements a left join public.member_achievements m on m.achievement_id = a.id and m.member_id = v_uid));
@@ -730,11 +888,13 @@ end; $$;
 create or replace function public.admin_overview(p_date date default null)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare d date := coalesce(p_date, public.app_today()); w date := date_trunc('week', coalesce(p_date, public.app_today()))::date;
-        v_members int; v_active int; v_total int := public._total_active();
+        v_members int; v_active int; v_slots bigint;
 begin
   if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
   select count(*) into v_members from public.profiles where role = 'member' and is_active;
   select count(distinct member_id) into v_active from public.daily_checkins where checkin_date = d;
+  -- habits each active member could tick per day (their own trackers), summed
+  select coalesce(sum(public._total_for(p.id)), 0) into v_slots from public.profiles p where p.role = 'member' and p.is_active;
   return jsonb_build_object(
     'date', d,
     'total_members', v_members,
@@ -742,16 +902,20 @@ begin
     'inactive_today', greatest(v_members - v_active, 0),
     'ticks_today', (select count(*) from public.daily_checkins where checkin_date = d and status = 'done' and voided_at is null),
     'points_week', (select coalesce(sum(points),0) from public.score_history where score_date between w and d),
-    'avg_completion_week', case when v_members = 0 or v_total = 0 then 0 else round(100.0 *
+    'avg_completion_week', case when v_slots = 0 then 0 else round(100.0 *
         (select count(*) from public.daily_checkins c join public.profiles p on p.id = c.member_id
           where p.role = 'member' and p.is_active and c.checkin_date between w and d and c.status = 'done' and c.voided_at is null)
-        / (v_members * v_total * (d - w + 1))) end,
+        / (v_slots * (d - w + 1))) end,
     'category_week', (select coalesce(jsonb_agg(jsonb_build_object('slug', c.slug, 'name', c.name, 'pct',
-        case when v_members = 0 or public._total_active(c.id) = 0 then 0 else round(100.0 *
+        case when cm.n = 0 or public._total_active(c.id) = 0 then 0 else least(100, round(100.0 *
           (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+             join public.profiles p on p.id = x.member_id and p.role = 'member' and p.is_active
             where a.category_id = c.id and x.checkin_date between w and d and x.status = 'done' and x.voided_at is null)
-          / (v_members * public._total_active(c.id) * (d - w + 1))) end) order by c.sort_order), '[]'::jsonb)
-        from public.tracker_categories c where c.is_active),
+          / (cm.n * public._total_active(c.id) * (d - w + 1)))) end) order by c.sort_order), '[]'::jsonb)
+        from public.tracker_categories c
+        cross join lateral (select count(*)::int as n from public.profiles p
+                            where p.role = 'member' and p.is_active and public._sees(p.id, c.id)) cm
+        where c.is_active),
     'daily_active', (select jsonb_agg(jsonb_build_object('date', g::date,
         'members', (select count(distinct member_id) from public.daily_checkins where checkin_date = g::date)) order by g)
         from generate_series(d - 13, d, interval '1 day') g),
@@ -839,9 +1003,10 @@ end; $$;
 -- ---------------------------------------------------------------------
 -- One row per member for a day: how many of the active activities they
 -- marked done / not done, removed ticks, and points from habits that day.
+drop function if exists public.admin_day_summary(date);   -- return type gained "total"
 create or replace function public.admin_day_summary(p_date date default null)
 returns table(member_id uuid, full_name text, avatar_url text, is_active boolean, joined_on date,
-              done int, not_done int, removed int, points int, last_at timestamptz)
+              done int, not_done int, removed int, points int, last_at timestamptz, total int)
 language plpgsql stable security definer set search_path = '' as $$
 #variable_conflict use_column
 declare d date := coalesce(p_date, public.app_today());
@@ -853,12 +1018,13 @@ begin
          coalesce(count(*) filter (where c.status = 'not_done' and c.voided_at is null), 0)::int,
          coalesce(count(*) filter (where c.voided_at is not null), 0)::int,
          coalesce(sum(c.points_awarded) filter (where c.voided_at is null), 0)::int,
-         max(c.updated_at)
+         max(c.updated_at),
+         public._total_for(p.id)
   from public.profiles p
   left join (public.daily_checkins c
              join public.activities a on a.id = c.activity_id and a.is_active
              join public.tracker_categories t on t.id = a.category_id and t.is_active)
-         on c.member_id = p.id and c.checkin_date = d
+         on c.member_id = p.id and c.checkin_date = d and public._sees(p.id, t.id)
   where p.role = 'member' and p.joined_on <= d
   group by p.id
   order by max(c.updated_at) desc nulls last, p.full_name;
@@ -915,9 +1081,140 @@ begin
 end; $$;
 
 -- ---------------------------------------------------------------------
+-- COACH: give / take away an 'assigned' tracker for one member
+-- ---------------------------------------------------------------------
+create or replace function public.admin_set_tracker_member(p_category uuid, p_member uuid, p_on boolean)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_cat record; v_changed boolean := false;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  select id, name, audience into v_cat from public.tracker_categories where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  if v_cat.audience <> 'assigned' then raise exception 'This tracker is already open to everyone.' using errcode = '22023'; end if;
+  if not exists (select 1 from public.profiles where id = p_member and role = 'member') then
+    raise exception 'Member not found.' using errcode = 'P0002';
+  end if;
+  if coalesce(p_on, false) then
+    insert into public.tracker_assignments(category_id, member_id, assigned_by) values (p_category, p_member, auth.uid())
+    on conflict do nothing;
+    v_changed := found;
+    if v_changed then perform public._notify(p_member, 'info', 'New tracker: ' || v_cat.name, 'Your coach added this tracker for you. Open Track to start.'); end if;
+  else
+    delete from public.tracker_assignments where category_id = p_category and member_id = p_member;
+    v_changed := found;
+  end if;
+  if v_changed then
+    perform public._recalc_bonuses(p_member, public.app_today());   -- "all habits done" depends on the member's trackers
+    perform public._audit(case when p_on then 'tracker.assign' else 'tracker.unassign' end, 'tracker_categories', p_category::text,
+                          jsonb_build_object('member', p_member));
+  end if;
+end; $$;
+
+-- ---------------------------------------------------------------------
+-- Redesign 2.1: updated_at stamps, coach answers a doubt, coach inbox count
+-- ---------------------------------------------------------------------
+drop trigger if exists goals_touch on public.member_goals;
+create trigger goals_touch before update on public.member_goals for each row execute function public.touch_updated_at();
+drop trigger if exists sessions_touch on public.sessions;
+create trigger sessions_touch before update on public.sessions for each row execute function public.touch_updated_at();
+drop trigger if exists session_notes_touch on public.session_notes;
+create trigger session_notes_touch before update on public.session_notes for each row execute function public.touch_updated_at();
+
+-- a new published session tells every active member (in-app notification)
+create or replace function public.notify_new_session()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if new.is_published and (tg_op = 'INSERT' or not old.is_published) then
+    insert into public.notifications(member_id, kind, title, body)
+    select p.id, 'info', 'New session: ' || left(new.title, 100), 'Open Sessions to see the notes, pictures and videos.'
+    from public.profiles p where p.role = 'member' and p.is_active;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists sessions_notify on public.sessions;
+create trigger sessions_notify after insert or update of is_published on public.sessions
+  for each row execute function public.notify_new_session();
+
+create or replace function public.admin_answer_doubt(p_doubt uuid, p_answer text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_member uuid; v_answer text := nullif(left(trim(coalesce(p_answer, '')), 2000), '');
+begin
+  if not public.is_admin() then raise exception 'Only coaches can answer questions.' using errcode = '42501'; end if;
+  if v_answer is null or char_length(v_answer) < 2 then raise exception 'Write an answer first.' using errcode = '22023'; end if;
+  update public.doubts set answer = v_answer, answered_by = auth.uid(), answered_at = now()
+   where id = p_doubt returning member_id into v_member;
+  if v_member is null then raise exception 'Question not found.' using errcode = 'P0002'; end if;
+  perform public._notify(v_member, 'info', 'Your coach answered your question', left(v_answer, 200));
+  perform public._audit('doubt.answer', 'doubts', p_doubt::text, jsonb_build_object('member', v_member));
+end; $$;
+
+-- ---------------------------------------------------------------------
+-- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
+-- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
+-- ---------------------------------------------------------------------
+-- evening nudge for active members who have not marked anything today
+create or replace function public._queue_daily_reminders()
+returns int language plpgsql security definer set search_path = '' as $$
+declare d date := public.app_today(); n int;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select p.id, 'reminder', 'Your habits are waiting', 'Take 2 minutes to tick today''s habits before midnight.'
+  from public.profiles p
+  where p.role = 'member' and p.is_active
+    and not exists (select 1 from public.daily_checkins c where c.member_id = p.id and c.checkin_date = d)
+    and not exists (select 1 from public.notifications x where x.member_id = p.id and x.kind = 'reminder'
+                    and x.title = 'Your habits are waiting' and x.created_at >= now() - interval '20 hours');
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+
+-- morning list of to-dos due today
+create or replace function public._queue_todo_reminders()
+returns int language plpgsql security definer set search_path = '' as $$
+declare d date := public.app_today(); n int;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select t.member_id, 'reminder',
+         case when count(*) = 1 then 'To-do today: ' || left(min(t.title), 80) else count(*) || ' to-dos due today' end,
+         left(string_agg(t.title, ' · ' order by t.created_at), 480)
+  from public.todos t join public.profiles p on p.id = t.member_id and p.is_active
+  where t.due_date = d and t.done_at is null
+    and not exists (select 1 from public.notifications x where x.member_id = t.member_id and x.kind = 'reminder'
+                    and (x.title like 'To-do today:%' or x.title like '% to-dos due today')
+                    and x.created_at >= now() - interval '20 hours')
+  group by t.member_id;
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+
+-- a phone/browser can belong to one person at a time: saving it moves it to whoever is signed in now
+create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or public.my_role() is null then raise exception 'Please log in again.' using errcode = '42501'; end if;
+  if p_endpoint is null or p_endpoint !~ '^https://' or char_length(p_endpoint) > 1000 then raise exception 'Invalid subscription.' using errcode = '22023'; end if;
+  delete from public.push_subscriptions where endpoint = p_endpoint and member_id <> auth.uid();
+  insert into public.push_subscriptions(member_id, endpoint, p256dh, auth) values (auth.uid(), p_endpoint, p_p256dh, p_auth)
+  on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth;
+end; $$;
+
+-- send-push claims a batch of undelivered notifications (service role only; never granted to the app)
+create or replace function public._claim_push_batch(p_limit int default 300)
+returns table(id uuid, member_id uuid, kind text, title text, body text)
+language sql security definer set search_path = '' as $$
+  update public.notifications n set pushed_at = now()
+  where n.id in (select x.id from public.notifications x
+                 where x.pushed_at is null and x.created_at >= now() - interval '24 hours'
+                 order by x.created_at limit least(greatest(coalesce(p_limit, 300), 1), 500)
+                 for update skip locked)
+  returning n.id, n.member_id, n.kind, n.title, n.body;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon, authenticated;
+grant execute on function public._claim_push_batch(int) to service_role;
 
 grant execute on function
   public.app_today(), public.my_role(), public.is_admin(), public.is_super_admin(),
@@ -928,7 +1225,9 @@ grant execute on function
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
   public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people(),
   public.admin_checkins(date, text, text, text, int),
-  public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date)
+  public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
+  public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
+  public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
@@ -964,7 +1263,7 @@ create policy settings_read on public.app_settings for select to authenticated u
 
 -- ---------- profiles ----------
 grant select on public.profiles to authenticated;
-grant update (full_name, phone, avatar_url) on public.profiles to authenticated;   -- never role / is_active
+grant update (full_name, phone, avatar_url, city, profession, dream, hobbies, website) on public.profiles to authenticated;   -- never role / is_active
 
 drop policy if exists profiles_read on public.profiles;
 create policy profiles_read on public.profiles for select to authenticated
@@ -979,14 +1278,22 @@ create policy profiles_update_self on public.profiles for update to authenticate
 grant select on public.tracker_categories to authenticated;
 drop policy if exists categories_read on public.tracker_categories;
 create policy categories_read on public.tracker_categories for select to authenticated
-  using (is_active or (select public.is_admin()));
+  using ((is_active and public.i_see_tracker(id)) or (select public.is_admin()));
 
 grant select on public.activities to authenticated;
 grant update (description, image_path, icon, points, is_active) on public.activities to authenticated;
 
 drop policy if exists activities_read on public.activities;
 create policy activities_read on public.activities for select to authenticated
-  using (is_active or (select public.is_admin()));
+  using ((is_active and public.i_see_tracker(category_id)) or (select public.is_admin()));
+
+-- tracker assignments: members see their own, coaches see all; changes only via admin_set_tracker_member()
+alter table public.tracker_assignments enable row level security;
+revoke all on public.tracker_assignments from anon, authenticated;
+grant select on public.tracker_assignments to authenticated;
+drop policy if exists tracker_assignments_read on public.tracker_assignments;
+create policy tracker_assignments_read on public.tracker_assignments for select to authenticated
+  using (member_id = (select auth.uid()) or (select public.is_admin()));
 
 drop policy if exists activities_admin_update on public.activities;
 create policy activities_admin_update on public.activities for update to authenticated
@@ -1088,6 +1395,131 @@ create policy avatars_own_update on storage.objects for update to authenticated
 drop policy if exists avatars_own_delete on storage.objects;
 create policy avatars_own_delete on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- =====================================================================
+-- Redesign 2.1: goals, sessions, notes, doubts, to-dos
+-- "me_active" = signed in AND account not paused.
+-- =====================================================================
+alter table public.member_goals  enable row level security;
+alter table public.sessions      enable row level security;
+alter table public.session_media enable row level security;
+alter table public.session_notes enable row level security;
+alter table public.doubts        enable row level security;
+alter table public.todos         enable row level security;
+revoke all on public.member_goals, public.sessions, public.session_media, public.session_notes, public.doubts, public.todos from anon, authenticated;
+
+-- ---------- goals: private to the member and coaches; only the member writes ----------
+grant select on public.member_goals to authenticated;
+grant insert (member_id, goal_year, goal_month, goal_week, net_worth, turnover, profit, problems, expectations) on public.member_goals to authenticated;
+grant update (goal_year, goal_month, goal_week, net_worth, turnover, profit, problems, expectations) on public.member_goals to authenticated;
+drop policy if exists goals_read on public.member_goals;
+create policy goals_read on public.member_goals for select to authenticated
+  using (member_id = (select auth.uid()) or (select public.is_admin()));
+drop policy if exists goals_insert_own on public.member_goals;
+create policy goals_insert_own on public.member_goals for insert to authenticated
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null);
+drop policy if exists goals_update_own on public.member_goals;
+create policy goals_update_own on public.member_goals for update to authenticated
+  using (member_id = (select auth.uid()) and (select public.my_role()) is not null)
+  with check (member_id = (select auth.uid()));
+
+-- ---------- sessions: every active member reads published ones; coaches manage ----------
+grant select on public.sessions to authenticated;
+grant insert (title, session_date, body, is_published) on public.sessions to authenticated;
+grant update (title, session_date, body, is_published) on public.sessions to authenticated;
+grant delete on public.sessions to authenticated;
+drop policy if exists sessions_read on public.sessions;
+create policy sessions_read on public.sessions for select to authenticated
+  using ((is_published and (select public.my_role()) is not null) or (select public.is_admin()));
+drop policy if exists sessions_admin_insert on public.sessions;
+create policy sessions_admin_insert on public.sessions for insert to authenticated with check ((select public.is_admin()));
+drop policy if exists sessions_admin_update on public.sessions;
+create policy sessions_admin_update on public.sessions for update to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists sessions_admin_delete on public.sessions;
+create policy sessions_admin_delete on public.sessions for delete to authenticated using ((select public.is_admin()));
+
+grant select, delete on public.session_media to authenticated;
+grant insert (session_id, kind, ref, caption, sort_order) on public.session_media to authenticated;
+grant update (caption, sort_order) on public.session_media to authenticated;
+drop policy if exists session_media_read on public.session_media;
+create policy session_media_read on public.session_media for select to authenticated
+  using (exists (select 1 from public.sessions s where s.id = session_id));     -- visible when its session is (sessions RLS)
+drop policy if exists session_media_admin_insert on public.session_media;
+create policy session_media_admin_insert on public.session_media for insert to authenticated with check ((select public.is_admin()));
+drop policy if exists session_media_admin_update on public.session_media;
+create policy session_media_admin_update on public.session_media for update to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists session_media_admin_delete on public.session_media;
+create policy session_media_admin_delete on public.session_media for delete to authenticated using ((select public.is_admin()));
+
+-- ---------- real life vs application: member writes own; coaches read ----------
+grant select, delete on public.session_notes to authenticated;
+grant insert (member_id, session_id, situation, application) on public.session_notes to authenticated;
+grant update (session_id, situation, application) on public.session_notes to authenticated;
+drop policy if exists notes_read on public.session_notes;
+create policy notes_read on public.session_notes for select to authenticated
+  using (member_id = (select auth.uid()) or (select public.is_admin()));
+drop policy if exists notes_insert_own on public.session_notes;
+create policy notes_insert_own on public.session_notes for insert to authenticated
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null);
+drop policy if exists notes_update_own on public.session_notes;
+create policy notes_update_own on public.session_notes for update to authenticated
+  using (member_id = (select auth.uid()) and (select public.my_role()) is not null) with check (member_id = (select auth.uid()));
+drop policy if exists notes_delete_own on public.session_notes;
+create policy notes_delete_own on public.session_notes for delete to authenticated
+  using (member_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+-- ---------- doubts: member asks (own rows); coaches read all and answer via admin_answer_doubt() ----------
+grant select, delete on public.doubts to authenticated;
+grant insert (member_id, session_id, question) on public.doubts to authenticated;
+drop policy if exists doubts_read on public.doubts;
+create policy doubts_read on public.doubts for select to authenticated
+  using (member_id = (select auth.uid()) or (select public.is_admin()));
+drop policy if exists doubts_insert_own on public.doubts;
+create policy doubts_insert_own on public.doubts for insert to authenticated
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null and answer is null);
+drop policy if exists doubts_delete_own_open on public.doubts;
+create policy doubts_delete_own_open on public.doubts for delete to authenticated
+  using (member_id = (select auth.uid()) and answered_at is null);
+
+-- ---------- to-dos: the member only (coaches do not see them) ----------
+grant select, delete on public.todos to authenticated;
+grant insert (member_id, title, due_date, done_at) on public.todos to authenticated;
+grant update (title, due_date, done_at) on public.todos to authenticated;
+drop policy if exists todos_own on public.todos;
+create policy todos_own on public.todos for all to authenticated
+  using (member_id = (select auth.uid()) and (select public.my_role()) is not null)
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+-- ---------- private bucket for session pictures and audio ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('session-media', 'session-media', false, 15728640,
+        array['image/webp','image/jpeg','image/png','audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/webm','audio/wav','audio/x-m4a'])
+on conflict (id) do update set public = excluded.public,
+  file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists session_media_obj_read on storage.objects;
+create policy session_media_obj_read on storage.objects for select to authenticated
+  using (bucket_id = 'session-media' and (select public.my_role()) is not null);
+drop policy if exists session_media_obj_insert on storage.objects;
+create policy session_media_obj_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'session-media' and (select public.is_admin()));
+drop policy if exists session_media_obj_update on storage.objects;
+create policy session_media_obj_update on storage.objects for update to authenticated
+  using (bucket_id = 'session-media' and (select public.is_admin()));
+drop policy if exists session_media_obj_delete on storage.objects;
+create policy session_media_obj_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'session-media' and (select public.is_admin()));
+
+-- ---------- phone notification subscriptions: each user manages only their own ----------
+alter table public.push_subscriptions enable row level security;
+revoke all on public.push_subscriptions from anon, authenticated;
+grant select, delete on public.push_subscriptions to authenticated;
+grant insert (member_id, endpoint, p256dh, auth) on public.push_subscriptions to authenticated;
+drop policy if exists push_own on public.push_subscriptions;
+create policy push_own on public.push_subscriptions for all to authenticated
+  using (member_id = (select auth.uid()))
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null);
 
 -- >>>>>>>>>>>>>>>>>>>> seed.sql
 -- =====================================================================
@@ -1191,6 +1623,51 @@ insert into public.achievements(code, name, description, glyph, color_from, colo
   ('monthly_champion', 'Monthly Champion', 'Finish a month at #1 on the leaderboard', 'M', '#f7e5a6', '#9a7227', 10)
 on conflict (code) do update set name = excluded.name, description = excluded.description,
   glyph = excluded.glyph, color_from = excluded.color_from, color_to = excluded.color_to, sort_order = excluded.sort_order;
+
+-- ---------------------------------------------------------------------
+-- Assigned trackers (Nov 2026): only members the coach picks see these.
+-- Names are Deepak's wording from his tracker posters. No pictures yet:
+-- the coach can add them in Coach console → Activities.
+-- ---------------------------------------------------------------------
+insert into public.tracker_categories(slug, name, tagline, color, icon, sort_order, audience) values
+  ('couple', 'Conscious Couple', 'Husband & Wife Relationship Tracker', '#d9465f', 'heart-handshake', 5, 'assigned'),
+  ('mugilan', 'Mugilan''s Habits', 'Get 1% Better Everyday', '#7a5cd6', 'rocket', 6, 'assigned')
+on conflict (slug) do nothing;
+
+insert into public.activities(category_id, number, default_name, description, icon, image_path, points)
+select c.id, v.number, v.default_name, v.description, v.icon, null, 10
+from (values
+  ('couple', 1, 'Focus on Love', null, 'heart'),
+  ('couple', 2, 'Believe 100%', null, 'shield-check'),
+  ('couple', 3, 'Understand Physical Changes', null, 'flower-2'),
+  ('couple', 4, 'Give Freedom', null, 'compass'),
+  ('couple', 5, 'No Anger', null, 'flame'),
+  ('couple', 6, 'No Scolding', null, 'ban'),
+  ('couple', 7, 'No Shouting', null, 'mic'),
+  ('couple', 8, 'No Blaming', null, 'hand'),
+  ('couple', 9, 'No Long Talks', null, 'hourglass'),
+  ('couple', 10, 'No Advise', null, 'message-square'),
+  ('couple', 11, 'Not Always Right', null, 'scale'),
+  ('couple', 12, 'Accept Mistakes', 'Mistake → Learn → Improve', 'check-circle-2'),
+  ('couple', 13, 'Say Sorry', null, 'heart-handshake'),
+  ('couple', 14, 'Say Thanks', null, 'gift'),
+  ('mugilan', 1, 'Early Wakeup', null, 'sunrise'),
+  ('mugilan', 2, 'Empty Bowel - Hydrate', null, 'glass-water'),
+  ('mugilan', 3, 'Ready to School - On Time', null, 'clock'),
+  ('mugilan', 4, 'Learn to Create & Solve', null, 'lightbulb'),
+  ('mugilan', 5, 'Play with Friends', null, 'users'),
+  ('mugilan', 6, 'Tiffin Box Wash', null, 'sparkle'),
+  ('mugilan', 7, 'Avoid Mobile', null, 'smartphone'),
+  ('mugilan', 8, 'Prepare for Future Expert', null, 'rocket'),
+  ('mugilan', 9, 'Help Mom - No Anger / Shouting', null, 'hand-heart'),
+  ('mugilan', 10, 'Help Nithilla', null, 'heart-handshake'),
+  ('mugilan', 11, 'Eat Healthy - Early Dinner', null, 'apple'),
+  ('mugilan', 12, 'Tofu Walking / Play', null, 'leaf'),
+  ('mugilan', 13, 'Ready for Tomorrow', 'Homework, assignments, uniform ironing', 'book-open'),
+  ('mugilan', 14, 'Early to Bed - Read Books', null, 'moon')
+) as v(slug, number, default_name, description, icon)
+join public.tracker_categories c on c.slug = v.slug
+on conflict (category_id, number) do nothing;
 
 -- >>>>>>>>>>>>>>>>>>>> FIRST SUPER ADMIN (run once, after you sign up in the app)
 -- Replace the email with the client's login email, then run just this line:

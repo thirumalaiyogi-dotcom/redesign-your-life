@@ -10,11 +10,13 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
+import { avatarBlob, fileName } from './media.js';
+import { pushState, enablePush, disablePush } from './push.js';
 import { LANDING_PAGE, COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
 
 const page = document.body.dataset.page;
-const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
-const TRACKER_ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target' };
+const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
+const TRACKER_ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target', couple: 'heart-handshake', mugilan: 'rocket' };
 const STREAK_BADGES = [['streak_7', 7], ['consistency_30', 30], ['transformation_60', 60], ['champion_90', 90]];
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const COLLAPSED = 6;
@@ -248,11 +250,11 @@ function workshopCardHTML() {
 
 function quickHTML() {
   const qa = [
+    ['member/learn.html', 'book-open', 'Sessions'],
+    ['member/learn.html?tab=questions', 'message-square', 'Ask coach'],
+    ['member/todo.html', 'check-check', 'To-do'],
     ['member/journal.html', 'notebook-pen', 'Journal'],
-    ['member/trackers.html', 'list-checks', 'Activities'],
-    ['member/leaderboard.html', 'trophy', 'Ranks'],
-    ['member/progress.html', 'trending-up', 'Progress'],
-    ['member/profile.html', 'user-round', 'Profile']
+    ['member/progress.html', 'trending-up', 'Progress']
   ];
   return `<section aria-labelledby="qa-h"><div class="sec-h"><h2 id="qa-h">Quick actions</h2></div>
     <nav class="qa-grid" aria-label="Quick actions">${qa.map(([href, ic, label]) =>
@@ -497,7 +499,8 @@ function renderProfile() {
   const link = (href, ic, label, sub) => `<a class="set-link" href="${app(href)}"><span class="si">${icon(ic)}</span><span><b>${label}</b><small>${sub}</small></span>${icon('chevron-right')}</a>`;
   main.innerHTML = `
   <section class="card profile-head">
-    <div class="ph-top">${avatarHTML(profile, user.email, 'avatar lg')}
+    <div class="ph-top"><div class="dp-edit" id="dp-wrap">${avatarHTML(profile, user.email, 'avatar lg')}
+      <label class="dp-btn" title="Change photo">${icon('image')}<span class="visually-hidden">Change profile photo</span><input id="dp-file" class="visually-hidden" type="file" accept="image/*"></label></div>
       <div class="ph-id"><span class="pill ${profile.role === 'member' ? 'gold' : 'blue'}">${ROLE_LABEL[profile.role]}</span>
         <h1>${esc(profile.full_name || user.email)}</h1><p>${esc(user.email)}</p><small>Member since ${esc(formatDate(profile.joined_on))}</small></div></div>
     <div class="ph-stats" id="ph-stats" aria-live="polite">
@@ -510,8 +513,28 @@ function renderProfile() {
         <div class="set-h"><span class="si">${icon('user-round')}</span><h2>My details</h2></div>
         <div class="field"><label for="full_name">Full name</label><input id="full_name" autocomplete="name" maxlength="80" value="${esc(profile.full_name)}"><span class="err"></span></div>
         <div class="field"><label for="phone">Mobile number <span class="opt">(optional)</span></label><input id="phone" type="tel" inputmode="tel" maxlength="16" autocomplete="tel" placeholder="+91 98765 43210" value="${esc(profile.phone || '')}"><span class="err"></span></div>
+        <div class="field"><label for="city">City <span class="opt">(optional)</span></label><input id="city" maxlength="60" autocomplete="address-level2" placeholder="e.g. Tirunelveli"><span class="err"></span></div>
+        <div class="field"><label for="profession">Profession <span class="opt">(optional)</span></label><input id="profession" maxlength="80" autocomplete="organization-title" placeholder="e.g. Business owner, Teacher"><span class="err"></span></div>
+        <div class="field"><label for="dream">My dream <span class="opt">(optional)</span></label><textarea id="dream" maxlength="500" rows="2" placeholder="The life you are working towards"></textarea><span class="err"></span></div>
+        <div class="field"><label for="hobbies">Hobbies <span class="opt">(optional)</span></label><input id="hobbies" maxlength="200" placeholder="e.g. Reading, cricket, music"><span class="err"></span></div>
+        <div class="field"><label for="website">Website <span class="opt">(optional)</span></label><input id="website" type="url" inputmode="url" maxlength="200" placeholder="https://"><span class="err"></span></div>
         <div class="field"><label for="email_ro">Email</label><input id="email_ro" value="${esc(user.email)}" readonly><span class="hint">Ask your coach if you need to change your login email.</span></div>
         <button class="btn btn-primary" id="save-btn" type="submit">Save details</button>
+      </form>
+      <form class="card card-pad form goal-card" id="goals-form" novalidate>
+        <div class="set-h"><span class="si">${icon('target')}</span><h2>My goals</h2></div>
+        <p class="lock-line">${icon('lock')}Private. Only you and your coach can see this.</p>
+        <div class="field"><label for="g_year">This year's goal</label><textarea id="g_year" maxlength="1000" rows="2"></textarea></div>
+        <div class="field"><label for="g_month">This month's goal</label><textarea id="g_month" maxlength="1000" rows="2"></textarea></div>
+        <div class="field"><label for="g_week">This week's goal</label><textarea id="g_week" maxlength="1000" rows="2"></textarea></div>
+        <div class="goal-grid3">
+          <div class="field"><label for="g_nw">Net worth</label><input id="g_nw" maxlength="60" placeholder="e.g. ₹25 lakh"></div>
+          <div class="field"><label for="g_to">Turnover</label><input id="g_to" maxlength="60" placeholder="e.g. ₹1 crore / year"></div>
+          <div class="field"><label for="g_pr">Profit</label><input id="g_pr" maxlength="60" placeholder="e.g. ₹12 lakh / year"></div></div>
+        <div class="field"><label for="g_prob">Problems &amp; challenges</label><textarea id="g_prob" maxlength="1500" rows="3"></textarea></div>
+        <div class="field"><label for="g_exp">What I expect from this program</label><textarea id="g_exp" maxlength="1500" rows="3"></textarea></div>
+        <button class="btn btn-primary" id="goals-btn" type="submit">Save goals</button>
+        <small class="muted" id="goals-upd" style="font-size:12px"></small>
       </form>
       ${themePickHTML()}
     </div>
@@ -522,6 +545,11 @@ function renderProfile() {
         <div class="field"><label for="password2">Confirm new password</label><div class="pw"><input id="password2" type="password" autocomplete="new-password"><button type="button"></button></div><span class="err"></span></div>
         <button class="btn btn-ghost" id="pw-btn" type="submit">Update password</button>
       </form>
+      <section class="card card-pad stack push-card" id="push-card" style="gap:10px" aria-labelledby="pn-h">
+        <div class="set-h"><span class="si">${icon('bell')}</span><h2 id="pn-h">Phone notifications</h2></div>
+        <p class="muted" id="pn-txt" style="font-size:13.5px">Checking…</p>
+        <button class="btn btn-ghost" id="pn-btn" type="button" hidden></button>
+      </section>
       <section class="card coach-mini" aria-label="Your coach">
         <img src="${app(COACH.face)}" alt="" width="56" height="56">
         <div><small>Your coach</small><b>${esc(COACH.name)}</b><span>${esc(COACH.title)}</span></div>
@@ -529,6 +557,9 @@ function renderProfile() {
           ${LANDING_PAGE ? `<a class="btn btn-sm btn-ghost" href="${app('index.html')}#coach-sec">About</a>` : ''}</div>
       </section>
       <section class="card set-links" aria-label="More">
+        ${link('member/learn.html', 'book-open', 'Sessions', 'Notes, audio and videos from your coach')}
+        ${link('member/learn.html?tab=questions', 'message-square', 'Ask your coach', 'Questions and doubts')}
+        ${link('member/todo.html', 'check-check', 'To-do', 'Your own task list')}
         ${link('member/progress.html', 'trending-up', 'My progress', 'Points chart, trackers and badges')}
         ${link('member/journal.html', 'notebook-pen', 'Journal', 'Your evening reflections')}
         ${link('member/leaderboard.html', 'trophy', 'Leaderboard', 'See where you stand')}
@@ -560,15 +591,21 @@ function renderProfile() {
 
   $('#profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = $('#full_name'), phone = $('#phone');
+    const name = $('#full_name'), phone = $('#phone'), web = $('#website');
     const n = name.value.trim(), p = phone.value.trim();
+    let w = web.value.trim(); if (w && !/^https?:\/\//i.test(w)) w = 'https://' + w;
     const ok = [setFieldError(name, n.length < 2 ? 'Enter your full name.' : ''),
-                setFieldError(phone, p && !PHONE_RE.test(p) ? 'Use digits only, for example +91 98765 43210.' : '')].every(Boolean);
+                setFieldError(phone, p && !PHONE_RE.test(p) ? 'Use digits only, for example +91 98765 43210.' : ''),
+                setFieldError(web, w && !/^https?:\/\/[^\s/$.?#][^\s]*$/i.test(w) ? 'Enter a web address, for example https://mysite.com' : '')].every(Boolean);
     if (!ok) return;
+    const patch = { full_name: n, phone: p || null };
+    if (S.extras) Object.assign(patch, { city: $('#city').value.trim() || null, profession: $('#profession').value.trim() || null,
+      dream: $('#dream').value.trim() || null, hobbies: $('#hobbies').value.trim() || null, website: w || null });
     await withBusy($('#save-btn'), 'Saving…', async () => {
-      const { data, error } = await supabase.from('profiles').update({ full_name: n, phone: p || null }).eq('id', user.id).select('full_name, phone').single();
+      const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select(Object.keys(patch).join(', ')).single();
       if (error) return toast(friendlyError(error), 'bad');
-      Object.assign(profile, data);
+      Object.assign(profile, data); if (S.extras) Object.assign(S.extras, data);
+      if (data.website !== undefined) web.value = data.website || '';
       $('.profile-head h1').textContent = data.full_name;
       toast('Details saved');
     });
@@ -586,6 +623,80 @@ function renderProfile() {
   });
 
   $('#logout-btn').addEventListener('click', (e) => withBusy(e.currentTarget, 'Logging out…', signOut));
+
+  // ---- phone notifications ----
+  const PN = {
+    on: ['On for this phone. You get reminders, answers from your coach and new sessions.', 'Turn off'],
+    off: ['Get an evening reminder to tick your habits, to-dos due today, new sessions and your coach\'s answers.', 'Turn on'],
+    blocked: ['Notifications are blocked for this site. Allow them in your browser\'s site settings, then come back.', ''],
+    'ios-install': ['On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from there and turn notifications on.', ''],
+    unsupported: ['This browser cannot show notifications. Try Chrome on Android, or the installed app.', '']
+  };
+  const drawPush = async () => {
+    const st = await pushState().catch(() => 'unsupported');
+    const [txt, btn] = PN[st];
+    $('#pn-txt').textContent = txt;
+    const b = $('#pn-btn'); b.hidden = !btn; b.textContent = btn; b.dataset.state = st;
+    b.className = st === 'off' ? 'btn btn-primary' : 'btn btn-ghost';
+  };
+  drawPush();
+  $('#pn-btn').addEventListener('click', async (e) => {
+    const b = e.currentTarget, wasOn = b.dataset.state === 'on';
+    await withBusy(b, 'Please wait…', async () => {
+      try {
+        if (wasOn) { await disablePush(); toast('Notifications turned off'); }
+        else { await enablePush(); toast('Notifications turned on'); }
+      } catch (err) { toast(friendlyError(err), 'bad'); }
+    });
+    await drawPush();
+  });
+
+  // ---- extra details + private goals (loaded after the page shows) ----
+  const G = [['g_year', 'goal_year'], ['g_month', 'goal_month'], ['g_week', 'goal_week'], ['g_nw', 'net_worth'], ['g_to', 'turnover'], ['g_pr', 'profit'], ['g_prob', 'problems'], ['g_exp', 'expectations']];
+  Promise.all([
+    supabase.from('profiles').select('city, profession, dream, hobbies, website').eq('id', user.id).maybeSingle(),
+    supabase.from('member_goals').select('*').eq('member_id', user.id).maybeSingle()
+  ]).then(([ex, go]) => {
+    if (!ex.error && ex.data) { S.extras = ex.data; for (const k of ['city', 'profession', 'dream', 'hobbies', 'website']) $('#' + k).value = ex.data[k] || ''; }
+    else $$('#city, #profession, #dream, #hobbies, #website').forEach((i) => i.closest('.field').hidden = true);
+    if (go.error) { $('#goals-form').hidden = true; return; }
+    S.goals = go.data;
+    if (go.data) { for (const [id, k] of G) $('#' + id).value = go.data[k] || ''; $('#goals-upd').textContent = 'Last saved ' + formatDate(go.data.updated_at); }
+  });
+  $('#goals-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const row = Object.fromEntries(G.map(([id, k]) => [k, $('#' + id).value.trim() || null]));
+    await withBusy($('#goals-btn'), 'Saving…', async () => {
+      const q = S.goals ? supabase.from('member_goals').update(row).eq('member_id', user.id) : supabase.from('member_goals').insert({ member_id: user.id, ...row });
+      const { data, error } = await q.select('*').single();
+      if (error) return toast(friendlyError(error), 'bad');
+      S.goals = data; $('#goals-upd').textContent = 'Last saved just now'; toast('Goals saved');
+    });
+  });
+
+  // ---- profile photo: square-cropped, small WebP in the avatars bucket ----
+  $('#dp-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type)) return toast('Choose a picture file.', 'bad');
+    const btn = $('.dp-btn'); btn.classList.add('busy');
+    try {
+      const blob = await avatarBlob(file);
+      const path = `${user.id}/${fileName('webp')}`;
+      const up = await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/webp', upsert: false });
+      if (up.error) throw up.error;
+      const url = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+      const old = profile.avatar_url;
+      const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+      if (error) throw error;
+      profile.avatar_url = url;
+      $('#dp-wrap .avatar').outerHTML = avatarHTML(profile, user.email, 'avatar lg');
+      $('#top .avatar-link').innerHTML = avatarHTML(profile, user.email);
+      const m = old && old.match(/\/avatars\/(.+)$/); if (m) supabase.storage.from('avatars').remove([decodeURIComponent(m[1])]);
+      toast('Photo updated');
+    } catch (err) { toast(friendlyError(err), 'bad'); }
+    finally { btn.classList.remove('busy'); }
+  });
 }
 
 // Broken activity image → show the icon underneath (no inline handlers, so the CSP can stay strict).

@@ -199,3 +199,22 @@ details.j-entry { border-top: 1px solid var(--c-border); }
   .mcard { padding: 12px 14px; gap: 12px; }
 }
 @media (max-width: 380px) { .sday .v { display: none; } .mp-row .rt { flex-direction: column; align-items: flex-end; } }
+
+/* extra (assigned) trackers on the Members page */
+.pill.trk { color: var(--tc); background: color-mix(in srgb, var(--tc) 13%, transparent); }
+.trk-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--c-border); border-radius: var(--r-md); cursor: pointer; font-weight: 600; }
+.trk-opt input { width: 20px; height: 20px; accent-color: var(--tc); margin: 0; }
+.trk-opt i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.trk-opt:has(input:checked) { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 8%, var(--c-surface)); }
+.trk-opt:has(input:focus-visible) { outline: 2px solid var(--tc); outline-offset: 2px; }
+
+/* Redesign 2.1 */
+.q-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; text-decoration: none; color: var(--c-text);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)); background: color-mix(in srgb, var(--c-accent) 10%, var(--c-surface)); }
+.q-banner .si { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--c-accent); color: var(--c-on-accent); }
+.q-banner .si .icon { width: 18px; height: 18px; }
+.q-banner b { display: block; font-size: 15px; }
+.q-banner small { font-size: 12.5px; color: var(--c-text-2); }
+.q-banner > .icon { width: 18px; height: 18px; color: var(--c-muted); }
+.mp-extra { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .mp-extra { grid-template-columns: minmax(0, 1fr); } }

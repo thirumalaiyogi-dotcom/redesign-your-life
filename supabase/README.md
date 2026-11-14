@@ -48,3 +48,25 @@ The super admin can change the bonus values in `app_settings`. Each activity's o
 - Only the anon key is used in the app. The service_role key must never be put in frontend code.
 
 Tested locally on PostgreSQL 16 with 43 automated checks: role escalation, data isolation, double taps, bonuses, voids, journal privacy, logged-out access and deactivated members.
+
+## Redesign 2.1 (Nov 2026): extra trackers, goals, sessions, questions, to-dos, phone notifications
+Applied as migration `ryl_15_redesign_2_1` (the same SQL is now in the four files and in `setup-all.sql`). All of it is additive: no existing table, column, policy or score changes meaning.
+
+| New | Who can see it | Who can change it |
+|---|---|---|
+| `tracker_categories.audience` + `tracker_assignments` | members see only open trackers + the ones given to them | coaches, through `admin_set_tracker_member()` |
+| `profiles.city / profession / dream / hobbies / website` | the member and coaches | the member |
+| `member_goals` (yearly/monthly/weekly goal, net worth, turnover, profit, problems, expectations) | the member and coaches | the member only |
+| `sessions`, `session_media` + private bucket `session-media` | all active members (published only) | coaches |
+| `session_notes` (real life vs application) | the member and coaches | the member |
+| `doubts` (questions) | the member and coaches | member asks; coach answers with `admin_answer_doubt()` |
+| `todos` | the member only (not coaches) | the member |
+| `push_subscriptions` | each user their own | each user, via `save_push_subscription()` |
+
+Extra trackers: "all habits done today" (+20) and "perfect week" (+50) count each member's own trackers, so a member with Conscious Couple needs 72 that day. Every tick is still +10 and counts on the leaderboard.
+
+### Phone notifications (one-time setup)
+1. Edge Functions → deploy `functions/send-push` with **Verify JWT off**.
+2. Edge Functions → Secrets: `VAPID_PUBLIC_KEY` (the key in `js/push.js`), `VAPID_PRIVATE_KEY` (kept outside the repo), `VAPID_SUBJECT` = `mailto:<coach email>`.
+3. SQL Editor → run `push.sql` (turns on pg_net + pg_cron, the wake-up trigger and the daily jobs: 8 pm habit reminder, 7 am to-dos due).
+Without these steps everything else works; notifications then appear only inside the app.

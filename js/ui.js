@@ -132,6 +132,7 @@ export function adminNav(current) {
     [app('admin/dashboard.html'), 'layout-dashboard', 'Overview', 'dashboard'],
     [app('admin/checkins.html'), 'check-check', 'Check-ins', 'checkins'],
     [app('admin/members.html'), 'users', 'Members', 'members'],
+    [app('admin/sessions.html'), 'book-open', 'Sessions', 'sessions'],
     [app('admin/activities.html'), 'list-checks', 'Activities', 'activities'],
     [app('admin/leaderboard.html'), 'trophy', 'Leaderboard', 'leaderboard'],
     [app('admin/reports.html'), 'file-chart-column', 'Reports', 'reports'],

@@ -1,11 +1,12 @@
 // Coach console: overview + member & role management.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
+import { renderSessions, memberExtras } from './coach-learn.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
 const page = document.body.dataset.page;
-const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
+const TRACKER_COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
 let me = null;   // { profile, user }
 
 function chrome(current) {
@@ -44,6 +45,12 @@ async function renderOverview() {
     ['Points this week', o.points_week, 'All members', 'gold', 'coins']
   ];
   const activePct = o.total_members ? Math.round(100 * o.active_today / o.total_members) : 0;
+  // members' questions waiting for an answer (silently skipped on an older database)
+  supabase.from('doubts').select('id', { count: 'exact', head: true }).is('answered_at', null).then(({ count, error: e }) => {
+    if (e || !count || !$('#q-waiting')) return;
+    $('#q-waiting').innerHTML = `<a class="card q-banner" href="${app('admin/sessions.html?tab=questions')}"><span class="si">${icon('message-square')}</span>
+      <span><b>${count} question${count > 1 ? 's' : ''} waiting for your answer</b><small>Members asked from their Sessions page</small></span>${icon('chevron-right')}</a>`;
+  });
   const recent = o.recent || [];
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${esc(formatToday())}</span><h1>Program overview</h1></div>
@@ -54,6 +61,7 @@ async function renderOverview() {
       <span>${formatNumber(o.ticks_today)} habits done · ${o.avg_completion_week}% average completion this week</span>
       ${o.inactive_today > 0 ? `<a class="tp-link" href="${app('admin/members.html')}">${icon('hourglass')}${formatNumber(o.inactive_today)} not active yet today →</a>` : `<span class="tp-ok">${icon('check-circle-2')}Everyone has ticked today</span>`}</div>
   </section>
+  <div id="q-waiting"></div>
   <section class="akpis">${kpis.map(([l, v, s, c, ic]) => `<div class="card akpi ${c || ''}"><span class="ai">${icon(ic)}</span><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
     <section class="card"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
@@ -70,11 +78,47 @@ async function renderOverview() {
 
 // ---------------- MEMBERS & ROLES ----------------
 let people = [], filter = 'all', query = '';
+// trackers only some members get (Conscious Couple, a family member's own tracker) and who has them
+let extraCats = [], extraOf = new Map();
 
 async function loadPeople() {
-  const { data, error } = await supabase.rpc('admin_list_people');
-  if (error) throw error;
-  people = data || [];
+  const [ppl, cats, asg] = await Promise.all([
+    supabase.rpc('admin_list_people'),
+    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),
+    supabase.from('tracker_assignments').select('category_id, member_id')
+  ]);
+  if (ppl.error) throw ppl.error;
+  people = ppl.data || [];
+  extraCats = cats.error ? [] : cats.data || [];
+  extraOf = new Map();
+  for (const a of asg.error ? [] : asg.data || []) {
+    if (!extraOf.has(a.member_id)) extraOf.set(a.member_id, new Set());
+    extraOf.get(a.member_id).add(a.category_id);
+  }
+}
+
+function trackersDialog(p) {
+  const has = extraOf.get(p.id) || new Set();
+  formDialog({
+    title: `Trackers for ${p.full_name || p.email}`,
+    body: 'Everyone has the 4 main trackers. Tick the extra trackers this member should see. They get +10 points per habit, like the others.',
+    fields: `<div class="stack" style="gap:8px">${extraCats.map((c) => `<label class="trk-opt" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">
+      <input type="checkbox" name="cat" value="${c.id}" ${has.has(c.id) ? 'checked' : ''}><i></i><span>${esc(c.name)}</span></label>`).join('')}</div>`,
+    submitLabel: 'Save',
+    onSubmit: async (form) => {
+      const want = new Set([...form.querySelectorAll('input[name=cat]:checked')].map((x) => x.value));
+      const changes = extraCats.filter((c) => want.has(c.id) !== has.has(c.id));
+      for (const c of changes) {
+        const on = want.has(c.id);
+        const { error } = await supabase.rpc('admin_set_tracker_member', { p_category: c.id, p_member: p.id, p_on: on });
+        if (error) { toast(friendlyError(error), 'bad'); return false; }
+        if (on) has.add(c.id); else has.delete(c.id);
+      }
+      extraOf.set(p.id, has); renderList();
+      toast(changes.length ? 'Trackers updated' : 'No changes');
+      return true;
+    }
+  });
 }
 
 function counts() {
@@ -100,7 +144,9 @@ function personHTML(p) {
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
       <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
+      ${p.role === 'member' && extraOf.get(p.id)?.size ? extraCats.filter((c) => extraOf.get(p.id).has(c.id)).map((c) => `<span class="pill trk" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">${esc(c.name)}</span>`).join('') : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
+      ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
       ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
   </article>`;
@@ -144,6 +190,8 @@ async function renderMembers() {
     if (f) { filter = f.dataset.filter; renderList(); return; }
     const bz = e.target.closest('[data-bonus]');
     if (bz) { bonusDialog(people.find((x) => x.id === bz.dataset.bonus)); return; }
+    const tk = e.target.closest('[data-trk]');
+    if (tk) { trackersDialog(people.find((x) => x.id === tk.dataset.trk)); return; }
     const t = e.target.closest('[data-active]');
     if (t) {
       const p = people.find((x) => x.id === t.dataset.active);
@@ -234,8 +282,15 @@ function bonusDialog(p) {
 let ci = { date: null, tracker: '', status: '', q: '', rows: [], seq: 0, view: (() => { try { return sessionStorage.getItem('ryl.ci.view') || 'members'; } catch { return 'members'; } })(), people: [], total: 58 };
 const istToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 
+const trackerChips = (list) => [['', 'All trackers'], ...list].map(([v, l]) =>
+  `<button class="chip" data-tr="${esc(v)}" aria-pressed="${ci.tracker === v}">${esc(l)}</button>`).join('');
+
 async function renderCheckins() {
   const main = $('#main');
+  // tracker filter chips follow the database (extra trackers such as Conscious Couple appear too)
+  supabase.from('tracker_categories').select('slug, name').eq('is_active', true).order('sort_order').then(({ data }) => {
+    if (data?.length && $('#ci-trk')) $('#ci-trk').innerHTML = trackerChips(data.map((c) => [c.slug, c.name.replace(/ (Habits|Activities|Mindsets)$/, '')]));
+  });
   ci.date = ci.date || istToday();
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">Members tick, points are instant. Remove fake ticks here.</span><h1>Check-ins</h1></div></div>
@@ -246,8 +301,7 @@ async function renderCheckins() {
     <label class="field" style="flex:none;gap:4px"><span class="visually-hidden">Date</span><input id="ci-date" type="date" value="${ci.date}" max="${istToday()}" style="min-height:42px;padding:8px 12px"></label>
     <label class="search">${icon('search')}<input id="ci-q" type="search" placeholder="Search member or activity" aria-label="Search check-ins" value="${esc(ci.q)}"></label>
   </div>
-  <div class="tools ci-entries"><div class="chips" role="group" aria-label="Tracker">${[['', 'All trackers'], ['wealth', 'Wealth'], ['conscious', 'Conscious'], ['karma', 'Karma'], ['champion', 'Champion']].map(([v, l]) =>
-      `<button class="chip" data-tr="${v}" aria-pressed="${ci.tracker === v}">${l}</button>`).join('')}</div></div>
+  <div class="tools ci-entries"><div class="chips" role="group" aria-label="Tracker" id="ci-trk">${trackerChips([['wealth', 'Wealth'], ['conscious', 'Conscious'], ['karma', 'Karma'], ['champion', 'Champion']])}</div></div>
   <div class="tools ci-entries"><div class="chips" role="group" aria-label="Status">${[['', 'All'], ['done', 'Done'], ['not_done', 'Not done'], ['removed', 'Removed']].map(([v, l]) =>
       `<button class="chip" data-st="${v}" aria-pressed="${ci.status === v}">${l}</button>`).join('')}</div><span class="muted" id="ci-count" style="font-size:13px"></span></div>
   <div id="ci-list"></div>`;
@@ -310,8 +364,9 @@ function drawMembersDay() {
     return;
   }
   list.innerHTML = `<div class="mday">${rows.map((p) => {
-    const left = Math.max(0, ci.total - p.done - p.not_done);
-    const pct = ci.total ? Math.round(100 * p.done / ci.total) : 0;
+    const total = p.total ?? ci.total;               // each member's own trackers (extra trackers add to it)
+    const left = Math.max(0, total - p.done - p.not_done);
+    const pct = total ? Math.round(100 * p.done / total) : 0;
     const state = !p.done && !p.not_done ? ['s-none', 'Not started'] : left === 0 ? ['s-done', 'All marked'] : ['s-prog', 'In progress'];
     return `<a class="mcard ${p.is_active ? '' : 'paused'}" href="${app(`admin/member.html?id=${p.member_id}&d=${ci.date}`)}">
       ${ringHTML(pct, { size: 52, stroke: 5, mid: `${pct}%` })}
@@ -365,16 +420,19 @@ async function renderMember() {
   if (mp.date > istToday()) mp.date = istToday();
   main.innerHTML = `<div class="skeleton" style="height:140px"></div><div class="skeleton" style="height:120px"></div><div class="skeleton" style="height:320px"></div>`;
   if (!/^[0-9a-f-]{36}$/.test(mp.id || '')) return errorPanel(main, new Error('Member not found.'), () => { location.href = app('admin/members.html'); }, 'Member not found');
-  const [people, cats, acts] = await Promise.all([
+  const [people, cats, acts, asg] = await Promise.all([
     supabase.rpc('admin_list_people'),
-    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('is_active', true).order('sort_order'),
-    supabase.from('activities').select('id, category_id, number, default_name, points').eq('is_active', true).order('number')
+    supabase.from('tracker_categories').select('id, slug, name, sort_order, audience').eq('is_active', true).order('sort_order'),
+    supabase.from('activities').select('id, category_id, number, default_name, points').eq('is_active', true).order('number'),
+    supabase.from('tracker_assignments').select('category_id').eq('member_id', mp.id)
   ]);
-  const err = people.error || cats.error || acts.error;
+  const err = people.error || cats.error || acts.error || asg.error;
   if (err) return errorPanel(main, err, renderMember);
   mp.person = (people.data || []).find((p) => p.id === mp.id);
   if (!mp.person) return errorPanel(main, new Error('This member was not found.'), () => { location.href = app('admin/members.html'); }, 'Member not found');
-  mp.cats = cats.data || [];
+  // this member's trackers: the 4 open ones + any extra tracker the coach gave them
+  const mine = new Set((asg.data || []).map((a) => a.category_id));
+  mp.cats = (cats.data || []).filter((c) => (c.audience || 'all') === 'all' || mine.has(c.id));
   const catIds = new Set(mp.cats.map((c) => c.id));
   mp.acts = (acts.data || []).filter((a) => catIds.has(a.category_id));
   const today = istToday(), p = mp.person;
@@ -396,7 +454,9 @@ async function renderMember() {
       <button class="iconbtn" id="mp-next" aria-label="Next day">${icon('chevron-right')}</button>
       <button class="btn btn-sm btn-ghost" id="mp-today">Today</button></div>
     <section class="card card-pad" aria-label="Last 14 days"><div class="card-h"><h3>Last 14 days</h3><span class="sub-r muted" style="font-size:12.5px">Tap a day to open it</span></div><div class="mp-strip" id="mp-strip"></div></section>
-    <div id="mp-day"></div>`;
+    <div id="mp-day"></div>
+    <div id="mp-extra" class="stack" style="gap:14px"></div>`;
+  memberExtras($('#mp-extra'), mp.id).catch(() => { $('#mp-extra').innerHTML = ''; });
   $('#mp-date').addEventListener('change', (e) => goDay(e.target.value));
   $('#mp-prev').addEventListener('click', () => goDay(addDaysIso(mp.date, -1)));
   $('#mp-next').addEventListener('click', () => goDay(addDaysIso(mp.date, 1)));
@@ -744,7 +804,7 @@ async function loadJournals(date) {
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome({ 'admin-member': 'checkins', 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
+    chrome({ 'admin-sessions': 'sessions', 'admin-member': 'checkins', 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
     if (page === 'admin-checkins') await renderCheckins();
@@ -752,6 +812,7 @@ async function loadJournals(date) {
     if (page === 'admin-settings') await renderSettings();
     if (page === 'admin-reports') await renderReports();
     if (page === 'admin-member') await renderMember();
+    if (page === 'admin-sessions') await renderSessions();
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

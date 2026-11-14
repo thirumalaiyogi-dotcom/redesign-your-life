@@ -99,3 +99,48 @@ insert into public.achievements(code, name, description, glyph, color_from, colo
   ('monthly_champion', 'Monthly Champion', 'Finish a month at #1 on the leaderboard', 'M', '#f7e5a6', '#9a7227', 10)
 on conflict (code) do update set name = excluded.name, description = excluded.description,
   glyph = excluded.glyph, color_from = excluded.color_from, color_to = excluded.color_to, sort_order = excluded.sort_order;
+
+-- ---------------------------------------------------------------------
+-- Assigned trackers (Nov 2026): only members the coach picks see these.
+-- Names are Deepak's wording from his tracker posters. No pictures yet:
+-- the coach can add them in Coach console → Activities.
+-- ---------------------------------------------------------------------
+insert into public.tracker_categories(slug, name, tagline, color, icon, sort_order, audience) values
+  ('couple', 'Conscious Couple', 'Husband & Wife Relationship Tracker', '#d9465f', 'heart-handshake', 5, 'assigned'),
+  ('mugilan', 'Mugilan''s Habits', 'Get 1% Better Everyday', '#7a5cd6', 'rocket', 6, 'assigned')
+on conflict (slug) do nothing;
+
+insert into public.activities(category_id, number, default_name, description, icon, image_path, points)
+select c.id, v.number, v.default_name, v.description, v.icon, null, 10
+from (values
+  ('couple', 1, 'Focus on Love', null, 'heart'),
+  ('couple', 2, 'Believe 100%', null, 'shield-check'),
+  ('couple', 3, 'Understand Physical Changes', null, 'flower-2'),
+  ('couple', 4, 'Give Freedom', null, 'compass'),
+  ('couple', 5, 'No Anger', null, 'flame'),
+  ('couple', 6, 'No Scolding', null, 'ban'),
+  ('couple', 7, 'No Shouting', null, 'mic'),
+  ('couple', 8, 'No Blaming', null, 'hand'),
+  ('couple', 9, 'No Long Talks', null, 'hourglass'),
+  ('couple', 10, 'No Advise', null, 'message-square'),
+  ('couple', 11, 'Not Always Right', null, 'scale'),
+  ('couple', 12, 'Accept Mistakes', 'Mistake → Learn → Improve', 'check-circle-2'),
+  ('couple', 13, 'Say Sorry', null, 'heart-handshake'),
+  ('couple', 14, 'Say Thanks', null, 'gift'),
+  ('mugilan', 1, 'Early Wakeup', null, 'sunrise'),
+  ('mugilan', 2, 'Empty Bowel - Hydrate', null, 'glass-water'),
+  ('mugilan', 3, 'Ready to School - On Time', null, 'clock'),
+  ('mugilan', 4, 'Learn to Create & Solve', null, 'lightbulb'),
+  ('mugilan', 5, 'Play with Friends', null, 'users'),
+  ('mugilan', 6, 'Tiffin Box Wash', null, 'sparkle'),
+  ('mugilan', 7, 'Avoid Mobile', null, 'smartphone'),
+  ('mugilan', 8, 'Prepare for Future Expert', null, 'rocket'),
+  ('mugilan', 9, 'Help Mom - No Anger / Shouting', null, 'hand-heart'),
+  ('mugilan', 10, 'Help Nithilla', null, 'heart-handshake'),
+  ('mugilan', 11, 'Eat Healthy - Early Dinner', null, 'apple'),
+  ('mugilan', 12, 'Tofu Walking / Play', null, 'leaf'),
+  ('mugilan', 13, 'Ready for Tomorrow', 'Homework, assignments, uniform ironing', 'book-open'),
+  ('mugilan', 14, 'Early to Bed - Read Books', null, 'moon')
+) as v(slug, number, default_name, description, icon)
+join public.tracker_categories c on c.slug = v.slug
+on conflict (category_id, number) do nothing;

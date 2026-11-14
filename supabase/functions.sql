@@ -46,6 +46,32 @@ returns void language sql security definer set search_path = '' as $$
   insert into public.notifications(member_id, kind, title, body) values (p_member, p_kind, p_title, p_body);
 $$;
 
+-- can this member use this tracker? 'all' trackers: everyone; 'assigned': only members the coach picked
+create or replace function public._sees(p_member uuid, p_category uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.tracker_categories c
+                 where c.id = p_category
+                   and (c.audience = 'all'
+                        or exists (select 1 from public.tracker_assignments t
+                                   where t.category_id = c.id and t.member_id = p_member)));
+$$;
+
+-- the same check for the signed-in user (used by row-level security)
+create or replace function public.i_see_tracker(p_category uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public._sees(auth.uid(), p_category);
+$$;
+
+-- number of activities that count for one member (their trackers only), optionally one tracker
+create or replace function public._total_for(p_member uuid, p_category uuid default null)
+returns int language sql stable security definer set search_path = '' as $$
+  select count(*)::int
+  from public.activities a join public.tracker_categories c on c.id = a.category_id
+  where a.is_active and c.is_active and (p_category is null or a.category_id = p_category)
+    and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
+                                       where t.category_id = c.id and t.member_id = p_member));
+$$;
+
 -- number of activities that currently count (active activity in an active tracker)
 create or replace function public._total_active(p_category uuid default null)
 returns int language sql stable security definer set search_path = '' as $$
@@ -64,7 +90,9 @@ returns int language sql stable security definer set search_path = '' as $$
   where d.member_id = p_member and d.checkin_date = p_day
     and d.status = 'done' and d.voided_at is null
     and a.is_active and c.is_active
-    and (p_category is null or a.category_id = p_category);
+    and (p_category is null or a.category_id = p_category)
+    and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
+                                       where t.category_id = c.id and t.member_id = p_member));
 $$;
 
 -- consecutive days ending exactly on p_as_of with >= streak_min_daily done
@@ -144,7 +172,7 @@ create trigger activities_guard before update on public.activities for each row 
 create or replace function public._recalc_bonuses(p_member uuid, p_day date)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
-  v_total  int := public._total_active();
+  v_total  int := public._total_for(p_member);
   v_streak int;
   v_pts    int;
   v_perfect boolean;
@@ -248,7 +276,7 @@ begin
 
   select a.id, a.points, a.default_name into v_act
   from public.activities a join public.tracker_categories c on c.id = a.category_id
-  where a.id = p_activity_id and a.is_active and c.is_active;
+  where a.id = p_activity_id and a.is_active and c.is_active and public._sees(v_uid, c.id);
   if not found then raise exception 'This activity is not available.' using errcode = 'P0002'; end if;
 
   select * into v_row from public.daily_checkins
@@ -304,7 +332,7 @@ declare
   v_today date := public.app_today();
   v_week date := date_trunc('week', public.app_today())::date;
   v_month date := date_trunc('month', public.app_today())::date;
-  v_total int := public._total_active();
+  v_total int := public._total_for(auth.uid());
   v_joined date;
   v_wdays int; v_mdays int;
   v_rank record;
@@ -323,12 +351,15 @@ begin
     'streak', public._display_streak(v_uid, v_today),
     'total_activities', v_total,
     'done_today', public._done_on(v_uid, v_today),
-    'done_month', (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_month),
+    'done_month', (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_month and public._sees(v_uid, a.category_id)),
     'weekly_pct', case when v_total = 0 or v_wdays <= 0 then 0 else round(100.0 *
-        (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_week)
+        (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_week and public._sees(v_uid, a.category_id))
         / (v_total * v_wdays)) end,
     'monthly_pct', case when v_total = 0 or v_mdays <= 0 then 0 else round(100.0 *
-        (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null and checkin_date >= v_month)
+        (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+          where x.member_id = v_uid and x.status='done' and x.voided_at is null and x.checkin_date >= v_month and public._sees(v_uid, a.category_id))
         / (v_total * v_mdays)) end,
     'missed_week', greatest(0, v_total * greatest(v_wdays - 1, 0) -
         (select count(*) from public.daily_checkins where member_id = v_uid and status='done' and voided_at is null
@@ -339,7 +370,7 @@ begin
           'not_done_today', (select count(*) from public.daily_checkins d join public.activities a on a.id = d.activity_id
                              where d.member_id = v_uid and d.checkin_date = v_today and d.status = 'not_done' and a.category_id = c.id))
         order by c.sort_order), '[]'::jsonb)
-        from public.tracker_categories c where c.is_active),
+        from public.tracker_categories c where c.is_active and public._sees(v_uid, c.id)),
     'badges', (select coalesce(jsonb_agg(jsonb_build_object('code', a.code, 'name', a.name, 'glyph', a.glyph,
                  'color_from', a.color_from, 'color_to', a.color_to, 'earned_at', m.earned_at) order by a.sort_order), '[]'::jsonb)
                from public.achievements a left join public.member_achievements m on m.achievement_id = a.id and m.member_id = v_uid));
@@ -550,11 +581,13 @@ end; $$;
 create or replace function public.admin_overview(p_date date default null)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare d date := coalesce(p_date, public.app_today()); w date := date_trunc('week', coalesce(p_date, public.app_today()))::date;
-        v_members int; v_active int; v_total int := public._total_active();
+        v_members int; v_active int; v_slots bigint;
 begin
   if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
   select count(*) into v_members from public.profiles where role = 'member' and is_active;
   select count(distinct member_id) into v_active from public.daily_checkins where checkin_date = d;
+  -- habits each active member could tick per day (their own trackers), summed
+  select coalesce(sum(public._total_for(p.id)), 0) into v_slots from public.profiles p where p.role = 'member' and p.is_active;
   return jsonb_build_object(
     'date', d,
     'total_members', v_members,
@@ -562,16 +595,20 @@ begin
     'inactive_today', greatest(v_members - v_active, 0),
     'ticks_today', (select count(*) from public.daily_checkins where checkin_date = d and status = 'done' and voided_at is null),
     'points_week', (select coalesce(sum(points),0) from public.score_history where score_date between w and d),
-    'avg_completion_week', case when v_members = 0 or v_total = 0 then 0 else round(100.0 *
+    'avg_completion_week', case when v_slots = 0 then 0 else round(100.0 *
         (select count(*) from public.daily_checkins c join public.profiles p on p.id = c.member_id
           where p.role = 'member' and p.is_active and c.checkin_date between w and d and c.status = 'done' and c.voided_at is null)
-        / (v_members * v_total * (d - w + 1))) end,
+        / (v_slots * (d - w + 1))) end,
     'category_week', (select coalesce(jsonb_agg(jsonb_build_object('slug', c.slug, 'name', c.name, 'pct',
-        case when v_members = 0 or public._total_active(c.id) = 0 then 0 else round(100.0 *
+        case when cm.n = 0 or public._total_active(c.id) = 0 then 0 else least(100, round(100.0 *
           (select count(*) from public.daily_checkins x join public.activities a on a.id = x.activity_id
+             join public.profiles p on p.id = x.member_id and p.role = 'member' and p.is_active
             where a.category_id = c.id and x.checkin_date between w and d and x.status = 'done' and x.voided_at is null)
-          / (v_members * public._total_active(c.id) * (d - w + 1))) end) order by c.sort_order), '[]'::jsonb)
-        from public.tracker_categories c where c.is_active),
+          / (cm.n * public._total_active(c.id) * (d - w + 1)))) end) order by c.sort_order), '[]'::jsonb)
+        from public.tracker_categories c
+        cross join lateral (select count(*)::int as n from public.profiles p
+                            where p.role = 'member' and p.is_active and public._sees(p.id, c.id)) cm
+        where c.is_active),
     'daily_active', (select jsonb_agg(jsonb_build_object('date', g::date,
         'members', (select count(distinct member_id) from public.daily_checkins where checkin_date = g::date)) order by g)
         from generate_series(d - 13, d, interval '1 day') g),
@@ -659,9 +696,10 @@ end; $$;
 -- ---------------------------------------------------------------------
 -- One row per member for a day: how many of the active activities they
 -- marked done / not done, removed ticks, and points from habits that day.
+drop function if exists public.admin_day_summary(date);   -- return type gained "total"
 create or replace function public.admin_day_summary(p_date date default null)
 returns table(member_id uuid, full_name text, avatar_url text, is_active boolean, joined_on date,
-              done int, not_done int, removed int, points int, last_at timestamptz)
+              done int, not_done int, removed int, points int, last_at timestamptz, total int)
 language plpgsql stable security definer set search_path = '' as $$
 #variable_conflict use_column
 declare d date := coalesce(p_date, public.app_today());
@@ -673,12 +711,13 @@ begin
          coalesce(count(*) filter (where c.status = 'not_done' and c.voided_at is null), 0)::int,
          coalesce(count(*) filter (where c.voided_at is not null), 0)::int,
          coalesce(sum(c.points_awarded) filter (where c.voided_at is null), 0)::int,
-         max(c.updated_at)
+         max(c.updated_at),
+         public._total_for(p.id)
   from public.profiles p
   left join (public.daily_checkins c
              join public.activities a on a.id = c.activity_id and a.is_active
              join public.tracker_categories t on t.id = a.category_id and t.is_active)
-         on c.member_id = p.id and c.checkin_date = d
+         on c.member_id = p.id and c.checkin_date = d and public._sees(p.id, t.id)
   where p.role = 'member' and p.joined_on <= d
   group by p.id
   order by max(c.updated_at) desc nulls last, p.full_name;
@@ -735,9 +774,140 @@ begin
 end; $$;
 
 -- ---------------------------------------------------------------------
+-- COACH: give / take away an 'assigned' tracker for one member
+-- ---------------------------------------------------------------------
+create or replace function public.admin_set_tracker_member(p_category uuid, p_member uuid, p_on boolean)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_cat record; v_changed boolean := false;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  select id, name, audience into v_cat from public.tracker_categories where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  if v_cat.audience <> 'assigned' then raise exception 'This tracker is already open to everyone.' using errcode = '22023'; end if;
+  if not exists (select 1 from public.profiles where id = p_member and role = 'member') then
+    raise exception 'Member not found.' using errcode = 'P0002';
+  end if;
+  if coalesce(p_on, false) then
+    insert into public.tracker_assignments(category_id, member_id, assigned_by) values (p_category, p_member, auth.uid())
+    on conflict do nothing;
+    v_changed := found;
+    if v_changed then perform public._notify(p_member, 'info', 'New tracker: ' || v_cat.name, 'Your coach added this tracker for you. Open Track to start.'); end if;
+  else
+    delete from public.tracker_assignments where category_id = p_category and member_id = p_member;
+    v_changed := found;
+  end if;
+  if v_changed then
+    perform public._recalc_bonuses(p_member, public.app_today());   -- "all habits done" depends on the member's trackers
+    perform public._audit(case when p_on then 'tracker.assign' else 'tracker.unassign' end, 'tracker_categories', p_category::text,
+                          jsonb_build_object('member', p_member));
+  end if;
+end; $$;
+
+-- ---------------------------------------------------------------------
+-- Redesign 2.1: updated_at stamps, coach answers a doubt, coach inbox count
+-- ---------------------------------------------------------------------
+drop trigger if exists goals_touch on public.member_goals;
+create trigger goals_touch before update on public.member_goals for each row execute function public.touch_updated_at();
+drop trigger if exists sessions_touch on public.sessions;
+create trigger sessions_touch before update on public.sessions for each row execute function public.touch_updated_at();
+drop trigger if exists session_notes_touch on public.session_notes;
+create trigger session_notes_touch before update on public.session_notes for each row execute function public.touch_updated_at();
+
+-- a new published session tells every active member (in-app notification)
+create or replace function public.notify_new_session()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if new.is_published and (tg_op = 'INSERT' or not old.is_published) then
+    insert into public.notifications(member_id, kind, title, body)
+    select p.id, 'info', 'New session: ' || left(new.title, 100), 'Open Sessions to see the notes, pictures and videos.'
+    from public.profiles p where p.role = 'member' and p.is_active;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists sessions_notify on public.sessions;
+create trigger sessions_notify after insert or update of is_published on public.sessions
+  for each row execute function public.notify_new_session();
+
+create or replace function public.admin_answer_doubt(p_doubt uuid, p_answer text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_member uuid; v_answer text := nullif(left(trim(coalesce(p_answer, '')), 2000), '');
+begin
+  if not public.is_admin() then raise exception 'Only coaches can answer questions.' using errcode = '42501'; end if;
+  if v_answer is null or char_length(v_answer) < 2 then raise exception 'Write an answer first.' using errcode = '22023'; end if;
+  update public.doubts set answer = v_answer, answered_by = auth.uid(), answered_at = now()
+   where id = p_doubt returning member_id into v_member;
+  if v_member is null then raise exception 'Question not found.' using errcode = 'P0002'; end if;
+  perform public._notify(v_member, 'info', 'Your coach answered your question', left(v_answer, 200));
+  perform public._audit('doubt.answer', 'doubts', p_doubt::text, jsonb_build_object('member', v_member));
+end; $$;
+
+-- ---------------------------------------------------------------------
+-- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
+-- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
+-- ---------------------------------------------------------------------
+-- evening nudge for active members who have not marked anything today
+create or replace function public._queue_daily_reminders()
+returns int language plpgsql security definer set search_path = '' as $$
+declare d date := public.app_today(); n int;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select p.id, 'reminder', 'Your habits are waiting', 'Take 2 minutes to tick today''s habits before midnight.'
+  from public.profiles p
+  where p.role = 'member' and p.is_active
+    and not exists (select 1 from public.daily_checkins c where c.member_id = p.id and c.checkin_date = d)
+    and not exists (select 1 from public.notifications x where x.member_id = p.id and x.kind = 'reminder'
+                    and x.title = 'Your habits are waiting' and x.created_at >= now() - interval '20 hours');
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+
+-- morning list of to-dos due today
+create or replace function public._queue_todo_reminders()
+returns int language plpgsql security definer set search_path = '' as $$
+declare d date := public.app_today(); n int;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select t.member_id, 'reminder',
+         case when count(*) = 1 then 'To-do today: ' || left(min(t.title), 80) else count(*) || ' to-dos due today' end,
+         left(string_agg(t.title, ' · ' order by t.created_at), 480)
+  from public.todos t join public.profiles p on p.id = t.member_id and p.is_active
+  where t.due_date = d and t.done_at is null
+    and not exists (select 1 from public.notifications x where x.member_id = t.member_id and x.kind = 'reminder'
+                    and (x.title like 'To-do today:%' or x.title like '% to-dos due today')
+                    and x.created_at >= now() - interval '20 hours')
+  group by t.member_id;
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+
+-- a phone/browser can belong to one person at a time: saving it moves it to whoever is signed in now
+create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or public.my_role() is null then raise exception 'Please log in again.' using errcode = '42501'; end if;
+  if p_endpoint is null or p_endpoint !~ '^https://' or char_length(p_endpoint) > 1000 then raise exception 'Invalid subscription.' using errcode = '22023'; end if;
+  delete from public.push_subscriptions where endpoint = p_endpoint and member_id <> auth.uid();
+  insert into public.push_subscriptions(member_id, endpoint, p256dh, auth) values (auth.uid(), p_endpoint, p_p256dh, p_auth)
+  on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth;
+end; $$;
+
+-- send-push claims a batch of undelivered notifications (service role only; never granted to the app)
+create or replace function public._claim_push_batch(p_limit int default 300)
+returns table(id uuid, member_id uuid, kind text, title text, body text)
+language sql security definer set search_path = '' as $$
+  update public.notifications n set pushed_at = now()
+  where n.id in (select x.id from public.notifications x
+                 where x.pushed_at is null and x.created_at >= now() - interval '24 hours'
+                 order by x.created_at limit least(greatest(coalesce(p_limit, 300), 1), 500)
+                 for update skip locked)
+  returning n.id, n.member_id, n.kind, n.title, n.body;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon, authenticated;
+grant execute on function public._claim_push_batch(int) to service_role;
 
 grant execute on function
   public.app_today(), public.my_role(), public.is_admin(), public.is_super_admin(),
@@ -748,7 +918,9 @@ grant execute on function
   public.admin_update_setting(text, jsonb), public.admin_close_month(date),
   public.admin_overview(date), public.admin_member_report(date, date), public.admin_list_people(),
   public.admin_checkins(date, text, text, text, int),
-  public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date)
+  public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
+  public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
+  public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

@@ -6,9 +6,14 @@ import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 
 const page = document.body.dataset.page;
-const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
+const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
 const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp' };
-const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target' };
+const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target', couple: 'heart-handshake', mugilan: 'rocket' };
+// trackers added later (e.g. Conscious Couple) use their own colour/icon from the database and a plain cover
+const catOf = (slug) => cats.find((c) => c.slug === slug) || {};
+const tColor = (slug) => COLOR[slug] || catOf(slug).color || 'var(--c-primary)';
+const tIcon = (slug) => ICON[slug] || catOf(slug).icon || 'list-checks';
+const coverImg = (slug, cls = '') => COVER[slug] ? `<img ${cls ? `class="${cls}" ` : ''}src="${app('assets/images/' + COVER[slug])}" alt="" loading="lazy">` : `<span class="cover-fb ${cls}" aria-hidden="true"></span>`;
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ---- date helpers (ISO yyyy-mm-dd, IST day comes from the server) ----
@@ -43,7 +48,7 @@ async function loadToday() {
 }
 
 async function loadCats() {
-  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, sort_order').eq('is_active', true).order('sort_order');
+  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order').eq('is_active', true).order('sort_order');
   if (error) throw error;
   cats = data || [];
 }
@@ -53,7 +58,7 @@ async function renderList() {
   const main = $('#main');
   main.innerHTML = `<div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:120px"></div>
     <div class="tlist">${'<div class="skeleton" style="height:150px"></div>'.repeat(4)}</div>`;
-  const { data: d, error } = await supabase.rpc('get_my_dashboard');
+  const [{ data: d, error }] = await Promise.all([supabase.rpc('get_my_dashboard'), loadCats().catch(() => {})]);
   if (error) return errorPanel(main, error, renderList);
   const done = d.done_today || 0, total = d.total_activities || 0;
   const miss = (d.trackers || []).reduce((n, t) => n + (t.not_done_today || 0), 0);
@@ -70,8 +75,8 @@ async function renderList() {
       const p = t.total ? Math.round(100 * t.done_today / t.total) : 0;
       const nd = t.not_done_today || 0, left = Math.max(0, t.total - t.done_today - nd);
       const state = t.total && t.done_today === t.total ? ['s-done', 'Complete'] : t.done_today || nd ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
-      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${COLOR[t.slug] || 'var(--c-primary)'}">
-        <div class="art"><img src="${app('assets/images/' + (COVER[t.slug] || 'wealth-01.webp'))}" alt="" loading="lazy"><span class="ic">${icon(ICON[t.slug] || 'list-checks')}</span></div>
+      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${tColor(t.slug)}">
+        <div class="art">${coverImg(t.slug)}<span class="ic">${icon(tIcon(t.slug))}</span></div>
         <div class="body">
           <div class="row"><div><h3>${esc(t.name)}</h3><span class="state ${state[0]}">${state[1]}</span></div>${ringHTML(p, { size: 48, stroke: 5, mid: `${p}%` })}</div>
           <div class="pbar"><i data-w="${p}%"></i></div>
@@ -309,18 +314,18 @@ async function renderDetail() {
   if (error) return errorPanel(main, error, renderDetail);
   acts = data || [];
   weekStart = mondayOf(today);
-  main.style.setProperty('--tc', COLOR[cat.slug] || cat.color || 'var(--gold)');
+  main.style.setProperty('--tc', tColor(cat.slug));
   main.innerHTML = `
     <header class="t-head">
-      <img class="cover" src="${app('assets/images/' + (COVER[cat.slug] || 'wealth-01.webp'))}" alt="">
+      ${coverImg(cat.slug, 'cover')}
       <div class="inner">
         <div class="crumbs"><a href="${app('member/dashboard.html')}">Home</a>${icon('chevron-right')}<a href="${app('member/trackers.html')}">Track</a></div>
-        <div class="title"><span class="ic">${icon(ICON[cat.slug] || 'list-checks')}</span><div><h1>${esc(cat.name)}</h1>
+        <div class="title"><span class="ic">${icon(tIcon(cat.slug))}</span><div><h1>${esc(cat.name)}</h1>
           <small><span class="n">${acts.length}</span> daily activities</small></div></div>
         ${cat.tagline ? `<p class="tagline">${esc(cat.tagline)}</p>` : ''}
       </div>
     </header>
-    <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''} style="--tc:${COLOR[c.slug] || 'var(--c-primary)'}"><i></i>${esc(c.name)}</a>`).join('')}</nav>
+    <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''} style="--tc:${tColor(c.slug)}"><i></i>${esc(c.name)}</a>`).join('')}</nav>
     <div class="today-bar" id="today-bar"></div>
     <div class="seg" role="tablist" aria-label="View"><button role="tab" data-view="week" aria-selected="true">Week</button><button role="tab" data-view="month" aria-selected="false">Month</button><button role="tab" data-view="history" aria-selected="false">History</button></div>
     <div id="t-body" class="stack" style="gap:14px"></div>`;

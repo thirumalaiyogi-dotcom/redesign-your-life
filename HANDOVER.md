@@ -54,3 +54,13 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **The app shows "Can't reach the server":** check that the Supabase project is not paused.
 - **Sign-up emails stop:** check Brevo's daily limit (300) and that the SMTP key hasn't expired. The current key expires in Nov 2027; create a new one in Brevo → SMTP & API and paste it into Supabase → SMTP Settings → Password.
 - **A member can't log in:** Coach console → Members. Are they paused? Is "Email not confirmed" shown? They can use **Forgot password** on the login page.
+
+
+## New in Redesign 2.1 (Nov 2026)
+- **Extra trackers (Conscious Couple, Mugilan's Habits):** Coach console → Members → **Trackers** on a member → tick the tracker → Save. Only those members see it. Each habit is +10 like the others. Pictures for these habits can be added in **Activities**.
+- **Sessions:** Coach console → **Sessions** → **New session**. Add title, notes, then pictures, audio (up to 15 MB) and YouTube / Drive links. Turn "Show to members" off to keep it as a draft. Members get a notification when it is shown.
+- **Questions:** members ask from their Sessions page. Waiting questions show on the Overview and under Sessions → Questions. Your answer reaches only that member.
+- **Real life vs application:** members' notes are under Sessions → Real life, and on each member's Progress page.
+- **Member details & goals:** each member fills City, Profession, Dream, Hobbies, Website and private Goals (incl. net worth, turnover, profit) in Profile. Coaches see them on the member's Progress page; other members never do.
+- **To-do:** a personal list for each member. Coaches do not see it.
+- **Phone notifications:** members turn them on in Profile. Reminders at 8 pm (if nothing ticked) and 7 am (to-dos due). On iPhone the app must be added to the Home Screen first. Setup steps are in `supabase/README.md`.

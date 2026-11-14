@@ -43,8 +43,22 @@ create table if not exists public.tracker_categories (
   icon        text,
   sort_order  smallint not null default 0,
   is_active   boolean not null default true,
+  audience    text not null default 'all' check (audience in ('all','assigned')),  -- 'assigned' = only members the coach picks
   created_at  timestamptz not null default now()
 );
+alter table public.tracker_categories add column if not exists audience text not null default 'all'
+  check (audience in ('all','assigned'));
+
+-- which members get an 'assigned' tracker (e.g. Conscious Couple, a family member's own tracker)
+create table if not exists public.tracker_assignments (
+  category_id uuid not null references public.tracker_categories(id) on delete cascade,
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  assigned_by uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  primary key (category_id, member_id)
+);
+create index if not exists tracker_assignments_member_idx on public.tracker_assignments(member_id);
+create index if not exists tracker_assignments_by_idx on public.tracker_assignments(assigned_by) where assigned_by is not null;
 
 create table if not exists public.activities (
   id            uuid primary key default gen_random_uuid(),
@@ -169,3 +183,115 @@ create table if not exists public.audit_logs (
 );
 create index if not exists audit_entity_idx on public.audit_logs(entity, entity_id);
 create index if not exists audit_created_idx on public.audit_logs(created_at desc);
+
+-- =====================================================================
+-- Redesign 2.1 (Nov 2026): profile details, private goals, sessions,
+-- doubts, to-dos. Everything below is additive; nothing above changes.
+-- =====================================================================
+
+-- ---------- profile details (shown to the member and coaches) ----------
+alter table public.profiles add column if not exists city       text check (city is null or char_length(city) <= 60);
+alter table public.profiles add column if not exists profession text check (profession is null or char_length(profession) <= 80);
+alter table public.profiles add column if not exists dream      text check (dream is null or char_length(dream) <= 500);
+alter table public.profiles add column if not exists hobbies    text check (hobbies is null or char_length(hobbies) <= 200);
+alter table public.profiles add column if not exists website    text check (website is null or (char_length(website) <= 200 and website ~* '^https?://[^\s/$.?#][^\s]*$'));
+
+-- ---------- private goals & business numbers: the member and coaches only ----------
+create table if not exists public.member_goals (
+  member_id     uuid primary key references public.profiles(id) on delete cascade,
+  goal_year     text check (goal_year    is null or char_length(goal_year)    <= 1000),
+  goal_month    text check (goal_month   is null or char_length(goal_month)   <= 1000),
+  goal_week     text check (goal_week    is null or char_length(goal_week)    <= 1000),
+  net_worth     text check (net_worth    is null or char_length(net_worth)    <= 60),
+  turnover      text check (turnover     is null or char_length(turnover)     <= 60),
+  profit        text check (profit       is null or char_length(profit)       <= 60),
+  problems      text check (problems     is null or char_length(problems)     <= 1500),
+  expectations  text check (expectations is null or char_length(expectations) <= 1500),
+  updated_at    timestamptz not null default now()
+);
+
+-- ---------- session contents (coach posts; every active member reads) ----------
+create table if not exists public.sessions (
+  id            uuid primary key default gen_random_uuid(),
+  title         text not null check (char_length(title) between 2 and 120),
+  session_date  date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  body          text check (body is null or char_length(body) <= 4000),          -- notes / instructions
+  is_published  boolean not null default true,
+  created_by    uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists sessions_date_idx on public.sessions(session_date desc);
+create index if not exists sessions_created_by_idx on public.sessions(created_by) where created_by is not null;
+
+-- pictures and audio live in the private "session-media" bucket; videos are links (YouTube, Drive…)
+create table if not exists public.session_media (
+  id          uuid primary key default gen_random_uuid(),
+  session_id  uuid not null references public.sessions(id) on delete cascade,
+  kind        text not null check (kind in ('image','audio','video_link','link')),
+  ref         text not null,
+  caption     text check (caption is null or char_length(caption) <= 160),
+  sort_order  smallint not null default 0,
+  created_at  timestamptz not null default now(),
+  check (case when kind in ('image','audio')
+              then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$'
+              else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end)
+);
+create index if not exists session_media_session_idx on public.session_media(session_id, sort_order);
+
+-- ---------- real-life situation vs application (member writes; member + coaches read) ----------
+create table if not exists public.session_notes (
+  id           uuid primary key default gen_random_uuid(),
+  member_id    uuid not null references public.profiles(id) on delete cascade,
+  session_id   uuid references public.sessions(id) on delete set null,
+  situation    text not null check (char_length(situation) between 2 and 1500),
+  application  text check (application is null or char_length(application) <= 1500),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists session_notes_member_idx on public.session_notes(member_id, created_at desc);
+create index if not exists session_notes_session_idx on public.session_notes(session_id) where session_id is not null;
+
+-- ---------- questions / doubts (member asks, coach answers; private to the two) ----------
+create table if not exists public.doubts (
+  id           uuid primary key default gen_random_uuid(),
+  member_id    uuid not null references public.profiles(id) on delete cascade,
+  session_id   uuid references public.sessions(id) on delete set null,
+  question     text not null check (char_length(question) between 3 and 1000),
+  answer       text check (answer is null or char_length(answer) <= 2000),
+  answered_by  uuid references public.profiles(id) on delete set null,
+  answered_at  timestamptz,
+  created_at   timestamptz not null default now(),
+  check ((answer is null) = (answered_at is null))
+);
+create index if not exists doubts_member_idx on public.doubts(member_id, created_at desc);
+create index if not exists doubts_open_idx on public.doubts(created_at desc) where answered_at is null;
+create index if not exists doubts_session_idx on public.doubts(session_id) where session_id is not null;
+create index if not exists doubts_answered_by_idx on public.doubts(answered_by) where answered_by is not null;
+
+-- ---------- personal to-do list (the member only) ----------
+create table if not exists public.todos (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  title       text not null check (char_length(title) between 1 and 200),
+  due_date    date,
+  done_at     timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index if not exists todos_member_idx on public.todos(member_id, done_at nulls first, due_date);
+
+-- ---------- phone notifications (Web Push) ----------
+-- One row per phone/browser that said "yes" to notifications. Keys are the browser's public
+-- push keys (not secrets). The server's private VAPID key lives only in the Edge Function secrets.
+create table if not exists public.push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  endpoint    text not null unique check (char_length(endpoint) <= 1000 and endpoint ~ '^https://'),
+  p256dh      text not null check (char_length(p256dh) <= 200),
+  auth        text not null check (char_length(auth) <= 100),
+  created_at  timestamptz not null default now(),
+  last_ok_at  timestamptz
+);
+create index if not exists push_subscriptions_member_idx on public.push_subscriptions(member_id);
+alter table public.notifications add column if not exists pushed_at timestamptz;
+create index if not exists notifications_unpushed_idx on public.notifications(created_at) where pushed_at is null;

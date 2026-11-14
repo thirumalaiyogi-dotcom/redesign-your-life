@@ -11,7 +11,7 @@ const QUESTIONS = [
   ['grateful', 'What am I grateful for?', 'People, moments, small things'],
   ['tomorrow', 'What will I improve tomorrow?', 'One clear intention for tomorrow']
 ];
-const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)' };
+const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const nice = (iso) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 let me, today;
@@ -112,7 +112,7 @@ const timeAgo = (iso) => {
 };
 
 // ======================= PROGRESS =======================
-const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target' };
+const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target', couple: 'heart-handshake', mugilan: 'rocket' };
 const KIND = { activity: ['Habit done', 'check-circle-2'], daily_bonus: ['All habits done', 'sparkles'], streak7_bonus: ['7-day streak', 'flame'],
   perfect_week_bonus: ['Perfect week', 'trophy'], special_bonus: ['Coach bonus', 'gift'] };
 

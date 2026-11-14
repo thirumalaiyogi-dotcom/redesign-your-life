@@ -45,6 +45,8 @@
   --t-conscious: #C9524C;
   --t-karma: #D9772B;
   --t-champion: #4774D6;
+  --t-couple: #C2417A;
+  --t-mugilan: #7457D1;
 
   /* ---- elevation ---- */
   --shadow-1: 0 1px 2px rgba(23, 63, 53, .06), 0 1px 1px rgba(23, 63, 53, .04);
@@ -119,6 +121,8 @@
   --t-conscious: #EC7B74;
   --t-karma: #F09450;
   --t-champion: #7FA2F2;
+  --t-couple: #EE84B2;
+  --t-mugilan: #A994F2;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
   --shadow-2: 0 8px 24px -10px rgba(0, 0, 0, .6);
