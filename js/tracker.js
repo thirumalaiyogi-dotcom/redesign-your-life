@@ -90,7 +90,7 @@ async function renderList() {
       return locked.length ? `<div class="sec-h" style="margin-top:6px"><h2>Opens after the class</h2></div><div class="tlist">${locked.map((c) => `<a class="tcard is-locked" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${tColor(c.slug)}">
         <div class="art">${coverImg(c.slug)}<span class="ic">${icon('lock')}</span></div>
         <div class="body"><div class="row"><div><h3>${esc(c.name)}</h3><span class="state s-none">${icon('lock')}Locked</span></div></div>
-          <p class="lock-txt">Your coach opens this tracker after the class that teaches it. Tap to see its habits.</p></div>
+          <p class="lock-txt">Your coach opens this tracker after the class that teaches it.</p></div>
         <span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`).join('')}</div>` : ''; })()}
     <p class="hint-line">${icon('info')}<span>Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</span></p>`;
   animateIn(main);
@@ -384,18 +384,15 @@ async function loadClassMaterials() {
   $('#class-mat').hidden = false;
 }
 
-// a program tracker the coach has not opened for this member yet: show its habits, no ticking
+// a program tracker the coach has not opened for this member yet: name + "opens after the class" only
 async function renderLocked(main) {
-  const { data } = await supabase.rpc('tracker_preview', { p_category: cat.id });
   main.style.setProperty('--tc', tColor(cat.slug));
   main.innerHTML = `
     <header class="t-head">${coverImg(cat.slug, 'cover')}
       <div class="inner"><div class="crumbs"><a href="${app('member/dashboard.html')}">Home</a>${icon('chevron-right')}<a href="${app('member/trackers.html')}">Track</a></div>
-        <div class="title"><span class="ic">${icon('lock')}</span><div><h1>${esc(cat.name)}</h1><small>${(data || []).length} daily activities</small></div></div>
+        <div class="title"><span class="ic">${icon('lock')}</span><div><h1>${esc(cat.name)}</h1><small>Locked</small></div></div>
         ${cat.tagline ? `<p class="tagline">${esc(cat.tagline)}</p>` : ''}</div></header>
-    <div class="panel lock-banner">${icon('lock')}<div><b>Opens after the class</b><span>Your coach opens this tracker after the class that teaches it. You will get a notification, then you can start ticking.</span></div></div>
-    <section class="card card-pad"><div class="card-h"><h3>What you will track</h3></div>
-      <ol class="lock-list">${(data || []).map((a) => `<li><span>${String(a.number).padStart(2, '0')}</span>${esc(a.default_name)}</li>`).join('')}</ol></section>`;
+    <div class="panel lock-banner">${icon('lock')}<div><b>Opens after the class</b><span>Your coach opens this tracker after the class that teaches it. You will get a notification, then you can start ticking.</span></div></div>`;
 }
 
 // ---------------- boot ----------------
