@@ -231,3 +231,12 @@ body:not(.guarding) .boot { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 .stack > .seg { align-self: flex-start; }
 [data-install-slot]:empty { display: none; }
+
+/* 2.4 Google login */
+.g-box { display: flex; flex-direction: column; gap: 6px; }
+.btn-google { background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border-strong); gap: 10px; }
+.btn-google:hover:not(:disabled) { background: var(--c-sunken); }
+.btn-google:disabled { opacity: .6; cursor: default; }
+.g-hint { font-size: 13px; text-align: center; margin: 0; }
+.or-line { display: flex; align-items: center; gap: 10px; color: var(--c-muted); font-size: 12.5px; }
+.or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--c-border); }

@@ -81,3 +81,4 @@ Live migration: `ryl_20_programs_batches`.
 - `admin_batch_step_done(batch, step, true)` opens that class's (`audience='assigned'`) trackers for the batch through `tracker_assignments` and notifies; undo only removes the mark.
 - `admin_create_tracker` / `admin_update_tracker` / `admin_add_habit`: tracker builder. `guard_activity_update` still blocks renaming habits.
 - Verified live: account created by SQL logs in through the real Auth API (HTTP 200); self sign-up returns "Database error saving new user".
+- Google login (`ryl_21_google_login`): Supabase links a Google sign-in to the coach-made account with the same email; trigger `on_auth_identity_linked` clears `must_change`. Unknown Gmails are refused by `handle_new_user` (sign-up closed). The login page shows the button only when `/auth/v1/settings` reports Google enabled.

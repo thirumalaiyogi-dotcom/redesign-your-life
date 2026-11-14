@@ -1,5 +1,5 @@
 // Login, register, forgot-password and reset-password screens.
-import { supabase, app } from './supabase.js';
+import { supabase, app, setRemember, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
 import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, EMAIL_RE, PHONE_RE, validatePassword } from './ui.js';
 import { currentTheme } from './theme.js';
@@ -74,6 +74,16 @@ if (page === 'login') {
   };
   const m = messages[params.get('msg')];
   if (m) showNotice(...m);
+  // coming back from Google with an error (e.g. a Gmail the coach did not add)
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const gErr = params.get('error_description') || hash.get('error_description');
+  if (gErr) {
+    showNotice('bad', /database error saving new user|sign-up is closed|signups not allowed/i.test(gErr)
+      ? 'This Gmail is not on your coach\'s list. Choose the Gmail you gave your coach, or log in with email and password below.'
+      : friendlyError({ message: gErr }));
+    history.replaceState(null, '', location.pathname);
+  }
+  wireGoogle();
   if (params.get('next') && !m) showNotice('info', 'Please log in to continue.');
   redirectIfSignedIn();
 
@@ -92,6 +102,26 @@ if (page === 'login') {
         pw.select();
       }
     });
+  });
+}
+
+// Google login: shown once the coach turns on the Google provider in Supabase (Auth settings say so).
+// Only emails the coach uploaded can come in; anyone else is stopped by the database (sign-up is closed).
+async function wireGoogle() {
+  const btn = $('#google-btn'); if (!btn) return;
+  let on = false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_ANON_KEY } });
+    on = !!(await r.json())?.external?.google;
+  } catch { /* offline: leave it off */ }
+  if (!on) { $('#google-l').textContent = 'Google login coming soon'; $('#google-hint').textContent = 'For now, log in with the email and password your coach sent.'; return; }
+  btn.disabled = false;
+  btn.addEventListener('click', async () => {
+    setRemember($('#remember')?.checked ?? true);
+    btn.disabled = true; $('#google-l').textContent = 'Opening Google…';
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google',
+      options: { redirectTo: app('login.html'), queryParams: { prompt: 'select_account' } } });
+    if (error) { btn.disabled = false; $('#google-l').textContent = 'Continue with Google'; showNotice('bad', friendlyError(error)); }
   });
 }
 

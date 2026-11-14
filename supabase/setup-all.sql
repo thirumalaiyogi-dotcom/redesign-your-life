@@ -1723,6 +1723,19 @@ begin
   order by p.full_name;
 end; $$;
 
+-- Google login (2.4): a member who comes in with Google has no temporary password to change
+create or replace function public.clear_must_change_on_oauth()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if new.provider <> 'email' then
+    update public.profiles set must_change = false where id = new.user_id and must_change;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists on_auth_identity_linked on auth.identities;
+create trigger on_auth_identity_linked after insert on auth.identities
+  for each row execute function public.clear_must_change_on_oauth();
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------

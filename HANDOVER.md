@@ -87,3 +87,4 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **Sign-up is closed**: the Join page now says the coach sends the login. The super admin can open it again from the Batches tab (*Self sign-up*).
 - **Leaderboard**: members see *My batch* (points since the batch started; this week; today) and *Everyone* (the old leaderboard). Coaches pick a batch from the *Show* list on the Leaderboard page.
 - The 60-Day Membership program has no classes yet — add them under Programs once the class-to-tracker order is decided.
+- **Google login**: the login page has *Continue with Google*. Only emails the coach uploaded can get in; any other Gmail sees "This Gmail is not on your coach's list". People who come in with Google skip the temporary-password step. Until the Google provider is turned on in Supabase, the button says "coming soon".
