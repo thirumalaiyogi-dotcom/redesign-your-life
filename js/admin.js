@@ -2,6 +2,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
+import { renderBatches } from './batches.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
@@ -597,7 +598,7 @@ async function renderActivities() {
   main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">Names stay exactly as the program defines them</span><h1>Activities</h1></div></div>
     <div class="skeleton" style="height:300px"></div>`;
   const [c, a] = await Promise.all([
-    supabase.from('tracker_categories').select('id, slug, name, sort_order').order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, color, sort_order').order('sort_order'),
     supabase.from('activities').select('id, category_id, number, default_name, description, image_path, icon, points, is_active').order('number')
   ]);
   if (c.error || a.error) return errorPanel(main, c.error || a.error, renderActivities);
@@ -630,7 +631,7 @@ function drawActs() {
       <button class="btn btn-sm ${cm ? 'btn-soft' : 'btn-gold'}" data-cat-media="${cat.id}">${icon('book-open')}${cm ? 'Edit' : 'Add'} materials</button></div>
     <div class="people">${list.map((a) => {
     const img = activityImageUrl(a.image_path);
-    return `<article class="person ${a.is_active ? '' : 'paused'}" style="--tc:${TRACKER_COLOR[cat.slug]}">
+    return `<article class="person ${a.is_active ? '' : 'paused'}" style="--tc:${TRACKER_COLOR[cat.slug] || cat.color || 'var(--c-primary)'}">
       <span style="width:72px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--bg-2);display:grid;place-items:center;flex:none">${img ? `<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : icon(a.icon || 'image')}</span>
       <div class="who"><b>#${String(a.number).padStart(2, '0')} · ${esc(a.default_name)}</b>
         <div class="meta"><span>${esc(a.description || 'No description')}</span></div>
@@ -872,7 +873,7 @@ async function loadJournals(date) {
 (async () => {
   try {
     me = await requireRole(['admin', 'super_admin']);
-    chrome({ 'admin-sessions': 'sessions', 'admin-member': 'checkins', 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
+    chrome({ 'admin-batches': 'batches', 'admin-sessions': 'sessions', 'admin-member': 'checkins', 'admin-members': 'members', 'admin-checkins': 'checkins', 'admin-activities': 'activities', 'admin-settings': 'settings', 'admin-reports': 'reports' }[page] || 'dashboard');
     if (page === 'admin-dashboard') await renderOverview();
     if (page === 'admin-members') await renderMembers();
     if (page === 'admin-checkins') await renderCheckins();
@@ -881,6 +882,7 @@ async function loadJournals(date) {
     if (page === 'admin-reports') await renderReports();
     if (page === 'admin-member') await renderMember();
     if (page === 'admin-sessions') await renderSessions();
+    if (page === 'admin-batches') await renderBatches(me);
   } catch (err) {
     document.body.classList.remove('guarding');
     errorPanel($('#main'), err, () => location.reload());

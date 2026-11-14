@@ -7,8 +7,12 @@ import { $, $$, icon, esc, memberNav, coachTopbar, initials, formatNumber, membe
 const page = document.body.dataset.page;
 const isAdminPage = page === 'admin-leaderboard';
 const PERIODS = [['daily', 'Today'], ['weekly', 'This week'], ['monthly', 'This month'], ['all_time', 'All time']];
+// batch leaderboard: only the people of one batch, counted from the day it started
+const BPERIODS = [['batch', 'Since start'], ['weekly', 'This week'], ['daily', 'Today']];
 let me, period = 'weekly', timer = null, loading = false;
-try { period = sessionStorage.getItem('ryl.lb') || 'weekly'; } catch { /* storage blocked */ }
+let batches = [], scope = 'all', batchId = null, bperiod = 'batch';
+try { period = sessionStorage.getItem('ryl.lb') || 'weekly'; bperiod = sessionStorage.getItem('ryl.lbb') || 'batch'; } catch { /* storage blocked */ }
+const inBatch = () => scope === 'batch' && batchId;
 
 function chrome() {
   if (isAdminPage) {
@@ -24,22 +28,51 @@ function chrome() {
 const avatar = (r, cls = 'avatar') => r.avatar_url
   ? `<span class="${cls}"><img src="${esc(r.avatar_url)}" alt=""></span>`
   : `<span class="${cls}" aria-hidden="true">${esc(initials(r.full_name))}</span>`;
-const movement = (n, hasPrev) => !hasPrev ? '<span class="mv same">new</span>'
+const movement = (n, hasPrev) => n === undefined ? '' : !hasPrev ? '<span class="mv same">new</span>'
   : n > 0 ? `<span class="mv up">${icon('arrow-up')}${n}</span>` : n < 0 ? `<span class="mv down">${icon('arrow-down')}${-n}</span>` : '<span class="mv same">–</span>';
 
+function scopeHTML() {
+  if (!batches.length) return '';
+  const b = batches.find((x) => x.id === batchId) || batches[0];
+  if (isAdminPage) return `<label class="lb-scope-sel"><span>Show</span><select id="lb-batch" aria-label="Whose leaderboard">
+      <option value="">Everyone</option>${batches.map((x) => `<option value="${x.id}" ${inBatch() && x.id === batchId ? 'selected' : ''}>${esc(x.name)} (${x.members})</option>`).join('')}</select></label>`;
+  return `<div class="seg seg-2 lb-scope" role="tablist" aria-label="Whose leaderboard">
+      <button role="tab" data-scope="batch" aria-selected="${inBatch() ? 'true' : 'false'}">${icon('users')}My batch</button>
+      <button role="tab" data-scope="all" aria-selected="${inBatch() ? 'false' : 'true'}">${icon('trophy')}Everyone</button></div>
+    ${inBatch() && batches.length > 1 ? `<select id="lb-batch" class="lb-bsel" aria-label="Batch">${batches.map((x) => `<option value="${x.id}" ${x.id === b.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}`;
+}
+function periodsHTML() {
+  const list = inBatch() ? BPERIODS : PERIODS, cur = inBatch() ? bperiod : period;
+  return `<div class="seg seg-full ${inBatch() ? 'seg-3b' : ''}" role="tablist" aria-label="Period">${list.map(([v, l]) =>
+    `<button role="tab" data-p="${v}" aria-selected="${v === cur}">${l}</button>`).join('')}</div>`;
+}
+function headHTML() {
+  const b = inBatch() && batches.find((x) => x.id === batchId);
+  return `<span class="live">Live · updates as members tick</span><h1>Leaderboard</h1>
+      <p>${b ? `${esc(b.name)} · ${b.members} people · from ${esc(new Date(b.starts_on).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}`
+        : isAdminPage ? 'How every member is doing.' : 'Points from ticked habits and coach bonuses. Never minus points.'}</p>`;
+}
 function shell() {
   $('#main').innerHTML = `
-    <div class="lb-head page-h"><span class="live">Live · updates as members tick</span><h1>Leaderboard</h1>
-      <p>${isAdminPage ? 'How every member is doing.' : 'Points from ticked habits and coach bonuses. Never minus points.'}</p></div>
-    <div class="seg seg-full" role="tablist" aria-label="Period">${PERIODS.map(([v, l]) =>
-      `<button role="tab" data-p="${v}" aria-selected="${v === period}">${l}</button>`).join('')}</div>
+    <div class="lb-head page-h" id="lb-head">${headHTML()}</div>
+    <div id="lb-scope" class="lb-scope-wrap">${scopeHTML()}</div>
+    <div id="lb-periods">${periodsHTML()}</div>
     <div id="lb-body" class="stack" style="gap:16px"></div>
-    <section><div class="sec-h"><h2>Recognitions</h2><span class="sub">This week</span></div><div class="recog" id="recog"></div></section>`;
+    <section id="recog-sec" ${inBatch() ? 'hidden' : ''}><div class="sec-h"><h2>Recognitions</h2><span class="sub">This week</span></div><div class="recog" id="recog"></div></section>`;
+  const redraw = () => { $('#lb-head').innerHTML = headHTML(); $('#lb-scope').innerHTML = scopeHTML(); $('#lb-periods').innerHTML = periodsHTML(); $('#recog-sec').hidden = !!inBatch(); load(true); };
   $('#main').addEventListener('click', (e) => {
+    const sc = e.target.closest('[data-scope]');
+    if (sc) { scope = sc.dataset.scope; if (scope === 'batch' && !batchId) batchId = batches[0]?.id; try { sessionStorage.setItem('ryl.lbs', scope); } catch { /* ignore */ } return redraw(); }
     const b = e.target.closest('[data-p]'); if (!b) return;
-    period = b.dataset.p; try { sessionStorage.setItem('ryl.lb', period); } catch { /* ignore */ }
+    if (inBatch()) { bperiod = b.dataset.p; try { sessionStorage.setItem('ryl.lbb', bperiod); } catch { /* ignore */ } }
+    else { period = b.dataset.p; try { sessionStorage.setItem('ryl.lb', period); } catch { /* ignore */ } }
     $$('[data-p]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
     load(true);
+  });
+  $('#main').addEventListener('change', (e) => {
+    if (e.target.id !== 'lb-batch') return;
+    if (e.target.value) { scope = 'batch'; batchId = e.target.value; } else scope = 'all';
+    redraw();
   });
 }
 
@@ -57,7 +90,8 @@ function render(rows) {
     return;
   }
   if (!scored.length) {
-    body.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('trophy')}</span><b>No points yet ${period === 'daily' ? 'today' : period === 'weekly' ? 'this week' : period === 'monthly' ? 'this month' : ''}</b>
+    const pp = inBatch() ? bperiod : period;
+    body.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('trophy')}</span><b>No points yet ${pp === 'daily' ? 'today' : pp === 'weekly' ? 'this week' : pp === 'monthly' ? 'this month' : pp === 'batch' ? 'in this batch' : ''}</b>
       <span>${isAdminPage ? 'Ranks appear as soon as members tick habits.' : 'Tick your first habit and take the top spot.'}</span>
       ${isAdminPage ? '' : `<a class="btn btn-primary btn-sm" href="${app('member/trackers.html')}">${icon('list-checks')}Open trackers</a>`}</div>`;
     return;
@@ -100,7 +134,9 @@ function renderRecog(r) {
 async function load(showSkeleton = false) {
   if (loading) return; loading = true;
   if (showSkeleton) $('#lb-body').innerHTML = `<div class="skeleton" style="height:230px"></div><div class="skeleton" style="height:260px"></div>`;
-  const [lb, rc] = await Promise.all([supabase.rpc('get_leaderboard', { p_period: period }), supabase.rpc('get_recognitions')]);
+  const [lb, rc] = inBatch()
+    ? [await supabase.rpc('get_batch_leaderboard', { p_batch: batchId, p_period: bperiod }), { error: true }]
+    : await Promise.all([supabase.rpc('get_leaderboard', { p_period: period }), supabase.rpc('get_recognitions')]);
   loading = false;
   if (lb.error) return errorPanel($('#lb-body'), lb.error);
   render(lb.data || []);
@@ -117,7 +153,14 @@ function startAutoRefresh() {
 (async () => {
   try {
     me = await requireRole(isAdminPage ? ['admin', 'super_admin'] : ['member']);
-    chrome(); shell(); await load(true); startAutoRefresh();
+    chrome();
+    const mb = await supabase.rpc('my_batches');
+    batches = mb.error ? [] : (mb.data || []);
+    const want = new URLSearchParams(location.search).get('batch');
+    let saved = null; try { saved = sessionStorage.getItem('ryl.lbs'); } catch { /* ignore */ }
+    if (want && batches.some((b) => b.id === want)) { scope = 'batch'; batchId = want; }
+    else if (!isAdminPage && batches.length && saved !== 'all') { scope = 'batch'; batchId = batches[0].id; }
+    shell(); await load(true); startAutoRefresh();
   } catch (err) {
     document.body.classList.remove('guarding');
     $('#main').innerHTML = ''; errorPanel($('#main'), err);

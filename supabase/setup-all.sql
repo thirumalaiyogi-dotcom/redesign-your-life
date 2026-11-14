@@ -1,12 +1,4 @@
 -- =====================================================================
--- Deepak's Redesign Your Life — COMPLETE SETUP (Phase 2)
--- Paste this whole file into Supabase → SQL Editor → Run.
--- It is the four files below in order. Safe to run again.
--- =====================================================================
-
-
--- >>>>>>>>>>>>>>>>>>>> schema.sql
--- =====================================================================
 -- Deepak's Redesign Your Life — schema.sql
 -- Run order: schema.sql → functions.sql → policies.sql → seed.sql
 --
@@ -357,7 +349,72 @@ alter table public.session_media drop constraint if exists session_media_check;
 alter table public.session_media add constraint session_media_check check (case when kind in ('image','audio','file')
   then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);
 
--- >>>>>>>>>>>>>>>>>>>> functions.sql
+-- =====================================================================
+-- Redesign 2.4 (Nov 2026): programs (7-day online, 60-day membership, workshops), batches,
+-- coach-created accounts with a first-login password change, step-by-step tracker opening.
+-- =====================================================================
+-- true = the member is still on the temporary password the coach gave; the app asks for a new one first
+alter table public.profiles add column if not exists must_change boolean not null default false;
+
+create table if not exists public.programs (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null unique check (char_length(name) between 2 and 80),
+  kind        text not null default 'online' check (kind in ('online','membership','workshop')),
+  is_active   boolean not null default true,
+  sort_order  smallint not null default 0,
+  created_by  uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+
+-- the classes of a program in order (Day 1, Day 2 … or Class 1, Class 2 …)
+create table if not exists public.program_steps (
+  id          uuid primary key default gen_random_uuid(),
+  program_id  uuid not null references public.programs(id) on delete cascade,
+  day_no      smallint not null check (day_no between 1 and 400),
+  title       text not null check (char_length(title) between 1 and 120),
+  created_at  timestamptz not null default now(),
+  unique (program_id, day_no)
+);
+
+-- trackers that open for a batch when this step is marked done
+create table if not exists public.step_trackers (
+  step_id     uuid not null references public.program_steps(id) on delete cascade,
+  category_id uuid not null references public.tracker_categories(id) on delete cascade,
+  primary key (step_id, category_id)
+);
+create index if not exists step_trackers_category_idx on public.step_trackers(category_id);
+
+-- one group of people going through a program together (batches can overlap)
+create table if not exists public.batches (
+  id          uuid primary key default gen_random_uuid(),
+  program_id  uuid not null references public.programs(id) on delete restrict,
+  name        text not null check (char_length(name) between 2 and 80),
+  starts_on   date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  is_active   boolean not null default true,
+  created_by  uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists batches_program_idx on public.batches(program_id);
+
+create table if not exists public.batch_members (
+  batch_id    uuid not null references public.batches(id) on delete cascade,
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  added_by    uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  primary key (batch_id, member_id)
+);
+create index if not exists batch_members_member_idx on public.batch_members(member_id);
+
+-- which steps a batch has finished (marking one opens its trackers for the whole batch)
+create table if not exists public.batch_steps_done (
+  batch_id    uuid not null references public.batches(id) on delete cascade,
+  step_id     uuid not null references public.program_steps(id) on delete cascade,
+  done_by     uuid references public.profiles(id) on delete set null,
+  done_at     timestamptz not null default now(),
+  primary key (batch_id, step_id)
+);
+create index if not exists batch_steps_done_step_idx on public.batch_steps_done(step_id);
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -495,6 +552,9 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare v_phone text := nullif(regexp_replace(coalesce(new.raw_user_meta_data ->> 'phone', ''), '[^0-9+ ]', '', 'g'), '');
 begin
+  if not public._setting_bool('open_signup', false) and coalesce(current_setting('ryl.coach_create', true), '') <> 'on' then
+    raise exception 'Sign-up is closed. Ask your coach for your login.' using errcode = '42501';
+  end if;
   if v_phone is not null and v_phone !~ '^\+?[0-9 ]{7,16}$' then v_phone := null; end if;
   insert into public.profiles(id, full_name, phone)
   values (new.id, left(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), 80), v_phone)
@@ -917,6 +977,9 @@ begin
      and (jsonb_typeof(p_value) <> 'number' or (p_value #>> '{}')::numeric not between 0 and 500) then
     raise exception 'Points must be a number between 0 and 500.' using errcode = '22023';
   end if;
+  if p_key = 'open_signup' and jsonb_typeof(p_value) <> 'boolean' then
+    raise exception 'Choose open or closed.' using errcode = '22023';
+  end if;
   update public.app_settings set value = p_value, updated_at = now(), updated_by = auth.uid() where key = p_key;
   perform public._audit('settings.update', 'app_settings', p_key, jsonb_build_object('from', v_old, 'to', p_value));
 end; $$;
@@ -1333,6 +1396,334 @@ language sql security definer set search_path = '' as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- Redesign 2.4: programs, batches, coach-created accounts, step-by-step tracker opening
+-- ---------------------------------------------------------------------
+create or replace function public._setting_bool(p_key text, p_default boolean)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select coalesce((select case when jsonb_typeof(value) = 'boolean' then (value #>> '{}')::boolean end
+                   from public.app_settings where key = p_key), p_default);
+$$;
+
+-- the sign-up page asks this before showing its form (accounts are normally made by the coach)
+create or replace function public.signup_open()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public._setting_bool('open_signup', false);
+$$;
+
+
+-- the member chose their own password → stop asking
+create or replace function public.clear_must_change()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  update public.profiles set must_change = false where id = new.id and must_change;
+  return new;
+end; $$;
+drop trigger if exists on_auth_password_changed on auth.users;
+create trigger on_auth_password_changed after update of encrypted_password on auth.users
+  for each row when (old.encrypted_password is distinct from new.encrypted_password)
+  execute function public.clear_must_change();
+
+-- easy to read out and type on a phone: Ryl-7K4MQ2 (no 0/O, 1/I/L)
+create or replace function public._temp_password()
+returns text language sql volatile security definer set search_path = '' as $$
+  select 'Ryl-' || string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', 1 + (get_byte(b, i) % 31), 1), '' order by i)
+  from (select extensions.gen_random_bytes(6) as b) x, generate_series(0, 5) i;
+$$;
+
+-- open the trackers of every finished step of a batch (for all its members, or one member).
+-- Returns how many (member, tracker) openings were new. Members get one notification per new tracker.
+create or replace function public._open_batch_trackers(p_batch uuid, p_member uuid default null, p_notify boolean default true)
+returns int language plpgsql security definer set search_path = '' as $$
+declare r record; n int := 0; v_members uuid[] := '{}';
+begin
+  for r in
+    insert into public.tracker_assignments(category_id, member_id, assigned_by)
+    select distinct st.category_id, bm.member_id, auth.uid()
+    from public.batch_steps_done d
+    join public.step_trackers st on st.step_id = d.step_id
+    join public.tracker_categories c on c.id = st.category_id and c.audience = 'assigned'
+    join public.batch_members bm on bm.batch_id = d.batch_id
+    where d.batch_id = p_batch and (p_member is null or bm.member_id = p_member)
+    on conflict do nothing
+    returning category_id, member_id
+  loop
+    n := n + 1;
+    if not r.member_id = any(v_members) then v_members := v_members || r.member_id; end if;
+    if p_notify then
+      perform public._notify(r.member_id, 'info', 'New tracker: ' || (select name from public.tracker_categories where id = r.category_id),
+                             'Your coach opened this tracker for you. Open Track to start.');
+    end if;
+  end loop;
+  for i in 1 .. coalesce(array_length(v_members, 1), 0) loop
+    perform public._recalc_bonuses(v_members[i], public.app_today());
+  end loop;
+  return n;
+end; $$;
+
+-- COACH: paste a list → accounts. p_people = [{"name":"…","email":"…","phone":"…"}, …] (max 300).
+-- New emails get an account with a temporary password (shown once, to send on WhatsApp) and must pick
+-- their own password at first login. Emails that already have an account are just added to the batch.
+create or replace function public.admin_batch_add_people(p_batch uuid, p_people jsonb)
+returns table(full_name text, email text, phone text, temp_password text, status text, member_id uuid)
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare p jsonb; v_email text; v_name text; v_phone text; v_pw text; v_id uuid; v_role text; v_batch record;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can add people.' using errcode = '42501'; end if;
+  select b.id, b.name into v_batch from public.batches b where b.id = p_batch;
+  if not found then raise exception 'Batch not found.' using errcode = 'P0002'; end if;
+  if jsonb_typeof(p_people) <> 'array' or jsonb_array_length(p_people) = 0 then raise exception 'Paste at least one person.' using errcode = '22023'; end if;
+  if jsonb_array_length(p_people) > 300 then raise exception 'Add at most 300 people at a time.' using errcode = '22023'; end if;
+  perform set_config('ryl.coach_create', 'on', true);
+
+  for p in select * from jsonb_array_elements(p_people) loop
+    v_email := lower(trim(coalesce(p ->> 'email', '')));
+    v_name  := left(trim(coalesce(p ->> 'name', '')), 80);
+    v_phone := nullif(regexp_replace(coalesce(p ->> 'phone', ''), '[^0-9+ ]', '', 'g'), '');
+    if v_phone is not null and v_phone !~ '^\+?[0-9 ]{7,16}$' then v_phone := null; end if;
+    v_pw := null; v_id := null;
+    if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or char_length(v_email) > 254 then
+      full_name := v_name; email := v_email; phone := v_phone; temp_password := null; status := 'bad_email'; member_id := null;
+      return next; continue;
+    end if;
+    select u.id into v_id from auth.users u where lower(u.email) = v_email;
+    if v_id is null then
+      v_id := gen_random_uuid(); v_pw := public._temp_password();
+      insert into auth.users(instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                             raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                             confirmation_token, recovery_token, email_change_token_new, email_change)
+      values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', v_email,
+              extensions.crypt(v_pw, extensions.gen_salt('bf')), now(),
+              '{"provider":"email","providers":["email"]}'::jsonb,
+              jsonb_build_object('full_name', v_name, 'phone', v_phone), now(), now(), '', '', '', '');
+      insert into auth.identities(user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+      values (v_id, v_id::text, 'email', jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true), null, now(), now());
+      update public.profiles set must_change = true where id = v_id;
+      status := 'created';
+    else
+      select pr.role into v_role from public.profiles pr where pr.id = v_id;
+      if v_role is distinct from 'member' then
+        full_name := v_name; email := v_email; phone := v_phone; temp_password := null; status := 'not_member'; member_id := v_id;
+        return next; continue;
+      end if;
+      status := 'existing';
+      if v_phone is not null then update public.profiles pr set phone = v_phone where pr.id = v_id and pr.phone is null; end if;
+    end if;
+    insert into public.batch_members(batch_id, member_id, added_by) values (p_batch, v_id, auth.uid()) on conflict do nothing;
+    perform public._open_batch_trackers(p_batch, v_id, status = 'existing');   -- steps already done → their trackers
+    select pr.full_name, pr.phone into full_name, phone from public.profiles pr where pr.id = v_id;
+    email := v_email; temp_password := v_pw; member_id := v_id;
+    return next;
+  end loop;
+  perform public._audit('batch.add_people', 'batches', p_batch::text, jsonb_build_object('count', jsonb_array_length(p_people)));
+end; $$;
+
+-- COACH: a member lost the temporary password, or never logged in → a new one (asked to change at login)
+create or replace function public.admin_reset_temp_password(p_member uuid)
+returns text language plpgsql security definer set search_path = '' as $$
+declare v_pw text := public._temp_password();
+begin
+  if not public.is_admin() then raise exception 'Only coaches can reset passwords.' using errcode = '42501'; end if;
+  if not exists (select 1 from public.profiles where id = p_member and role = 'member') then
+    raise exception 'Member not found.' using errcode = 'P0002';
+  end if;
+  update auth.users set encrypted_password = extensions.crypt(v_pw, extensions.gen_salt('bf')), updated_at = now(),
+         email_confirmed_at = coalesce(email_confirmed_at, now())
+   where id = p_member;
+  update public.profiles set must_change = true where id = p_member;   -- after the update: the password trigger clears it
+  perform public._audit('member.temp_password', 'profiles', p_member::text, '{}'::jsonb);
+  return v_pw;
+end; $$;
+
+create or replace function public.admin_batch_remove_member(p_batch uuid, p_member uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change batches.' using errcode = '42501'; end if;
+  delete from public.batch_members where batch_id = p_batch and member_id = p_member;
+  if not found then raise exception 'This person is not in the batch.' using errcode = 'P0002'; end if;
+  perform public._audit('batch.remove_member', 'batches', p_batch::text, jsonb_build_object('member', p_member));
+end; $$;
+
+-- COACH: "Day N done ✓" → that step's trackers open for everyone in the batch, and they are told.
+-- Undo only removes the mark; trackers already opened stay open (close them per member if needed).
+create or replace function public.admin_batch_step_done(p_batch uuid, p_step uuid, p_done boolean)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v_step record; v_names text; n int := 0;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can mark classes done.' using errcode = '42501'; end if;
+  select s.id, s.day_no, s.title into v_step from public.program_steps s join public.batches b on b.program_id = s.program_id
+   where s.id = p_step and b.id = p_batch;
+  if not found then raise exception 'This class is not part of the batch''s program.' using errcode = 'P0002'; end if;
+  if not coalesce(p_done, false) then
+    delete from public.batch_steps_done where batch_id = p_batch and step_id = p_step;
+    perform public._audit('batch.step_undone', 'batches', p_batch::text, jsonb_build_object('step', p_step));
+    return 0;
+  end if;
+  insert into public.batch_steps_done(batch_id, step_id, done_by) values (p_batch, p_step, auth.uid()) on conflict do nothing;
+  if not found then return 0; end if;
+  n := public._open_batch_trackers(p_batch, null, false);
+  select string_agg(c.name, ', ' order by c.sort_order) into v_names
+    from public.step_trackers st join public.tracker_categories c on c.id = st.category_id where st.step_id = p_step;
+  insert into public.notifications(member_id, kind, title, body)
+  select bm.member_id, 'info', left('Day ' || v_step.day_no || ' done: ' || v_step.title, 120),
+         case when v_names is not null then left('Now open: ' || v_names || '. Start ticking from today.', 500)
+              else 'Open Sessions to see today''s notes.' end
+  from public.batch_members bm join public.profiles p on p.id = bm.member_id and p.is_active
+  where bm.batch_id = p_batch;
+  perform public._audit('batch.step_done', 'batches', p_batch::text, jsonb_build_object('step', p_step, 'opened', n));
+  return n;
+end; $$;
+
+-- COACH: which trackers a class opens. Adding one to a class a batch already finished opens it for that batch now.
+create or replace function public.admin_set_step_tracker(p_step uuid, p_category uuid, p_on boolean)
+returns int language plpgsql security definer set search_path = '' as $$
+declare n int := 0; b record;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change programs.' using errcode = '42501'; end if;
+  if not exists (select 1 from public.program_steps where id = p_step) then raise exception 'Class not found.' using errcode = 'P0002'; end if;
+  if not exists (select 1 from public.tracker_categories where id = p_category and audience = 'assigned') then
+    raise exception 'This tracker is open to everyone already.' using errcode = '22023';
+  end if;
+  if coalesce(p_on, false) then
+    insert into public.step_trackers(step_id, category_id) values (p_step, p_category) on conflict do nothing;
+    for b in select batch_id from public.batch_steps_done where step_id = p_step loop
+      n := n + public._open_batch_trackers(b.batch_id, null, true);
+    end loop;
+  else
+    delete from public.step_trackers where step_id = p_step and category_id = p_category;
+  end if;
+  return n;
+end; $$;
+
+-- COACH: a new tracker sheet (e.g. a workshop's own habits). Opens per member / per batch class, like the program trackers.
+create or replace function public.admin_create_tracker(p_name text, p_tagline text default null, p_color text default '#5b8cf0', p_show_locked boolean default false)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare v_name text := nullif(left(trim(coalesce(p_name, '')), 60), ''); v_slug text; v_id uuid;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can create trackers.' using errcode = '42501'; end if;
+  if v_name is null or char_length(v_name) < 2 then raise exception 'Give the tracker a name.' using errcode = '22023'; end if;
+  if coalesce(p_color, '') !~ '^#[0-9a-fA-F]{6}$' then raise exception 'Pick a colour.' using errcode = '22023'; end if;
+  v_slug := left(trim(both '-' from regexp_replace(lower(v_name), '[^a-z0-9]+', '-', 'g')), 24);
+  if v_slug !~ '^[a-z][a-z0-9-]{1,30}$' or exists (select 1 from public.tracker_categories where slug = v_slug) then
+    v_slug := 't-' || substr(md5(gen_random_uuid()::text), 1, 8);
+  end if;
+  insert into public.tracker_categories(slug, name, tagline, color, sort_order, audience, show_locked)
+  values (v_slug, v_name, nullif(left(trim(coalesce(p_tagline, '')), 160), ''), lower(p_color),
+          coalesce((select max(sort_order) from public.tracker_categories), 0) + 1, 'assigned', coalesce(p_show_locked, false))
+  returning id into v_id;
+  perform public._audit('tracker.create', 'tracker_categories', v_id::text, jsonb_build_object('name', v_name));
+  return v_id;
+end; $$;
+
+create or replace function public.admin_update_tracker(p_category uuid, p_name text, p_tagline text, p_color text, p_show_locked boolean)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_name text := nullif(left(trim(coalesce(p_name, '')), 60), '');
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  if v_name is null or char_length(v_name) < 2 then raise exception 'Give the tracker a name.' using errcode = '22023'; end if;
+  if coalesce(p_color, '') !~ '^#[0-9a-fA-F]{6}$' then raise exception 'Pick a colour.' using errcode = '22023'; end if;
+  update public.tracker_categories set name = v_name, tagline = nullif(left(trim(coalesce(p_tagline, '')), 160), ''),
+         color = lower(p_color), show_locked = coalesce(p_show_locked, show_locked)
+   where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  perform public._audit('tracker.update', 'tracker_categories', p_category::text, jsonb_build_object('name', v_name));
+end; $$;
+
+-- COACH: add one habit to a tracker (next number). The name is fixed once saved, like the original 58.
+create or replace function public.admin_add_habit(p_category uuid, p_name text, p_description text default null, p_points int default 10)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare v_name text := nullif(left(trim(coalesce(p_name, '')), 80), ''); v_no int; v_id uuid;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can add habits.' using errcode = '42501'; end if;
+  if v_name is null or char_length(v_name) < 2 then raise exception 'Write the habit name.' using errcode = '22023'; end if;
+  if coalesce(p_points, -1) not between 0 and 100 then raise exception 'Points must be between 0 and 100.' using errcode = '22023'; end if;
+  perform 1 from public.tracker_categories where id = p_category for update;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  select coalesce(max(number), 0) + 1 into v_no from public.activities where category_id = p_category;
+  if v_no > 99 then raise exception 'A tracker can have at most 99 habits.' using errcode = '22023'; end if;
+  insert into public.activities(category_id, number, default_name, description, points)
+  values (p_category, v_no, v_name, nullif(left(trim(coalesce(p_description, '')), 400), ''), p_points)
+  returning id into v_id;
+  perform public._audit('activity.create', 'activities', v_id::text, jsonb_build_object('tracker', p_category, 'name', v_name));
+  return v_id;
+end; $$;
+
+-- the signed-in member's batches (coaches: every active batch), newest first, with class progress
+create or replace function public.my_batches()
+returns table(id uuid, name text, program text, kind text, starts_on date, steps_total int, steps_done int, members int)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if auth.uid() is null or public.my_role() is null then raise exception 'Please log in again.' using errcode = '42501'; end if;
+  return query
+  select b.id, b.name, pg.name, pg.kind, b.starts_on,
+         (select count(*)::int from public.program_steps s where s.program_id = b.program_id),
+         (select count(*)::int from public.batch_steps_done d where d.batch_id = b.id),
+         (select count(*)::int from public.batch_members m where m.batch_id = b.id)
+  from public.batches b join public.programs pg on pg.id = b.program_id
+  where b.is_active and (public.is_admin() or exists (select 1 from public.batch_members m where m.batch_id = b.id and m.member_id = auth.uid()))
+  order by b.starts_on desc, b.created_at desc;
+end; $$;
+
+-- Batch leaderboard: only the people of one batch, points since the batch started.
+-- p_period: 'batch' (since start), 'weekly' (this week, not before the start), 'daily' (today).
+create or replace function public.get_batch_leaderboard(p_batch uuid default null, p_period text default 'batch')
+returns table(rank int, member_id uuid, full_name text, avatar_url text, points bigint, activities_done bigint,
+              consistency numeric, streak int, is_me boolean)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := public.app_today(); v_batch uuid := p_batch; v_start date; s date;
+begin
+  if auth.uid() is null or public.my_role() is null then raise exception 'Please log in again.' using errcode = '42501'; end if;
+  if v_batch is null then
+    select b.id into v_batch from public.batches b join public.batch_members m on m.batch_id = b.id and m.member_id = auth.uid()
+     where b.is_active order by b.starts_on desc, b.created_at desc limit 1;
+    if v_batch is null then return; end if;
+  end if;
+  if not public.is_admin() and not exists (select 1 from public.batch_members m where m.batch_id = v_batch and m.member_id = auth.uid()) then
+    raise exception 'You are not in this batch.' using errcode = '42501';
+  end if;
+  select b.starts_on into v_start from public.batches b where b.id = v_batch;
+  if v_start is null then raise exception 'Batch not found.' using errcode = 'P0002'; end if;
+  s := case p_period when 'batch' then v_start
+                     when 'weekly' then greatest(v_start, date_trunc('week', d)::date)
+                     when 'daily' then d
+                     else null end;
+  if s is null then raise exception 'Unknown period: %', p_period using errcode = '22023'; end if;
+  if s > d then s := d; end if;
+  return query
+  with cur as (
+    select st.*, public._display_streak(st.member_id, d) as stk, p.full_name as nm, p.avatar_url as av
+    from public._period_stats(s, d) st
+    join public.batch_members bm on bm.member_id = st.member_id and bm.batch_id = v_batch
+    join public.profiles p on p.id = st.member_id)
+  select row_number() over (order by cur.points desc, cur.consistency desc, cur.stk desc,
+                                     cur.last_score_at asc nulls last, cur.nm, cur.member_id)::int,
+         cur.member_id, cur.nm, cur.av, cur.points, cur.activities_done, cur.consistency, cur.stk, cur.member_id = auth.uid()
+  from cur order by 1;
+end; $$;
+
+-- COACH: people of one batch, with login status (who has not logged in yet / still on the temporary password)
+create or replace function public.admin_batch_people(p_batch uuid)
+returns table(member_id uuid, full_name text, email text, phone text, must_change boolean, last_sign_in_at timestamptz,
+              is_active boolean, points bigint, added_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare v_start date;
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  select starts_on into v_start from public.batches where id = p_batch;
+  if v_start is null then raise exception 'Batch not found.' using errcode = 'P0002'; end if;
+  return query
+  select p.id, p.full_name, u.email::text, p.phone, p.must_change, u.last_sign_in_at, p.is_active,
+         coalesce((select sum(s.points) from public.score_history s where s.member_id = p.id and s.score_date >= v_start), 0)::bigint,
+         bm.created_at
+  from public.batch_members bm join public.profiles p on p.id = bm.member_id join auth.users u on u.id = p.id
+  where bm.batch_id = p_batch
+  order by p.full_name;
+end; $$;
+
+-- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
 revoke execute on all functions in schema public from public, anon, authenticated;
@@ -1351,12 +1742,18 @@ grant execute on function
   public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
   public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text),
   public.admin_set_tracker_all(uuid, boolean), public.tracker_preview(uuid),
-  public.admin_send_notice(text, text, uuid[])
+  public.admin_send_notice(text, text, uuid[]),
+  public.admin_batch_add_people(uuid, jsonb), public.admin_reset_temp_password(uuid),
+  public.admin_batch_remove_member(uuid, uuid), public.admin_batch_step_done(uuid, uuid, boolean),
+  public.admin_set_step_tracker(uuid, uuid, boolean), public.admin_create_tracker(text, text, text, boolean),
+  public.admin_update_tracker(uuid, text, text, text, boolean), public.admin_add_habit(uuid, text, text, int),
+  public.my_batches(), public.get_batch_leaderboard(uuid, text), public.admin_batch_people(uuid)
 to authenticated;
+-- the sign-up page checks this before anyone is logged in
+grant execute on function public.signup_open() to anon, authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
 
--- >>>>>>>>>>>>>>>>>>>> policies.sql
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
 -- Row Level Security on every table + column-level grants.
@@ -1709,7 +2106,41 @@ create policy activity_media_read on public.activity_media for select to authent
 update storage.buckets set allowed_mime_types = array['image/webp','image/jpeg','image/png','audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/webm','audio/wav','audio/x-m4a','application/pdf'],
   file_size_limit = 26214400 where id = 'session-media';
 
--- >>>>>>>>>>>>>>>>>>>> seed.sql
+-- ---------- Redesign 2.4: programs, batches ----------
+-- Coaches only. Members see their batch through my_batches() / get_batch_leaderboard().
+-- Programs, classes and batches: coaches edit directly. Batch people, finished classes and the
+-- trackers a class opens change only through admin_* functions (they open trackers and notify).
+alter table public.programs         enable row level security;
+alter table public.program_steps    enable row level security;
+alter table public.step_trackers    enable row level security;
+alter table public.batches          enable row level security;
+alter table public.batch_members    enable row level security;
+alter table public.batch_steps_done enable row level security;
+revoke all on public.programs, public.program_steps, public.step_trackers, public.batches,
+              public.batch_members, public.batch_steps_done from anon, authenticated;
+grant select on public.programs, public.program_steps, public.step_trackers, public.batches,
+               public.batch_members, public.batch_steps_done to authenticated;
+grant insert (name, kind, sort_order), update (name, kind, sort_order, is_active), delete on public.programs to authenticated;
+grant insert (program_id, day_no, title), update (title), delete on public.program_steps to authenticated;
+grant insert (program_id, name, starts_on), update (name, starts_on, is_active), delete on public.batches to authenticated;
+
+drop policy if exists programs_admin on public.programs;
+create policy programs_admin on public.programs for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists program_steps_admin on public.program_steps;
+create policy program_steps_admin on public.program_steps for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists batches_admin on public.batches;
+create policy batches_admin on public.batches for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists step_trackers_admin_read on public.step_trackers;
+create policy step_trackers_admin_read on public.step_trackers for select to authenticated using ((select public.is_admin()));
+drop policy if exists batch_members_admin_read on public.batch_members;
+create policy batch_members_admin_read on public.batch_members for select to authenticated using ((select public.is_admin()));
+drop policy if exists batch_steps_done_admin_read on public.batch_steps_done;
+create policy batch_steps_done_admin_read on public.batch_steps_done for select to authenticated using ((select public.is_admin()));
+-- profiles.must_change (temporary password) is readable like the rest of the profile, never writable by the app
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — seed.sql  (run last)
 -- Production reference data only: trackers, the 58 activities with the
@@ -1861,6 +2292,22 @@ on conflict (category_id, number) do nothing;
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
 update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan') and not show_locked;
+
+-- ---------- Redesign 2.4 ----------
+-- open_signup: true = anyone can make an account on the Join page; false = only accounts the coach creates
+-- (fresh installs start open so the first super admin can sign up; the live app is closed).
+insert into public.app_settings(key, value, description) values
+  ('open_signup', 'true', 'Anyone can create an account on the Join page (false = coach creates accounts)')
+on conflict (key) do nothing;
+insert into public.programs(name, kind, sort_order) values
+  ('7-Day Online Program', 'online', 1),
+  ('60-Day Membership', 'membership', 2),
+  ('Physical Workshop', 'workshop', 3)
+on conflict (name) do nothing;
+insert into public.program_steps(program_id, day_no, title)
+select p.id, g, 'Day ' || g from public.programs p, generate_series(1, 7) g
+where p.name = '7-Day Online Program'
+on conflict (program_id, day_no) do nothing;
 
 -- >>>>>>>>>>>>>>>>>>>> FIRST SUPER ADMIN (run once, after you sign up in the app)
 -- Replace the email with the client's login email, then run just this line:

@@ -76,3 +76,14 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **Members see all 4 program trackers, locked** ("Opens after the class") with their habit names, until you open them. Personal trackers (Conscious Couple, Mugilan's) stay hidden unless given.
 - **Class materials per tracker:** Activities → pick the tracker → **Add materials** at the top → slides (save PowerPoint as PDF, up to 25 MB), audio, pictures, links. Members see them at the top of the tracker once it is open.
 - **Send a notification:** Coach console → Members → **To all members** (top), or **Notify** on one person. It shows in the app's bell and on the phone of members who turned phone notifications on.
+
+## New in Redesign 2.4 (Nov 2026): programs, batches, coach-made logins
+- **Coach menu → Batches.** Three tabs:
+  - **Batches**: create a batch (program, name, start date). Open it, paste the people list (one per line: name, email, phone) and tap *Add to batch*. Each new person gets a login with a temporary password like `Ryl-7K4MQ2`; tap **WhatsApp** next to each name to send it. Passwords are shown only once — if one is lost, tap *New password* in the people list.
+  - After each class tap **Day N done ✓**. The trackers linked to that class open for everyone in the batch and they get a notification. People added later get those trackers automatically.
+  - **Programs**: the classes of each program (7-Day Online, 60-Day Membership, Physical Workshop) and which trackers each class opens. Add programs for new workshops.
+  - **Trackers**: create a new tracker sheet and add its habits (numbered automatically; a habit name cannot be changed after saving, like the original 58). Explanations/audio for each habit are still added on the Activities page.
+- **First login**: people on a temporary password are asked to choose their own password before anything else. The people list shows *First login pending* until they do.
+- **Sign-up is closed**: the Join page now says the coach sends the login. The super admin can open it again from the Batches tab (*Self sign-up*).
+- **Leaderboard**: members see *My batch* (points since the batch started; this week; today) and *Everyone* (the old leaderboard). Coaches pick a batch from the *Show* list on the Leaderboard page.
+- The 60-Day Membership program has no classes yet — add them under Programs once the class-to-tracker order is decided.

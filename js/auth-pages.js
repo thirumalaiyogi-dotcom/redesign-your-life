@@ -58,6 +58,7 @@ async function redirectIfSignedIn() {
   const session = await getSession().catch(() => null);
   if (!session) return false;
   const profile = await fetchProfile(session.user.id).catch(() => null);
+  if (profile?.is_active && profile.must_change && page !== 'reset') { location.replace(app('reset.html?first=1')); return true; }
   if (profile?.is_active) { location.replace(safeNext(params.get('next')) || homeFor(profile.role)); return true; }
   return false;
 }
@@ -84,6 +85,7 @@ if (page === 'login') {
     await withBusy($('#login-btn'), 'Logging in…', async () => {
       try {
         const { profile } = await signIn(email.value, pw.value, $('#remember').checked);
+        if (profile.must_change) return location.replace(app('reset.html?first=1'));
         location.replace(safeNext(params.get('next')) || homeFor(profile.role));
       } catch (err) {
         showNotice('bad', friendlyError(err));
@@ -97,6 +99,12 @@ if (page === 'login') {
 if (page === 'register') {
   redirectIfSignedIn();
   const form = $('#register-form');
+  // accounts are normally made by the coach; the form shows only when the super admin opens sign-up
+  supabase.rpc('signup_open').then(({ data, error }) => {
+    if (error || data !== false) return;
+    form.hidden = true;
+    $('#closed').hidden = false;
+  });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = $('#full_name'), email = $('#email'), phone = $('#phone'), pw = $('#password'), pw2 = $('#password2'), terms = $('#terms');
@@ -145,7 +153,36 @@ if (page === 'forgot') {
 }
 
 // ---------------- RESET ----------------
-if (page === 'reset') {
+if (page === 'reset' && params.get('first')) {
+  // first login with the coach's temporary password: pick their own, then straight in
+  const form = $('#reset-form');
+  $('h1').textContent = 'Choose your password';
+  $('#checking').textContent = 'Checking your login…';
+  getSession().then(async (s) => {
+    if (!s) return location.replace(app('login.html'));
+    const prof = await fetchProfile(s.user.id).catch(() => null);
+    if (prof && !prof.must_change) return location.replace(homeFor(prof.role));
+    $('#checking').hidden = true; form.hidden = false;
+    showNotice('info', `Welcome${prof?.full_name ? ', ' + prof.full_name.split(' ')[0] : ''}! Set your own password. You will use it from next time.`);
+    $('#password').focus();
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pw = $('#password'), pw2 = $('#password2');
+    const ok = [setFieldError(pw, validatePassword(pw.value)), setFieldError(pw2, pw2.value !== pw.value ? 'Passwords do not match.' : '')].every(Boolean);
+    if (!ok) return;
+    await withBusy($('#reset-btn'), 'Saving…', async () => {
+      try {
+        await updatePassword(pw.value);
+        const s = await getSession();
+        let prof = null;
+        for (let i = 0; i < 4; i++) { prof = await fetchProfile(s.user.id).catch(() => null); if (prof && !prof.must_change) break; await new Promise((r) => setTimeout(r, 600)); }
+        if (prof?.must_change) return showNotice('bad', 'Saved, but the app could not confirm it. Please log in again with your new password.');
+        location.replace(homeFor(prof?.role || 'member'));
+      } catch (err) { showNotice('bad', friendlyError(err)); }
+    });
+  });
+} else if (page === 'reset') {
   const form = $('#reset-form');
   let ready = false;
   const showForm = () => { if (ready) return; ready = true; form.hidden = false; $('#checking').hidden = true; $('#password').focus(); };

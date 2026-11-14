@@ -149,3 +149,19 @@ on conflict (category_id, number) do nothing;
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
 update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan') and not show_locked;
+
+-- ---------- Redesign 2.4 ----------
+-- open_signup: true = anyone can make an account on the Join page; false = only accounts the coach creates
+-- (fresh installs start open so the first super admin can sign up; the live app is closed).
+insert into public.app_settings(key, value, description) values
+  ('open_signup', 'true', 'Anyone can create an account on the Join page (false = coach creates accounts)')
+on conflict (key) do nothing;
+insert into public.programs(name, kind, sort_order) values
+  ('7-Day Online Program', 'online', 1),
+  ('60-Day Membership', 'membership', 2),
+  ('Physical Workshop', 'workshop', 3)
+on conflict (name) do nothing;
+insert into public.program_steps(program_id, day_no, title)
+select p.id, g, 'Day ' || g from public.programs p, generate_series(1, 7) g
+where p.name = '7-Day Online Program'
+on conflict (program_id, day_no) do nothing;

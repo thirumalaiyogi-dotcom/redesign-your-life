@@ -108,3 +108,12 @@
   .lb-row { padding: 11px 12px; gap: 10px; grid-template-columns: 32px 1fr auto; }
   .recog { grid-template-columns: 1fr 1fr; }
 }
+
+/* 2.4 batch leaderboard */
+.lb-scope-wrap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lb-scope-wrap:empty { display: none; }
+.lb-scope button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.lb-scope .icon { width: 16px; height: 16px; }
+.lb-bsel, .lb-scope-sel select { min-height: 40px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); padding: 6px 10px; font: inherit; font-size: 14px; max-width: 100%; }
+.lb-scope-sel { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--c-text-2); }
+.seg-full.seg-3b { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 420px; }

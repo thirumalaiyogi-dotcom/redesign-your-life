@@ -349,3 +349,38 @@ create policy activity_media_read on public.activity_media for select to authent
          or (category_id is not null and public.i_see_tracker(category_id)));
 update storage.buckets set allowed_mime_types = array['image/webp','image/jpeg','image/png','audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/webm','audio/wav','audio/x-m4a','application/pdf'],
   file_size_limit = 26214400 where id = 'session-media';
+
+-- ---------- Redesign 2.4: programs, batches ----------
+-- Coaches only. Members see their batch through my_batches() / get_batch_leaderboard().
+-- Programs, classes and batches: coaches edit directly. Batch people, finished classes and the
+-- trackers a class opens change only through admin_* functions (they open trackers and notify).
+alter table public.programs         enable row level security;
+alter table public.program_steps    enable row level security;
+alter table public.step_trackers    enable row level security;
+alter table public.batches          enable row level security;
+alter table public.batch_members    enable row level security;
+alter table public.batch_steps_done enable row level security;
+revoke all on public.programs, public.program_steps, public.step_trackers, public.batches,
+              public.batch_members, public.batch_steps_done from anon, authenticated;
+grant select on public.programs, public.program_steps, public.step_trackers, public.batches,
+               public.batch_members, public.batch_steps_done to authenticated;
+grant insert (name, kind, sort_order), update (name, kind, sort_order, is_active), delete on public.programs to authenticated;
+grant insert (program_id, day_no, title), update (title), delete on public.program_steps to authenticated;
+grant insert (program_id, name, starts_on), update (name, starts_on, is_active), delete on public.batches to authenticated;
+
+drop policy if exists programs_admin on public.programs;
+create policy programs_admin on public.programs for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists program_steps_admin on public.program_steps;
+create policy program_steps_admin on public.program_steps for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists batches_admin on public.batches;
+create policy batches_admin on public.batches for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists step_trackers_admin_read on public.step_trackers;
+create policy step_trackers_admin_read on public.step_trackers for select to authenticated using ((select public.is_admin()));
+drop policy if exists batch_members_admin_read on public.batch_members;
+create policy batch_members_admin_read on public.batch_members for select to authenticated using ((select public.is_admin()));
+drop policy if exists batch_steps_done_admin_read on public.batch_steps_done;
+create policy batch_steps_done_admin_read on public.batch_steps_done for select to authenticated using ((select public.is_admin()));
+-- profiles.must_change (temporary password) is readable like the rest of the profile, never writable by the app

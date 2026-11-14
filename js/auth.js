@@ -14,6 +14,8 @@ export function friendlyError(error) {
     return "Can't reach the server. Check your internet connection and try again.";
   if (msg.includes('invalid login credentials')) return 'Email or password is wrong. Check both and try again.';
   if (msg.includes('email not confirmed')) return 'Please confirm your email first. Open the link we sent to your inbox.';
+  if (msg.includes('sign-up is closed') || msg.includes('database error saving new user'))
+    return 'Sign-up is closed. Your coach creates your login and sends it on WhatsApp.';
   if (msg.includes('user already registered') || msg.includes('already been registered'))
     return 'An account with this email already exists. Log in instead.';
   if (msg.includes('rate limit') || msg.includes('too many') || code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit')
@@ -33,7 +35,7 @@ export async function getSession() {
 export async function fetchProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, phone, avatar_url, role, is_active, joined_on')
+    .select('id, full_name, phone, avatar_url, role, is_active, joined_on, must_change')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -77,6 +79,8 @@ export async function requireRole(allowed) {
   }
   if (!profile) { await supabase.auth.signOut(); goLogin('noprofile'); return new Promise(() => {}); }
   if (!profile.is_active) { await supabase.auth.signOut(); goLogin('paused'); return new Promise(() => {}); }
+  // still on the temporary password the coach sent → choose their own first
+  if (profile.must_change) { location.replace(app('reset.html?first=1')); return new Promise(() => {}); }
   if (!allowed.includes(profile.role)) { location.replace(homeFor(profile.role)); return new Promise(() => {}); }
 
   // Another tab logged out → leave protected pages.

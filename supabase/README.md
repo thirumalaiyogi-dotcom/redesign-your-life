@@ -71,3 +71,13 @@ Extra trackers: "all habits done today" (+20) and "perfect week" (+50) count eac
 3. SQL Editor → run `push.sql` (turns on pg_net + pg_cron, the wake-up trigger and the daily jobs: 8 pm habit reminder, 7 am to-dos due).
 Done on 14 Nov 2026 for the live project.
 Without these steps everything else works; notifications then appear only inside the app.
+
+## Redesign 2.4 (Nov 2026): programs, batches, coach-created accounts
+Live migration: `ryl_20_programs_batches`.
+- Tables `programs`, `program_steps` (classes), `step_trackers`, `batches`, `batch_members`, `batch_steps_done`. Coaches only (RLS); members reach their batch through `my_batches()` and `get_batch_leaderboard()`.
+- `admin_batch_add_people(batch, [{name,email,phone}])` creates the auth user + email identity directly (bcrypt password via `extensions.crypt`), sets `profiles.must_change`, returns the temporary password once. Existing emails are only added to the batch. The password is never stored in plain text.
+- Trigger `on_auth_password_changed` clears `must_change` when the member sets a new password.
+- `handle_new_user` now rejects self sign-ups while `app_settings.open_signup = false` (live). Coach-created accounts pass via a transaction-local flag. Fresh installs start with `open_signup = true` so the first super admin can sign up; turning it off is a button on the Batches page. **Note:** while closed, "Add user" in the Supabase dashboard is also blocked — open sign-up for a minute if you need it.
+- `admin_batch_step_done(batch, step, true)` opens that class's (`audience='assigned'`) trackers for the batch through `tracker_assignments` and notifies; undo only removes the mark.
+- `admin_create_tracker` / `admin_update_tracker` / `admin_add_habit`: tracker builder. `guard_activity_update` still blocks renaming habits.
+- Verified live: account created by SQL logs in through the real Auth API (HTTP 200); self sign-up returns "Database error saving new user".

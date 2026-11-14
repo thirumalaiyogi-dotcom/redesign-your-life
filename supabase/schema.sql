@@ -348,3 +348,69 @@ alter table public.session_media add constraint session_media_kind_check check (
 alter table public.session_media drop constraint if exists session_media_check;
 alter table public.session_media add constraint session_media_check check (case when kind in ('image','audio','file')
   then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);
+
+-- =====================================================================
+-- Redesign 2.4 (Nov 2026): programs (7-day online, 60-day membership, workshops), batches,
+-- coach-created accounts with a first-login password change, step-by-step tracker opening.
+-- =====================================================================
+-- true = the member is still on the temporary password the coach gave; the app asks for a new one first
+alter table public.profiles add column if not exists must_change boolean not null default false;
+
+create table if not exists public.programs (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null unique check (char_length(name) between 2 and 80),
+  kind        text not null default 'online' check (kind in ('online','membership','workshop')),
+  is_active   boolean not null default true,
+  sort_order  smallint not null default 0,
+  created_by  uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+
+-- the classes of a program in order (Day 1, Day 2 … or Class 1, Class 2 …)
+create table if not exists public.program_steps (
+  id          uuid primary key default gen_random_uuid(),
+  program_id  uuid not null references public.programs(id) on delete cascade,
+  day_no      smallint not null check (day_no between 1 and 400),
+  title       text not null check (char_length(title) between 1 and 120),
+  created_at  timestamptz not null default now(),
+  unique (program_id, day_no)
+);
+
+-- trackers that open for a batch when this step is marked done
+create table if not exists public.step_trackers (
+  step_id     uuid not null references public.program_steps(id) on delete cascade,
+  category_id uuid not null references public.tracker_categories(id) on delete cascade,
+  primary key (step_id, category_id)
+);
+create index if not exists step_trackers_category_idx on public.step_trackers(category_id);
+
+-- one group of people going through a program together (batches can overlap)
+create table if not exists public.batches (
+  id          uuid primary key default gen_random_uuid(),
+  program_id  uuid not null references public.programs(id) on delete restrict,
+  name        text not null check (char_length(name) between 2 and 80),
+  starts_on   date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  is_active   boolean not null default true,
+  created_by  uuid default auth.uid() references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists batches_program_idx on public.batches(program_id);
+
+create table if not exists public.batch_members (
+  batch_id    uuid not null references public.batches(id) on delete cascade,
+  member_id   uuid not null references public.profiles(id) on delete cascade,
+  added_by    uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  primary key (batch_id, member_id)
+);
+create index if not exists batch_members_member_idx on public.batch_members(member_id);
+
+-- which steps a batch has finished (marking one opens its trackers for the whole batch)
+create table if not exists public.batch_steps_done (
+  batch_id    uuid not null references public.batches(id) on delete cascade,
+  step_id     uuid not null references public.program_steps(id) on delete cascade,
+  done_by     uuid references public.profiles(id) on delete set null,
+  done_at     timestamptz not null default now(),
+  primary key (batch_id, step_id)
+);
+create index if not exists batch_steps_done_step_idx on public.batch_steps_done(step_id);
