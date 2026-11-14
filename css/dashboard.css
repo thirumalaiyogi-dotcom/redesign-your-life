@@ -189,3 +189,10 @@
 .cm-acts .btn { flex: 1; }
 .btn-wa { background: #25D366; color: #06290F; }
 .btn-wa:hover { background: #2EE074; }
+/* one-tap "turn on notifications" card on Home */
+.push-ask { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); background: color-mix(in srgb, var(--c-primary) 6%, var(--c-surface)); margin-bottom: 4px; }
+.push-ask .si { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--c-primary); color: var(--c-on-primary); }
+.push-ask .si .icon { width: 19px; height: 19px; }
+.push-ask b { display: block; font-size: 15px; } .push-ask span { font-size: 13px; color: var(--c-text-2); }
+.push-ask .pa-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+@media (min-width: 600px) { .push-ask { grid-template-columns: auto minmax(0, 1fr) auto; } .push-ask .pa-acts { grid-column: auto; } }

@@ -311,6 +311,7 @@ async function renderDashboard() {
       <h1>${esc(greeting())}, ${esc(firstName(S.profile.full_name, S.user.email))}</h1>
       <p>Let's make today count.</p></div>
     <div data-install-slot></div>
+    <div id="push-ask"></div>
     <div class="dash">
       <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}<div id="tk-wrap"></div><div id="act-wrap"></div></div>
       <div class="dash-col dash-side" id="col-side"><div id="streak-wrap">${streakHTML()}</div><div id="week-wrap"></div>${quickHTML()}</div>
@@ -319,6 +320,26 @@ async function renderDashboard() {
   await renderLive();
   loadUnread();
   document.dispatchEvent(new Event('ryl:slots'));
+  askPush();
+}
+
+// Browsers only show the "Allow notifications?" box after a tap, so Home offers a one-tap card
+// (until the member turns them on, or says "Later" — then it waits 3 days).
+const PUSH_LATER = 'ryl.push.later';
+async function askPush() {
+  const box = $('#push-ask'); if (!box) return;
+  let later = 0; try { later = Number(localStorage.getItem(PUSH_LATER) || 0); } catch { /* ignore */ }
+  if (later > Date.now() - 3 * 864e5) return;
+  const st = await pushState().catch(() => 'unsupported');
+  if (st !== 'off' && st !== 'ios-install') return;
+  box.innerHTML = `<section class="card push-ask" aria-labelledby="pa-h"><span class="si">${icon('bell')}</span>
+    <div><b id="pa-h">Turn on notifications</b><span>${st === 'ios-install' ? 'On iPhone: Share → Add to Home Screen, open the app from there, then turn notifications on.' : 'Get your evening reminder, your coach\'s answers and class updates on this phone.'}</span></div>
+    <div class="pa-acts">${st === 'off' ? `<button class="btn btn-primary btn-sm" id="pa-on">Allow</button>` : ''}<button class="btn btn-ghost btn-sm" id="pa-later">Later</button></div></section>`;
+  $('#pa-later').addEventListener('click', () => { try { localStorage.setItem(PUSH_LATER, String(Date.now())); } catch { /* ignore */ } box.innerHTML = ''; });
+  $('#pa-on')?.addEventListener('click', (e) => withBusy(e.currentTarget, 'Please wait…', async () => {
+    try { await enablePush(); box.innerHTML = ''; toast('Notifications turned on'); }
+    catch (err) { toast(friendlyError(err), 'bad'); if (Notification.permission === 'denied') box.innerHTML = ''; }
+  }));
 }
 
 async function renderLive() {
