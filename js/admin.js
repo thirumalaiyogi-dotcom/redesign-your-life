@@ -161,7 +161,8 @@ function personHTML(p) {
       ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
-      ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
+      ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>
+        <button class="btn btn-sm btn-ghost" data-notice="${p.id}">${icon('bell')}Notify</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
   </article>`;
 }
@@ -187,6 +188,8 @@ async function renderMembers() {
     <b>Add members</b><p class="muted" style="font-size:14px">Send this link. Each person creates their own account and joins as a Member.${me.profile.role === 'super_admin' ? ' You can then make someone a Coach here.' : ''}</p>
     <div class="invite"><code id="join-url">${esc(joinUrl)}</code><button class="btn btn-ghost btn-sm" id="copy-join">${icon('copy')}Copy link</button></div>
   </section>
+  <section class="panel panel-pad notice-bar"><span class="si">${icon('bell')}</span><span><b>Send a notification</b><small>Reaches the app and the phone of everyone who turned notifications on</small></span>
+    <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
   <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
   <div class="tools">
     <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['paused', 'Paused']].map(([v, l]) =>
@@ -205,6 +208,8 @@ async function renderMembers() {
     if (f) { filter = f.dataset.filter; renderList(); return; }
     const bz = e.target.closest('[data-bonus]');
     if (bz) { bonusDialog(people.find((x) => x.id === bz.dataset.bonus)); return; }
+    const nt = e.target.closest('[data-notice]');
+    if (nt) { noticeDialog(nt.dataset.notice === 'all' ? null : people.find((x) => x.id === nt.dataset.notice)); return; }
     const oa = e.target.closest('[data-open-all]');
     if (oa) {
       const c = extraCats.find((x) => x.id === oa.dataset.openAll), on = oa.dataset.on === '1';
@@ -285,6 +290,26 @@ const fieldErr = (form, sel, msg) => {
   const input = form.querySelector(sel); const f = input.closest('.field');
   f.classList.toggle('invalid', !!msg); f.querySelector('.err').textContent = msg || ''; if (msg) input.focus(); return !msg;
 };
+
+// ---------------- NOTIFICATION FROM THE COACH ----------------
+function noticeDialog(p) {
+  const n = people.filter((x) => x.role === 'member' && x.is_active).length;
+  formDialog({
+    title: p ? `Notify ${p.full_name || p.email}` : `Notify all members (${n})`,
+    body: 'They see it in the app (bell) and, if they turned on phone notifications, on their phone.',
+    fields: `<div class="field"><label for="nt-t">Title</label><input id="nt-t" maxlength="120" placeholder="e.g. Class today at 7 pm"><span class="err"></span></div>
+      <div class="field"><label for="nt-b">Message <span class="opt">(optional)</span></label><textarea id="nt-b" maxlength="500" rows="3" placeholder="Zoom link, reminder, a word of encouragement…"></textarea></div>`,
+    submitLabel: 'Send',
+    onSubmit: async (form) => {
+      const t = form.querySelector('#nt-t').value.trim();
+      if (!fieldErr(form, '#nt-t', t.length < 3 ? 'Write a short title.' : '')) return false;
+      const { data, error } = await supabase.rpc('admin_send_notice', { p_title: t, p_body: form.querySelector('#nt-b').value.trim() || null, p_members: p ? [p.id] : null });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      toast(`Sent to ${data} member${data === 1 ? '' : 's'}`);
+      return true;
+    }
+  });
+}
 
 // ---------------- SPECIAL BONUS ----------------
 function bonusDialog(p) {

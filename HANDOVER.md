@@ -75,3 +75,4 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 ## New in Redesign 2.3 (Nov 2026)
 - **Members see all 4 program trackers, locked** ("Opens after the class") with their habit names, until you open them. Personal trackers (Conscious Couple, Mugilan's) stay hidden unless given.
 - **Class materials per tracker:** Activities → pick the tracker → **Add materials** at the top → slides (save PowerPoint as PDF, up to 25 MB), audio, pictures, links. Members see them at the top of the tracker once it is open.
+- **Send a notification:** Coach console → Members → **To all members** (top), or **Notify** on one person. It shows in the app's bell and on the phone of members who turned phone notifications on.

@@ -1239,6 +1239,21 @@ language sql stable security definer set search_path = '' as $$
   order by a.number;
 $$;
 
+-- coach sends a message to everyone, or to chosen members: in-app notification + phone push (if turned on)
+create or replace function public.admin_send_notice(p_title text, p_body text, p_members uuid[] default null)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v_title text := nullif(left(trim(coalesce(p_title, '')), 120), ''); v_body text := nullif(left(trim(coalesce(p_body, '')), 500), ''); n int;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can send notifications.' using errcode = '42501'; end if;
+  if v_title is null or char_length(v_title) < 3 then raise exception 'Write a title of at least 3 characters.' using errcode = '22023'; end if;
+  insert into public.notifications(member_id, kind, title, body)
+  select p.id, 'info', v_title, v_body from public.profiles p
+  where p.role = 'member' and p.is_active and (p_members is null or p.id = any(p_members));
+  get diagnostics n = row_count;
+  perform public._audit('notice.send', 'notifications', null, jsonb_build_object('title', v_title, 'members', n, 'all', p_members is null));
+  return n;
+end; $$;
+
 -- ---------------------------------------------------------------------
 -- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
 -- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
@@ -1335,7 +1350,8 @@ grant execute on function
   public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
   public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
   public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text),
-  public.admin_set_tracker_all(uuid, boolean), public.tracker_preview(uuid)
+  public.admin_set_tracker_all(uuid, boolean), public.tracker_preview(uuid),
+  public.admin_send_notice(text, text, uuid[])
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
