@@ -99,9 +99,9 @@ function drawList() {
 function mediaRow(m, urls) {
   const th = m.kind === 'image' && urls[m.ref] ? `<img src="${esc(urls[m.ref])}" alt="">`
     : m.kind === 'video_link' && youtubeId(m.ref) ? `<img src="https://i.ytimg.com/vi/${esc(youtubeId(m.ref))}/default.jpg" alt="">`
-    : icon({ image: 'image', audio: 'mic', video_link: 'play', link: 'newspaper' }[m.kind]);
-  const label = { image: 'Picture', audio: 'Audio', video_link: 'Video', link: 'Link' }[m.kind];
-  return `<div class="se-m"><span class="th">${th}</span><span class="tx"><b>${esc(m.caption || label)}</b><small>${esc(m.kind === 'image' || m.kind === 'audio' ? label : m.ref)}</small></span>
+    : icon({ image: 'image', audio: 'mic', video_link: 'play', link: 'newspaper', file: 'book-open' }[m.kind]);
+  const label = { image: 'Picture', audio: 'Audio', video_link: 'Video', link: 'Link', file: 'Slides (PDF)' }[m.kind];
+  return `<div class="se-m"><span class="th">${th}</span><span class="tx"><b>${esc(m.caption || label)}</b><small>${esc(m.kind === 'image' || m.kind === 'audio' || m.kind === 'file' ? label : m.ref)}</small></span>
     <button class="lnk-del" type="button" data-del-media="${m.id}" aria-label="Remove ${esc(label)}">${icon('x')}</button></div>`;
 }
 
@@ -127,7 +127,8 @@ async function drawEditor(id) {
     ${s ? `<div class="se-media" id="se-media">${media.length ? '<div class="skeleton" style="height:60px"></div>' : '<p class="muted" style="font-size:13.5px">Nothing added yet.</p>'}</div>
     <div class="se-add">
       <label class="btn btn-ghost btn-sm">${icon('image')}Add pictures<input type="file" id="add-img" accept="image/*" multiple></label>
-      <label class="btn btn-ghost btn-sm">${icon('mic')}Add audio<input type="file" id="add-aud" accept="audio/*"></label></div>
+      <label class="btn btn-ghost btn-sm">${icon('mic')}Add audio<input type="file" id="add-aud" accept="audio/*"></label>
+      <label class="btn btn-ghost btn-sm">${icon('book-open')}Add slides (PDF)<input type="file" id="add-pdf" accept="application/pdf"></label></div>
     <form class="se-link" id="link-form" novalidate>
       <div class="field"><label for="l-url">Video or reference link</label><input id="l-url" type="url" inputmode="url" maxlength="500" placeholder="https://youtu.be/…"><span class="err"></span></div>
       <div class="field"><label for="l-cap">Title <span class="opt">(optional)</span></label><input id="l-cap" maxlength="160" placeholder="e.g. Morning routine video"></div>
@@ -144,7 +145,7 @@ async function drawEditor(id) {
 async function refreshMedia() {
   const id = C.editing; if (!id || !$('#se-media')) return;
   const media = C.media.filter((m) => m.session_id === id);
-  const urls = await signedUrls(media.filter((m) => m.kind === 'image' || m.kind === 'audio').map((m) => m.ref));
+  const urls = await signedUrls(media.filter((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file').map((m) => m.ref));
   if (C.editing !== id || !$('#se-media')) return;
   $('#se-media').innerHTML = media.length ? media.map((m) => mediaRow(m, urls)).join('') : '<p class="muted" style="font-size:13.5px">Nothing added yet.</p>';
   const s = C.sessions.find((x) => x.id === id);
@@ -159,13 +160,17 @@ async function addMediaRow(row) {
 
 async function uploadFiles(files, kind) {
   const id = C.editing; if (!id) return;
-  const label = kind === 'image' ? 'picture' : 'audio';
+  const label = kind === 'image' ? 'picture' : kind === 'file' ? 'slides' : 'audio';
   let done = 0;
   for (const file of files) {
     try {
       let blob = file, ext, type;
       if (kind === 'image') { blob = await shrinkImage(file); ext = 'webp'; type = 'image/webp'; }
-      else {
+      else if (kind === 'file') {
+        if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) throw new Error('Choose a PDF file.');
+        if (file.size > 25 * 1024 * 1024) throw new Error('PDF is larger than 25 MB.');
+        type = 'application/pdf'; ext = 'pdf';
+      } else {
         if (file.size > 15 * 1024 * 1024) throw new Error('Audio is larger than 15 MB. Record a shorter clip or lower quality.');
         type = file.type || 'audio/mpeg';
         ext = (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp3';
@@ -174,7 +179,7 @@ async function uploadFiles(files, kind) {
       toast(`Uploading ${label}${files.length > 1 ? ` ${done + 1}/${files.length}` : ''}…`, 'info');
       const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: type, upsert: false });
       if (up.error) throw up.error;
-      await addMediaRow({ session_id: id, kind, ref: path, caption: kind === 'audio' ? file.name.replace(/\.[^.]+$/, '').slice(0, 160) : null,
+      await addMediaRow({ session_id: id, kind, ref: path, caption: kind !== 'image' ? file.name.replace(/\.[^.]+$/, '').slice(0, 160) : null,
         sort_order: C.media.filter((m) => m.session_id === id).length });
       done++;
     } catch (err) { toast(friendlyError(err), 'bad'); }
@@ -205,13 +210,13 @@ export async function renderSessions() {
       if (!(await confirmDialog({ title: 'Remove this item?', body: 'Members will no longer see it.', confirmLabel: 'Remove', danger: true }))) return;
       const { error } = await supabase.from('session_media').delete().eq('id', m.id);
       if (error) return toast(friendlyError(error), 'bad');
-      if (m.kind === 'image' || m.kind === 'audio') supabase.storage.from(BUCKET).remove([m.ref]);
+      if (m.kind === 'image' || m.kind === 'audio' || m.kind === 'file') supabase.storage.from(BUCKET).remove([m.ref]);
       C.media = C.media.filter((x) => x.id !== m.id); toast('Removed'); return refreshMedia();
     }
     if (e.target.closest('#s-del')) {
       const s = C.sessions.find((x) => x.id === C.editing);
       if (!(await confirmDialog({ title: `Delete “${s.title}”?`, body: 'Its pictures, audio and links are deleted too. Members\' questions and notes stay, without the session name.', confirmLabel: 'Delete session', danger: true }))) return;
-      const files = C.media.filter((m) => m.session_id === s.id && (m.kind === 'image' || m.kind === 'audio')).map((m) => m.ref);
+      const files = C.media.filter((m) => m.session_id === s.id && (m.kind === 'image' || m.kind === 'audio' || m.kind === 'file')).map((m) => m.ref);
       const { error } = await supabase.from('sessions').delete().eq('id', s.id);
       if (error) return toast(friendlyError(error), 'bad');
       if (files.length) supabase.storage.from(BUCKET).remove(files);
@@ -222,6 +227,7 @@ export async function renderSessions() {
   main.addEventListener('change', (e) => {
     if (e.target.id === 'add-img' && e.target.files.length) { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f.slice(0, 12), 'image'); }
     if (e.target.id === 'add-aud' && e.target.files.length) { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f.slice(0, 1), 'audio'); }
+    if (e.target.id === 'add-pdf' && e.target.files.length) { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f.slice(0, 1), 'file'); }
   });
   main.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -322,53 +328,60 @@ export async function memberExtras(target, memberId) {
 
 // ---------------- coach: explanation for one habit point (Activities page) ----------------
 export async function openPointMedia(a, onChange = () => {}) {
+  // a = one habit point { id, number, default_name } or a whole tracker { categoryId, name }
+  const isCat = !!a.categoryId, tid = isCat ? a.categoryId : a.id, col = isCat ? 'category_id' : 'activity_id';
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
   scrim.innerHTML = `<div class="dialog pt-sheet" role="dialog" aria-modal="true" aria-labelledby="pm-t">
-    <div class="pt-head"><span class="pt-no">${String(a.number).padStart(2, '0')}</span><div><h2 id="pm-t">${esc(a.default_name)}</h2><p>Explain this point: audio, pictures and video links. Members open it from the tracker card.</p></div>
+    <div class="pt-head"><span class="pt-no">${isCat ? icon('book-open') : String(a.number).padStart(2, '0')}</span><div><h2 id="pm-t">${esc(isCat ? a.name + ' · class materials' : a.default_name)}</h2><p>${isCat ? 'Slides (PDF), audio, pictures and links for this tracker. Members see them at the top of the tracker once it is open.' : 'Explain this point: audio, pictures and video links. Members open it from the tracker card.'}</p></div>
       <button class="iconbtn" data-close aria-label="Close">${icon('x')}</button></div>
     <div class="pt-body stack" style="gap:12px"><div class="se-media" id="pm-list"><div class="skeleton" style="height:56px"></div></div>
       <div class="se-add"><label class="btn btn-ghost btn-sm">${icon('mic')}Add audio<input type="file" id="pm-aud" accept="audio/*"></label>
-        <label class="btn btn-ghost btn-sm">${icon('image')}Add pictures<input type="file" id="pm-img" accept="image/*" multiple></label></div>
+        <label class="btn btn-ghost btn-sm">${icon('image')}Add pictures<input type="file" id="pm-img" accept="image/*" multiple></label>
+        <label class="btn btn-ghost btn-sm">${icon('book-open')}Add slides (PDF)<input type="file" id="pm-pdf" accept="application/pdf"></label></div>
       <form class="se-link" id="pm-link" novalidate>
         <div class="field"><label for="pm-url">Video or reference link</label><input id="pm-url" type="url" inputmode="url" maxlength="500" placeholder="https://youtu.be/…"><span class="err"></span></div>
         <div class="field"><label for="pm-cap">Title <span class="opt">(optional)</span></label><input id="pm-cap" maxlength="160"></div>
         <button class="btn btn-ghost" type="submit">${icon('arrow-right')}Add link</button></form>
-      <p class="muted" style="font-size:12.5px">Tip: on the phone, “Add audio” can record a voice note directly. Audio up to 15 MB.</p></div></div>`;
+      <p class="muted" style="font-size:12.5px">Tip: on the phone, “Add audio” can record a voice note directly. Audio up to 15 MB, PDF up to 25 MB. For PowerPoint, save it as PDF first.</p></div></div>`;
   document.body.appendChild(scrim);
   const close = () => scrim.remove();
   scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-close]')) close(); });
   let media = [];
   const refresh = async () => {
-    const urls = await signedUrls(media.filter((m) => m.kind === 'image' || m.kind === 'audio').map((m) => m.ref));
+    const urls = await signedUrls(media.filter((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file').map((m) => m.ref));
     scrim.querySelector('#pm-list').innerHTML = media.length ? media.map((m) => mediaRow(m, urls)).join('') : '<p class="muted" style="font-size:13.5px">Nothing added yet.</p>';
     onChange(media.length);
   };
-  const { data, error } = await supabase.from('activity_media').select('id, activity_id, kind, ref, caption, sort_order, created_at').eq('activity_id', a.id).order('sort_order').order('created_at');
+  const { data, error } = await supabase.from('activity_media').select('id, activity_id, kind, ref, caption, sort_order, created_at').eq(col, tid).order('sort_order').order('created_at');
   if (error) { scrim.querySelector('#pm-list').innerHTML = `<p class="muted">${esc(friendlyError(error))}</p>`; return; }
   media = data || []; refresh();
   const add = async (row) => {
-    const { data: r, error: e } = await supabase.from('activity_media').insert({ activity_id: a.id, sort_order: media.length, ...row }).select('id, activity_id, kind, ref, caption, sort_order, created_at').single();
+    const { data: r, error: e } = await supabase.from('activity_media').insert({ [col]: tid, sort_order: media.length, ...row }).select('id, activity_id, kind, ref, caption, sort_order, created_at').single();
     if (e) throw e; media.push(r);
   };
   scrim.addEventListener('change', async (e) => {
-    const kind = e.target.id === 'pm-aud' ? 'audio' : e.target.id === 'pm-img' ? 'image' : null;
+    const kind = e.target.id === 'pm-aud' ? 'audio' : e.target.id === 'pm-img' ? 'image' : e.target.id === 'pm-pdf' ? 'file' : null;
     if (!kind || !e.target.files.length) return;
     const files = [...e.target.files].slice(0, kind === 'audio' ? 1 : 8); e.target.value = '';
     for (const file of files) {
       try {
         let blob = file, ext, type;
         if (kind === 'image') { blob = await shrinkImage(file); ext = 'webp'; type = 'image/webp'; }
-        else {
+        else if (kind === 'file') {
+          if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) throw new Error('Choose a PDF file.');
+          if (file.size > 25 * 1024 * 1024) throw new Error('PDF is larger than 25 MB.');
+          type = 'application/pdf'; ext = 'pdf';
+        } else {
           if (file.size > 15 * 1024 * 1024) throw new Error('Audio is larger than 15 MB.');
           type = file.type || 'audio/mpeg'; ext = (file.name.split('.').pop() || 'm4a').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'm4a';
         }
-        const path = `${a.id}/${fileName(ext)}`;
-        toast(`Uploading ${kind === 'image' ? 'picture' : 'audio'}…`, 'info');
+        const path = `${tid}/${fileName(ext)}`;
+        toast(`Uploading ${kind === 'image' ? 'picture' : kind === 'file' ? 'slides' : 'audio'}…`, 'info');
         const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: type, upsert: false });
         if (up.error) throw up.error;
-        await add({ kind, ref: path, caption: kind === 'audio' ? file.name.replace(/\.[^.]+$/, '').slice(0, 160) : null });
-        toast(kind === 'image' ? 'Picture added' : 'Audio added');
+        await add({ kind, ref: path, caption: kind !== 'image' ? file.name.replace(/\.[^.]+$/, '').slice(0, 160) : null });
+        toast(kind === 'image' ? 'Picture added' : kind === 'file' ? 'Slides added' : 'Audio added');
       } catch (err) { toast(friendlyError(err), 'bad'); }
     }
     refresh();
@@ -379,7 +392,7 @@ export async function openPointMedia(a, onChange = () => {}) {
     if (!(await confirmDialog({ title: 'Remove this item?', body: 'Members will no longer see it.', confirmLabel: 'Remove', danger: true }))) return;
     const { error: e2 } = await supabase.from('activity_media').delete().eq('id', m.id);
     if (e2) return toast(friendlyError(e2), 'bad');
-    if (m.kind === 'image' || m.kind === 'audio') supabase.storage.from(BUCKET).remove([m.ref]);
+    if (m.kind === 'image' || m.kind === 'audio' || m.kind === 'file') supabase.storage.from(BUCKET).remove([m.ref]);
     media = media.filter((x) => x.id !== m.id); toast('Removed'); refresh();
   });
   scrim.querySelector('#pm-link').addEventListener('submit', async (e) => {

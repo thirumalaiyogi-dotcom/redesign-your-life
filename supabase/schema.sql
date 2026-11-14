@@ -326,3 +326,25 @@ alter table public.session_notes add column if not exists image_ref text
 
 -- to-do priority: 1 urgent+important, 2 important not urgent, 3 urgent not important, 4 neither
 alter table public.todos add column if not exists quadrant smallint not null default 2 check (quadrant between 1 and 4);
+
+-- =====================================================================
+-- Redesign 2.3 (Nov 2026): program trackers show to everyone as "locked" until the coach opens them;
+-- class materials (slides as PDF, audio, links) per tracker as well as per point.
+-- =====================================================================
+alter table public.tracker_categories add column if not exists show_locked boolean not null default false;
+alter table public.activity_media alter column activity_id drop not null;
+alter table public.activity_media add column if not exists category_id uuid references public.tracker_categories(id) on delete cascade;
+create index if not exists activity_media_category_idx on public.activity_media(category_id, sort_order) where category_id is not null;
+alter table public.activity_media drop constraint if exists activity_media_one_target;
+alter table public.activity_media add constraint activity_media_one_target check ((activity_id is null) <> (category_id is null));
+-- 'file' = a PDF (e.g. the class slides) in the private session-media bucket
+alter table public.activity_media drop constraint if exists activity_media_kind_check;
+alter table public.activity_media add constraint activity_media_kind_check check (kind in ('image','audio','video_link','link','file'));
+alter table public.activity_media drop constraint if exists activity_media_check;
+alter table public.activity_media add constraint activity_media_check check (case when kind in ('image','audio','file')
+  then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);
+alter table public.session_media drop constraint if exists session_media_kind_check;
+alter table public.session_media add constraint session_media_kind_check check (kind in ('image','audio','video_link','link','file'));
+alter table public.session_media drop constraint if exists session_media_check;
+alter table public.session_media add constraint session_media_check check (case when kind in ('image','audio','file')
+  then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);

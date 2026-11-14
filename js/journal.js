@@ -184,7 +184,7 @@ async function renderProgress() {
     ${chart}
     <div class="legend"><span><i class="lg-on"></i>Points earned</span><span><i class="lg-today"></i>Today</span></div></section>
   <section class="card card-pad"><div class="card-h"><h3>Trackers this month</h3><span class="sub-r">% of possible ticks</span></div>
-    <div class="catbars">${cats.data.map((c) => { const pct = total[c.slug] ? Math.min(100, Math.round(100 * (catDone[c.slug] || 0) / (total[c.slug] * elapsed))) : 0;
+    <div class="catbars">${cats.data.filter((c) => total[c.slug]).map((c) => { const pct = total[c.slug] ? Math.min(100, Math.round(100 * (catDone[c.slug] || 0) / (total[c.slug] * elapsed))) : 0;
       return `<div class="catbar" style="--tc:${COLOR[c.slug] || 'var(--c-accent)'}"><span class="ci">${icon(ICON[c.slug] || 'list-checks')}</span><div class="cb">
         <div class="lbl">${esc(c.name)}<span><b>${pct}%</b> · ${catDone[c.slug] || 0} done</span></div><div class="track"><i data-w="${pct}%" style="background:var(--tc)"></i></div></div></div>`; }).join('')}</div></section>
   <section><div class="sec-h"><h2>Badges</h2><span class="sub">${earned} of ${(d.badges || []).length} earned</span></div>

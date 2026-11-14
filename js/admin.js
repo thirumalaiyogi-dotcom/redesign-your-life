@@ -565,7 +565,7 @@ function drawDay() {
 }
 
 // ---------------- ACTIVITIES ----------------
-let acts = [], cats = [], actTracker = 'wealth', mediaCount = new Map();
+let acts = [], cats = [], actTracker = 'wealth', mediaCount = new Map(), catMedia = new Map();
 
 async function renderActivities() {
   const main = $('#main');
@@ -577,14 +577,20 @@ async function renderActivities() {
   ]);
   if (c.error || a.error) return errorPanel(main, c.error || a.error, renderActivities);
   cats = c.data; acts = a.data;
-  const am = await supabase.from('activity_media').select('activity_id');
-  mediaCount = new Map(); for (const r of am.data || []) mediaCount.set(r.activity_id, (mediaCount.get(r.activity_id) || 0) + 1);
+  const am = await supabase.from('activity_media').select('activity_id, category_id');
+  mediaCount = new Map(); catMedia = new Map();
+  for (const r of am.data || []) {
+    if (r.activity_id) mediaCount.set(r.activity_id, (mediaCount.get(r.activity_id) || 0) + 1);
+    else if (r.category_id) catMedia.set(r.category_id, (catMedia.get(r.category_id) || 0) + 1);
+  }
   main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">Names stay exactly as the program defines them</span><h1>Activities</h1></div></div>
     <div class="chips" role="group" aria-label="Tracker">${cats.map((t) => `<button class="chip" data-at="${t.slug}" aria-pressed="${t.slug === actTracker}">${esc(t.name)}<span class="c">${acts.filter((x) => x.category_id === t.id).length}</span></button>`).join('')}</div>
     <div id="act-list"></div>`;
   main.addEventListener('click', (e) => {
     const t = e.target.closest('[data-at]'); if (t) { actTracker = t.dataset.at; $$('[data-at]').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); return drawActs(); }
     const ed = e.target.closest('[data-edit]'); if (ed) return editActivity(acts.find((x) => x.id === ed.dataset.edit));
+    const cmb = e.target.closest('[data-cat-media]');
+    if (cmb) { const c = cats.find((x) => x.id === cmb.dataset.catMedia); return openPointMedia({ categoryId: c.id, name: c.name }, (n) => { catMedia.set(c.id, n); drawActs(); }); }
     const ex = e.target.closest('[data-explain]');
     if (ex) return openPointMedia(acts.find((x) => x.id === ex.dataset.explain), (n) => { mediaCount.set(ex.dataset.explain, n); drawActs(); });
   });
@@ -594,7 +600,10 @@ async function renderActivities() {
 function drawActs() {
   const cat = cats.find((c) => c.slug === actTracker) || cats[0];
   const list = acts.filter((a) => a.category_id === cat.id);
-  $('#act-list').innerHTML = `<div class="people">${list.map((a) => {
+  const cm = catMedia.get(cat.id) || 0;
+  $('#act-list').innerHTML = `<div class="card card-pad cm-bar"><span><b>${esc(cat.name)} · class materials</b><small>${cm ? `${cm} item${cm > 1 ? 's' : ''}` : 'Slides (PDF), audio and links for the whole tracker'}</small></span>
+      <button class="btn btn-sm ${cm ? 'btn-soft' : 'btn-gold'}" data-cat-media="${cat.id}">${icon('book-open')}${cm ? 'Edit' : 'Add'} materials</button></div>
+    <div class="people">${list.map((a) => {
     const img = activityImageUrl(a.image_path);
     return `<article class="person ${a.is_active ? '' : 'paused'}" style="--tc:${TRACKER_COLOR[cat.slug]}">
       <span style="width:72px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--bg-2);display:grid;place-items:center;flex:none">${img ? `<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : icon(a.icon || 'image')}</span>

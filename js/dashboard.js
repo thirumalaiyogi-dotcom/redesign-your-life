@@ -278,7 +278,8 @@ async function loadActivities() {
       .gte('checkin_date', from).lte('checkin_date', S.today).range(0, 1999)
   ]);
   for (const r of [cats, acts, rows, week]) if (r.error) throw r.error;
-  S.cats = cats.data || [];
+  // only trackers that are open for this member (locked program trackers have no habits visible)
+  S.cats = (cats.data || []).filter((c) => (acts.data || []).some((x) => x.category_id === c.id));
   const catIds = new Set(S.cats.map((c) => c.id));
   S.acts = (acts.data || []).filter((a) => catIds.has(a.category_id));
   const active = new Set(S.acts.map((a) => a.id));

@@ -335,3 +335,17 @@ create policy member_media_insert on storage.objects for insert to authenticated
 drop policy if exists member_media_delete on storage.objects;
 create policy member_media_delete on storage.objects for delete to authenticated
   using (bucket_id = 'member-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ---------- Redesign 2.3 ----------
+-- program trackers marked show_locked are listed for every member (locked until opened); their habits stay hidden (see tracker_preview())
+drop policy if exists categories_read on public.tracker_categories;
+create policy categories_read on public.tracker_categories for select to authenticated
+  using ((is_active and (show_locked or public.i_see_tracker(id))) or (select public.is_admin()));
+grant insert (category_id) on public.activity_media to authenticated;
+drop policy if exists activity_media_read on public.activity_media;
+create policy activity_media_read on public.activity_media for select to authenticated
+  using ((select public.is_admin())
+         or (activity_id is not null and exists (select 1 from public.activities a where a.id = activity_id and a.is_active and public.i_see_tracker(a.category_id)))
+         or (category_id is not null and public.i_see_tracker(category_id)));
+update storage.buckets set allowed_mime_types = array['image/webp','image/jpeg','image/png','audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/webm','audio/wav','audio/x-m4a','application/pdf'],
+  file_size_limit = 26214400 where id = 'session-media';

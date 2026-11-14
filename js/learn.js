@@ -122,13 +122,13 @@ async function drawSession(id) {
     <article class="card card-pad ses-detail">
       <span class="date">${esc(formatDate(s.session_date))}</span><h1>${esc(s.title)}</h1>
       ${s.body ? `<div class="ses-body">${esc(s.body)}</div>` : ''}
-      <div id="ses-media">${media.some((m) => m.kind === 'image' || m.kind === 'audio') ? '<div class="skeleton" style="height:120px"></div>' : mediaHTML(media, {})}</div>
+      <div id="ses-media">${media.some((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file') ? '<div class="skeleton" style="height:120px"></div>' : mediaHTML(media, {})}</div>
     </article>
     ${noteForm(id)}
     ${notes.length ? `<div class="stack" style="gap:10px">${notes.map((n) => noteHTML(n, false)).join('')}</div>` : ''}
     ${askForm(id)}
     ${qs.length ? `<div class="stack" style="gap:10px">${qs.map((q) => doubtHTML(q, false)).join('')}</div>` : ''}`;
-  const paths = media.filter((m) => m.kind === 'image' || m.kind === 'audio').map((m) => m.ref);
+  const paths = media.filter((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file').map((m) => m.ref);
   if (paths.length) { const urls = await signedUrls(paths); if ($('#ses-media')) $('#ses-media').innerHTML = mediaHTML(media, urls); }
 }
 

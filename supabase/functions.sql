@@ -869,6 +869,16 @@ begin
   return n;
 end; $$;
 
+-- habit names of a locked program tracker, so members can see what is coming (no ticking, no materials)
+create or replace function public.tracker_preview(p_category uuid)
+returns table(number smallint, default_name text)
+language sql stable security definer set search_path = '' as $$
+  select a.number, a.default_name
+  from public.activities a join public.tracker_categories c on c.id = a.category_id
+  where c.id = p_category and c.is_active and c.show_locked and a.is_active and public.my_role() is not null
+  order by a.number;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
 -- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
@@ -965,7 +975,7 @@ grant execute on function
   public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
   public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
   public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text),
-  public.admin_set_tracker_all(uuid, boolean)
+  public.admin_set_tracker_all(uuid, boolean), public.tracker_preview(uuid)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

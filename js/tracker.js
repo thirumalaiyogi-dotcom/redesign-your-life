@@ -5,6 +5,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 import { openPoint } from './point.js';
+import { signedUrls, mediaHTML } from './media.js';
 
 const page = document.body.dataset.page;
 let pointKinds = new Map();
@@ -50,7 +51,7 @@ async function loadToday() {
 }
 
 async function loadCats() {
-  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order').eq('is_active', true).order('sort_order');
+  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order, show_locked').eq('is_active', true).order('sort_order');
   if (error) throw error;
   cats = data || [];
 }
@@ -67,13 +68,13 @@ async function renderList() {
   const pct = total ? Math.round(100 * done / total) : 0;
   main.innerHTML = `
     <div class="page-h"><span class="date">${esc(fmtLong(d.today))}</span><h1>Track</h1><p>Choose a tracker and mark today's habits.</p></div>
-    <section class="card card-pad today-sum" aria-label="Today across all trackers">
+    ${total ? '' : '<!--'}<section class="card card-pad today-sum" aria-label="Today across all trackers">
       ${ringHTML(pct, { size: 76, stroke: 8, mid: `${pct}%` })}
       <div class="txt"><b><span id="sum-done">${done}</span> of ${total} done today</b>
         <div class="counts"><span class="c-ok"><i></i>${done} done</span><span class="c-no"><i></i>${miss} not done</span><span class="c-left"><i></i>${Math.max(0, total - done - miss)} to mark</span></div></div>
       <span class="pts">+${formatNumber(d.today_points)}<small>pts today</small></span>
-    </section>
-    ${(d.trackers || []).length ? '' : `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Your trackers open soon</b><span>Your coach opens each tracker after the session that teaches it. You will get a notification.</span></div>`}
+    </section>${total ? '' : '-->'}
+    ${(d.trackers || []).length ? '' : `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Your trackers open soon</b><span>Your coach opens each tracker after the class that teaches it. You will get a notification.</span></div>`}
     <div class="tlist">${(d.trackers || []).map((t) => {
       const p = t.total ? Math.round(100 * t.done_today / t.total) : 0;
       const nd = t.not_done_today || 0, left = Math.max(0, t.total - t.done_today - nd);
@@ -85,6 +86,12 @@ async function renderList() {
           <div class="pbar"><i data-w="${p}%"></i></div>
           <div class="counts"><span class="c-ok"><i></i><b>${t.done_today}</b> done</span><span class="c-no"><i></i><b>${nd}</b> not done</span><span class="c-left"><i></i><b>${left}</b> to mark</span></div>
         </div><span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`; }).join('')}</div>
+    ${(() => { const open = new Set((d.trackers || []).map((t) => t.slug)); const locked = cats.filter((c) => c.show_locked && !open.has(c.slug));
+      return locked.length ? `<div class="sec-h" style="margin-top:6px"><h2>Opens after the class</h2></div><div class="tlist">${locked.map((c) => `<a class="tcard is-locked" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${tColor(c.slug)}">
+        <div class="art">${coverImg(c.slug)}<span class="ic">${icon('lock')}</span></div>
+        <div class="body"><div class="row"><div><h3>${esc(c.name)}</h3><span class="state s-none">${icon('lock')}Locked</span></div></div>
+          <p class="lock-txt">Your coach opens this tracker after the class that teaches it. Tap to see its habits.</p></div>
+        <span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`).join('')}</div>` : ''; })()}
     <p class="hint-line">${icon('info')}<span>Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</span></p>`;
   animateIn(main);
 }
@@ -317,6 +324,7 @@ async function renderDetail() {
     .eq('category_id', cat.id).eq('is_active', true).order('number');
   if (error) return errorPanel(main, error, renderDetail);
   acts = data || [];
+  if (!acts.length && cat.show_locked) return renderLocked(main);
   // which points have the coach's audio / video / pictures (badge on the card)
   pointKinds = new Map();
   if (acts.length) {
@@ -336,6 +344,7 @@ async function renderDetail() {
       </div>
     </header>
     <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''} style="--tc:${tColor(c.slug)}"><i></i>${esc(c.name)}</a>`).join('')}</nav>
+    <details class="card class-mat" id="class-mat" hidden><summary>${icon('book-open')}<span><b>Class materials</b><small id="cm-sub"></small></span>${icon('chevron-right')}</summary><div class="cm-body" id="cm-body"></div></details>
     <div class="today-bar" id="today-bar"></div>
     <div class="seg" role="tablist" aria-label="View"><button role="tab" data-view="week" aria-selected="true">Week</button><button role="tab" data-view="month" aria-selected="false">Month</button><button role="tab" data-view="history" aria-selected="false">History</button></div>
     <div id="t-body" class="stack" style="gap:14px"></div>`;
@@ -346,6 +355,7 @@ async function renderDetail() {
   }
   await showWeek();
   $('#today-bar').innerHTML = todayBar(); animateIn($('#today-bar'));
+  loadClassMaterials();
   main.addEventListener('click', (e) => {
     const v = e.target.closest('[data-view]'); if (v) return setView(v.dataset.view);
     const m = e.target.closest('[data-mark]'); if (m) return mark(m.closest('.act'), m.dataset.mark);
@@ -363,6 +373,30 @@ async function renderDetail() {
 
 // Broken activity image → show the icon underneath (no inline handlers, so the CSP can stay strict).
 document.addEventListener('error', (e) => { if (e.target.matches?.('img[data-fallback]')) e.target.remove(); }, true);
+
+// tracker-level class materials (slides PDF, audio, links) the coach added for this tracker
+async function loadClassMaterials() {
+  const { data } = await supabase.from('activity_media').select('id, kind, ref, caption, sort_order').eq('category_id', cat.id).order('sort_order').order('created_at');
+  if (!data?.length || !$('#class-mat')) return;
+  const urls = await signedUrls(data.filter((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file').map((m) => m.ref));
+  $('#cm-sub').textContent = `${data.length} item${data.length > 1 ? 's' : ''} from your coach`;
+  $('#cm-body').innerHTML = mediaHTML(data, urls);
+  $('#class-mat').hidden = false;
+}
+
+// a program tracker the coach has not opened for this member yet: show its habits, no ticking
+async function renderLocked(main) {
+  const { data } = await supabase.rpc('tracker_preview', { p_category: cat.id });
+  main.style.setProperty('--tc', tColor(cat.slug));
+  main.innerHTML = `
+    <header class="t-head">${coverImg(cat.slug, 'cover')}
+      <div class="inner"><div class="crumbs"><a href="${app('member/dashboard.html')}">Home</a>${icon('chevron-right')}<a href="${app('member/trackers.html')}">Track</a></div>
+        <div class="title"><span class="ic">${icon('lock')}</span><div><h1>${esc(cat.name)}</h1><small>${(data || []).length} daily activities</small></div></div>
+        ${cat.tagline ? `<p class="tagline">${esc(cat.tagline)}</p>` : ''}</div></header>
+    <div class="panel lock-banner">${icon('lock')}<div><b>Opens after the class</b><span>Your coach opens this tracker after the class that teaches it. You will get a notification, then you can start ticking.</span></div></div>
+    <section class="card card-pad"><div class="card-h"><h3>What you will track</h3></div>
+      <ol class="lock-list">${(data || []).map((a) => `<li><span>${String(a.number).padStart(2, '0')}</span>${esc(a.default_name)}</li>`).join('')}</ol></section>`;
+}
 
 // ---------------- boot ----------------
 (async () => {

@@ -71,3 +71,7 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **Per-point real life and questions:** members write a real situation for a habit, can attach their own picture, and ask a question about that habit. You see them under Sessions → Questions / Real life (with the habit name) and on the member's Progress page.
 - **To-do priority boxes:** Urgent & important / Important, not urgent / Urgent, not important / Not urgent, not important.
 - **Morning note at 7:30 am** to members who did not mark anything yesterday (besides the 8 pm reminder).
+
+## New in Redesign 2.3 (Nov 2026)
+- **Members see all 4 program trackers, locked** ("Opens after the class") with their habit names, until you open them. Personal trackers (Conscious Couple, Mugilan's) stay hidden unless given.
+- **Class materials per tracker:** Activities → pick the tracker → **Add materials** at the top → slides (save PowerPoint as PDF, up to 25 MB), audio, pictures, links. Members see them at the top of the tracker once it is open.

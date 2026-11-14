@@ -224,3 +224,5 @@ details.j-entry { border-top: 1px solid var(--c-border); }
 .ta-row > i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
 .ta-row b { display: block; font-size: 14px; } .ta-row small { font-size: 12.5px; color: var(--c-muted); }
 @media (max-width: 420px) { .ta-row { grid-template-columns: auto minmax(0, 1fr); } .ta-row .btn { grid-column: 2; justify-self: start; } }
+.cm-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cm-bar b { display: block; font-size: 14.5px; } .cm-bar small { font-size: 12.5px; color: var(--c-muted); }

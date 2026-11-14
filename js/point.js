@@ -55,7 +55,7 @@ export async function openPoint(a, memberId, { color = 'var(--c-primary)' } = {}
   ]);
   if (m.error || n.error || q.error) { body.innerHTML = `<p class="muted">${esc(friendlyError(m.error || n.error || q.error))}</p>`; return; }
   P.media = m.data || []; P.notes = n.data || []; P.qs = q.data || [];
-  [P.urls, P.pics] = await Promise.all([signedUrls(P.media.filter((x) => x.kind === 'image' || x.kind === 'audio').map((x) => x.ref)), memberPicUrls(P.notes.filter((x) => x.image_ref).map((x) => x.image_ref))]);
+  [P.urls, P.pics] = await Promise.all([signedUrls(P.media.filter((x) => x.kind === 'image' || x.kind === 'audio' || x.kind === 'file').map((x) => x.ref)), memberPicUrls(P.notes.filter((x) => x.image_ref).map((x) => x.image_ref))]);
   if (!P.media.length && (P.notes.length || P.qs.length)) P.tab = P.notes.length ? 'apply' : 'ask';
   let picked = null;
 

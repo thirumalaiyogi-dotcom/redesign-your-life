@@ -33,7 +33,12 @@ export async function signedUrls(paths) {
 export function mediaHTML(media, urls) {
   const imgs = media.filter((m) => m.kind === 'image'), auds = media.filter((m) => m.kind === 'audio');
   const links = media.filter((m) => m.kind === 'video_link' || m.kind === 'link');
+  const files = media.filter((m) => m.kind === 'file');
   let h = '';
+  if (files.length) h += `<div class="sm-links">${files.map((m) => urls[m.ref]
+    ? `<a class="sm-link" href="${esc(urls[m.ref])}" target="_blank" rel="noopener"><span class="si">${icon('book-open')}</span>
+        <span class="tx"><b>${esc(m.caption || 'Class slides')}</b><small>PDF · opens in a new tab</small></span>${icon('arrow-right')}</a>`
+    : `<span class="sm-link"><span class="si">${icon('book-open')}</span><span class="tx"><b>${esc(m.caption || 'Class slides')}</b><small>Not available</small></span></span>`).join('')}</div>`;
   if (imgs.length) h += `<div class="sm-imgs">${imgs.map((m) => urls[m.ref]
     ? `<a href="${esc(urls[m.ref])}" target="_blank" rel="noopener" class="sm-img"><img src="${esc(urls[m.ref])}" alt="${esc(m.caption || 'Session picture')}" loading="lazy">${m.caption ? `<span>${esc(m.caption)}</span>` : ''}</a>`
     : `<span class="sm-img missing">${icon('image')}</span>`).join('')}</div>`;

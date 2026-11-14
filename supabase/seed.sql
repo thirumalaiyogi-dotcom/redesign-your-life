@@ -148,3 +148,4 @@ on conflict (category_id, number) do nothing;
 -- Redesign 2.2: every tracker is opened per member by the coach (Members → Trackers, or "Open for all").
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
+update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion') and not show_locked;

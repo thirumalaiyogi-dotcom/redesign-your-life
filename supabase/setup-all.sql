@@ -335,6 +335,28 @@ alter table public.session_notes add column if not exists image_ref text
 -- to-do priority: 1 urgent+important, 2 important not urgent, 3 urgent not important, 4 neither
 alter table public.todos add column if not exists quadrant smallint not null default 2 check (quadrant between 1 and 4);
 
+-- =====================================================================
+-- Redesign 2.3 (Nov 2026): program trackers show to everyone as "locked" until the coach opens them;
+-- class materials (slides as PDF, audio, links) per tracker as well as per point.
+-- =====================================================================
+alter table public.tracker_categories add column if not exists show_locked boolean not null default false;
+alter table public.activity_media alter column activity_id drop not null;
+alter table public.activity_media add column if not exists category_id uuid references public.tracker_categories(id) on delete cascade;
+create index if not exists activity_media_category_idx on public.activity_media(category_id, sort_order) where category_id is not null;
+alter table public.activity_media drop constraint if exists activity_media_one_target;
+alter table public.activity_media add constraint activity_media_one_target check ((activity_id is null) <> (category_id is null));
+-- 'file' = a PDF (e.g. the class slides) in the private session-media bucket
+alter table public.activity_media drop constraint if exists activity_media_kind_check;
+alter table public.activity_media add constraint activity_media_kind_check check (kind in ('image','audio','video_link','link','file'));
+alter table public.activity_media drop constraint if exists activity_media_check;
+alter table public.activity_media add constraint activity_media_check check (case when kind in ('image','audio','file')
+  then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);
+alter table public.session_media drop constraint if exists session_media_kind_check;
+alter table public.session_media add constraint session_media_kind_check check (kind in ('image','audio','video_link','link','file'));
+alter table public.session_media drop constraint if exists session_media_check;
+alter table public.session_media add constraint session_media_check check (case when kind in ('image','audio','file')
+  then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$' else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end);
+
 -- >>>>>>>>>>>>>>>>>>>> functions.sql
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
@@ -1207,6 +1229,16 @@ begin
   return n;
 end; $$;
 
+-- habit names of a locked program tracker, so members can see what is coming (no ticking, no materials)
+create or replace function public.tracker_preview(p_category uuid)
+returns table(number smallint, default_name text)
+language sql stable security definer set search_path = '' as $$
+  select a.number, a.default_name
+  from public.activities a join public.tracker_categories c on c.id = a.category_id
+  where c.id = p_category and c.is_active and c.show_locked and a.is_active and public.my_role() is not null
+  order by a.number;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
 -- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
@@ -1303,7 +1335,7 @@ grant execute on function
   public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
   public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
   public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text),
-  public.admin_set_tracker_all(uuid, boolean)
+  public.admin_set_tracker_all(uuid, boolean), public.tracker_preview(uuid)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
@@ -1647,6 +1679,20 @@ drop policy if exists member_media_delete on storage.objects;
 create policy member_media_delete on storage.objects for delete to authenticated
   using (bucket_id = 'member-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
+-- ---------- Redesign 2.3 ----------
+-- program trackers marked show_locked are listed for every member (locked until opened); their habits stay hidden (see tracker_preview())
+drop policy if exists categories_read on public.tracker_categories;
+create policy categories_read on public.tracker_categories for select to authenticated
+  using ((is_active and (show_locked or public.i_see_tracker(id))) or (select public.is_admin()));
+grant insert (category_id) on public.activity_media to authenticated;
+drop policy if exists activity_media_read on public.activity_media;
+create policy activity_media_read on public.activity_media for select to authenticated
+  using ((select public.is_admin())
+         or (activity_id is not null and exists (select 1 from public.activities a where a.id = activity_id and a.is_active and public.i_see_tracker(a.category_id)))
+         or (category_id is not null and public.i_see_tracker(category_id)));
+update storage.buckets set allowed_mime_types = array['image/webp','image/jpeg','image/png','audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/webm','audio/wav','audio/x-m4a','application/pdf'],
+  file_size_limit = 26214400 where id = 'session-media';
+
 -- >>>>>>>>>>>>>>>>>>>> seed.sql
 -- =====================================================================
 -- Deepak's Redesign Your Life — seed.sql  (run last)
@@ -1798,6 +1844,7 @@ on conflict (category_id, number) do nothing;
 -- Redesign 2.2: every tracker is opened per member by the coach (Members → Trackers, or "Open for all").
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
+update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion') and not show_locked;
 
 -- >>>>>>>>>>>>>>>>>>>> FIRST SUPER ADMIN (run once, after you sign up in the app)
 -- Replace the email with the client's login email, then run just this line:

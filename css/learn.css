@@ -186,3 +186,26 @@
 .td-move { min-height: 32px; padding: 4px 6px; font-size: 12px; border-radius: 8px; width: auto; max-width: 92px; }
 .q1 { --qc: #D64545; } .q2 { --qc: #2F8F5B; } .q3 { --qc: #D9862B; } .q4 { --qc: #8A948E; }
 :root[data-theme="dark"] .q1 { --qc: #EF7B7B; } :root[data-theme="dark"] .q2 { --qc: #6FCF97; } :root[data-theme="dark"] .q3 { --qc: #F2A65A; } :root[data-theme="dark"] .q4 { --qc: #A3ADA7; }
+
+/* ---------- Redesign 2.3: locked program trackers, class materials ---------- */
+.tcard.is-locked { opacity: .92; }
+.tcard.is-locked .art::before { content: ""; position: absolute; inset: 0; background: rgba(10, 20, 16, .35); z-index: 1; }
+.tcard.is-locked .art .ic { z-index: 2; }
+.tcard .state .icon { width: 12px; height: 12px; margin-right: 3px; vertical-align: -2px; }
+.lock-txt { font-size: 12.5px; color: var(--c-text-2); line-height: 1.45; margin-top: 4px; }
+.lock-banner { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c-accent) 50%, var(--c-border)); background: color-mix(in srgb, var(--c-accent) 9%, var(--c-surface)); }
+.lock-banner > .icon { width: 20px; height: 20px; color: var(--c-accent-ink, #8a6420); margin-top: 2px; }
+.lock-banner b { display: block; font-size: 15px; }
+.lock-banner span { font-size: 13.5px; color: var(--c-text-2); }
+.lock-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lock-list li { display: flex; gap: 12px; padding: 9px 0; border-top: 1px solid var(--c-border); font-size: 14.5px; }
+.lock-list li:first-child { border-top: 0; }
+.lock-list span { width: 26px; color: var(--c-muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.class-mat { padding: 0; overflow: hidden; border: 1px solid var(--c-border); }
+.class-mat summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; list-style: none; }
+.class-mat summary::-webkit-details-marker { display: none; }
+.class-mat summary > .icon:first-child { width: 20px; height: 20px; color: var(--tc, var(--c-primary)); }
+.class-mat summary > .icon:last-child { width: 18px; height: 18px; color: var(--c-muted); transition: transform var(--t-fast); }
+.class-mat[open] summary > .icon:last-child { transform: rotate(90deg); }
+.class-mat summary b { display: block; font-size: 15px; } .class-mat summary small { font-size: 12.5px; color: var(--c-muted); }
+.class-mat .cm-body { padding: 0 16px 16px; }
