@@ -159,6 +159,8 @@ async function drawBatch() {
       <b>Add people</b>
       <div class="field"><label for="ap-list">Paste the list: one person per line — name, email, phone</label>
         <textarea id="ap-list" rows="5" placeholder="Meena S, meena@gmail.com, 98400 11111&#10;Ravi Kumar, ravi@gmail.com, 99620 22222"></textarea><span class="err"></span></div>
+      <div class="bt-file"><label class="btn btn-ghost btn-sm">${icon('file-chart-column')}<span id="ap-file-l">Or upload Excel / CSV</span><input type="file" id="ap-file" accept=".xlsx,.xls,.csv,text/csv" class="visually-hidden"></label>
+        <small class="muted">Name, email and phone columns are found automatically. Check the list, then tap Add.</small></div>
       <p class="muted" style="font-size:13px">New emails get a login with a temporary password. They set their own password the first time they log in. Emails that already have an account are just added to this batch.</p>
       <button class="btn btn-primary" type="submit">${icon('user-plus')}Add to batch</button></form>
     <div id="ap-result"></div>
@@ -336,7 +338,55 @@ async function onClick(e) {
   }
 }
 
+// ---------- Excel / CSV upload → the same text box (coach checks it before adding) ----------
+let xlsxLoading = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  xlsxLoading ||= new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = app('js/vendor/xlsx.mini.min.js');
+    sc.onload = () => res(window.XLSX); sc.onerror = () => { xlsxLoading = null; rej(new Error('Could not load the Excel reader. Check your internet and try again.')); };
+    document.head.appendChild(sc);
+  });
+  return xlsxLoading;
+}
+const isEmail = (v) => /\S+@\S+\.\S+/.test(v);
+const isPhone = (v) => /^\+?[\d\s-]{7,}$/.test(v) && v.replace(/\D/g, '').length >= 7 && v.replace(/\D/g, '').length <= 13;
+// rows (arrays of cells) → "name, email, phone" lines. Picks the columns by their content, not their order.
+export function rowsToLines(rows) {
+  rows = rows.map((r) => r.map((c) => String(c ?? '').trim())).filter((r) => r.some(Boolean));
+  if (!rows.length) return [];
+  const width = Math.max(...rows.map((r) => r.length));
+  const head = rows[0].some(isEmail) ? null : rows[0];
+  const body = head ? rows.slice(1) : rows;
+  const score = (fn) => Array.from({ length: width }, (_, i) => body.filter((r) => fn(r[i] || '')).length);
+  const best = (arr, skip = []) => arr.reduce((b, v, i) => (!skip.includes(i) && v > (arr[b] ?? -1) ? i : b), -1);
+  const ei = best(score(isEmail));
+  const ps = score(isPhone); const pi = best(ps, [ei]); const phoneCol = pi >= 0 && ps[pi] > 0 ? pi : -1;
+  let ni = head ? head.findIndex((h, i) => i !== ei && i !== phoneCol && /name|பெயர்/i.test(h) && !/user ?name|e-?mail/i.test(h)) : -1;
+  if (ni < 0) ni = best(score((v) => v && !isEmail(v) && !isPhone(v) && !/^\d+([./:-]\d+)*( .*)?$/.test(v)), [ei, phoneCol]);
+  return body.filter((r) => isEmail(r[ei] || '')).map((r) => [ni >= 0 ? r[ni] : '', r[ei], phoneCol >= 0 ? r[phoneCol] : ''].map((x) => (x || '').replace(/,/g, ' ')).join(', '));
+}
+async function readSheet(file) {
+  const XLSX = await loadXlsx();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+}
+
 async function onChange(e) {
+  if (e.target.id === 'ap-file') {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+    const l = $('#ap-file-l'); l.textContent = 'Reading…';
+    try {
+      const lines = rowsToLines(await readSheet(f));
+      if (!lines.length) { toast('No email addresses found in this file.', 'bad'); return; }
+      const ta = $('#ap-list'); ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + lines.join('\n');
+      ta.rows = Math.min(14, Math.max(5, lines.length + 1)); ta.focus();
+      toast(`${lines.length} people read from ${f.name}. Check the list, then tap Add.`);
+    } catch (err) { toast(friendlyError(err), 'bad'); }
+    finally { l.textContent = 'Or upload Excel / CSV'; }
+    return;
+  }
   const inp = e.target.closest('[data-step-title]'); if (!inp) return;
   const v = inp.value.trim();
   if (!v) { inp.value = B.steps.find((s) => s.id === inp.dataset.stepTitle)?.title || ''; return; }
@@ -424,4 +474,4 @@ async function onSubmit(e) {
   }
 }
 
-export const _test = { parsePeople, waLink, loginMessage };
+export const _test = { parsePeople, waLink, loginMessage, rowsToLines };
