@@ -1,7 +1,7 @@
 // Coach console: overview + member & role management.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
-import { renderSessions, memberExtras } from './coach-learn.js';
+import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
@@ -84,7 +84,7 @@ let extraCats = [], extraOf = new Map();
 async function loadPeople() {
   const [ppl, cats, asg] = await Promise.all([
     supabase.rpc('admin_list_people'),
-    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),   // all trackers are opened per member
     supabase.from('tracker_assignments').select('category_id, member_id')
   ]);
   if (ppl.error) throw ppl.error;
@@ -97,11 +97,25 @@ async function loadPeople() {
   }
 }
 
+// which trackers each member has, with one-tap open / close for everyone
+function drawAccess() {
+  const box = $('#trk-access'); if (!box) return;
+  const members = people.filter((p) => p.role === 'member' && p.is_active);
+  if (!extraCats.length) { box.hidden = true; return; }
+  box.innerHTML = `<b id="ta-h">Tracker access</b><p class="muted" style="font-size:14px">Members see only the trackers you open. Open one for everyone after the session that teaches it, or per person with “Trackers”.</p>
+    <div class="ta-list">${extraCats.map((c) => {
+      const n = members.filter((p) => extraOf.get(p.id)?.has(c.id)).length;
+      return `<div class="ta-row" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}"><i></i><span><b>${esc(c.name)}</b><small>${n} of ${members.length} members</small></span>
+        ${n < members.length ? `<button class="btn btn-sm btn-soft" data-open-all="${c.id}" data-on="1">Open for all</button>` : ''}
+        ${n ? `<button class="btn btn-sm btn-ghost" data-open-all="${c.id}" data-on="0">Close for all</button>` : ''}</div>`;
+    }).join('')}</div>`;
+}
+
 function trackersDialog(p) {
   const has = extraOf.get(p.id) || new Set();
   formDialog({
     title: `Trackers for ${p.full_name || p.email}`,
-    body: 'Everyone has the 4 main trackers. Tick the extra trackers this member should see. They get +10 points per habit, like the others.',
+    body: 'Tick the trackers this member should see. Open each one after the session that teaches it. Every habit is +10 points.',
     fields: `<div class="stack" style="gap:8px">${extraCats.map((c) => `<label class="trk-opt" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">
       <input type="checkbox" name="cat" value="${c.id}" ${has.has(c.id) ? 'checked' : ''}><i></i><span>${esc(c.name)}</span></label>`).join('')}</div>`,
     submitLabel: 'Save',
@@ -114,7 +128,7 @@ function trackersDialog(p) {
         if (error) { toast(friendlyError(error), 'bad'); return false; }
         if (on) has.add(c.id); else has.delete(c.id);
       }
-      extraOf.set(p.id, has); renderList();
+      extraOf.set(p.id, has); renderList(); drawAccess();
       toast(changes.length ? 'Trackers updated' : 'No changes');
       return true;
     }
@@ -144,7 +158,7 @@ function personHTML(p) {
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
       <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
-      ${p.role === 'member' && extraOf.get(p.id)?.size ? extraCats.filter((c) => extraOf.get(p.id).has(c.id)).map((c) => `<span class="pill trk" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">${esc(c.name)}</span>`).join('') : ''}
+      ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
       ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>` : ''}
@@ -173,6 +187,7 @@ async function renderMembers() {
     <b>Add members</b><p class="muted" style="font-size:14px">Send this link. Each person creates their own account and joins as a Member.${me.profile.role === 'super_admin' ? ' You can then make someone a Coach here.' : ''}</p>
     <div class="invite"><code id="join-url">${esc(joinUrl)}</code><button class="btn btn-ghost btn-sm" id="copy-join">${icon('copy')}Copy link</button></div>
   </section>
+  <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
   <div class="tools">
     <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['paused', 'Paused']].map(([v, l]) =>
       `<button class="chip" data-filter="${v}" aria-pressed="false">${l}<span class="c"></span></button>`).join('')}</div>
@@ -190,6 +205,20 @@ async function renderMembers() {
     if (f) { filter = f.dataset.filter; renderList(); return; }
     const bz = e.target.closest('[data-bonus]');
     if (bz) { bonusDialog(people.find((x) => x.id === bz.dataset.bonus)); return; }
+    const oa = e.target.closest('[data-open-all]');
+    if (oa) {
+      const c = extraCats.find((x) => x.id === oa.dataset.openAll), on = oa.dataset.on === '1';
+      const ok = await confirmDialog({ title: `${on ? 'Open' : 'Close'} ${c.name} for ${on ? 'every' : 'every'} member?`,
+        body: on ? 'All active members will see this tracker and get a notification. You can still close it for one person.' : 'No member will see this tracker until you open it again. Their past ticks and points stay.',
+        confirmLabel: on ? 'Open for all' : 'Close for all', danger: !on });
+      if (!ok) return;
+      await withBusy(oa, on ? 'Opening…' : 'Closing…', async () => {
+        const { data: n, error } = await supabase.rpc('admin_set_tracker_all', { p_category: c.id, p_on: on });
+        if (error) return toast(friendlyError(error), 'bad');
+        await loadPeople(); renderList(); drawAccess(); toast(on ? `Opened for ${n} member${n === 1 ? '' : 's'}` : 'Closed for everyone');
+      });
+      return;
+    }
     const tk = e.target.closest('[data-trk]');
     if (tk) { trackersDialog(people.find((x) => x.id === tk.dataset.trk)); return; }
     const t = e.target.closest('[data-active]');
@@ -225,7 +254,7 @@ async function renderMembers() {
     p.role = role; renderList(); toast(`Role changed to ${ROLE_LABEL[role]}`);
   });
 
-  try { await loadPeople(); renderList(); }
+  try { await loadPeople(); renderList(); drawAccess(); }
   catch (err) { errorPanel($('#list'), err, renderMembers); }
 }
 
@@ -536,7 +565,7 @@ function drawDay() {
 }
 
 // ---------------- ACTIVITIES ----------------
-let acts = [], cats = [], actTracker = 'wealth';
+let acts = [], cats = [], actTracker = 'wealth', mediaCount = new Map();
 
 async function renderActivities() {
   const main = $('#main');
@@ -548,18 +577,22 @@ async function renderActivities() {
   ]);
   if (c.error || a.error) return errorPanel(main, c.error || a.error, renderActivities);
   cats = c.data; acts = a.data;
+  const am = await supabase.from('activity_media').select('activity_id');
+  mediaCount = new Map(); for (const r of am.data || []) mediaCount.set(r.activity_id, (mediaCount.get(r.activity_id) || 0) + 1);
   main.innerHTML = `<div class="admin-head"><div><span class="eyebrow">Names stay exactly as the program defines them</span><h1>Activities</h1></div></div>
     <div class="chips" role="group" aria-label="Tracker">${cats.map((t) => `<button class="chip" data-at="${t.slug}" aria-pressed="${t.slug === actTracker}">${esc(t.name)}<span class="c">${acts.filter((x) => x.category_id === t.id).length}</span></button>`).join('')}</div>
     <div id="act-list"></div>`;
   main.addEventListener('click', (e) => {
     const t = e.target.closest('[data-at]'); if (t) { actTracker = t.dataset.at; $$('[data-at]').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); return drawActs(); }
     const ed = e.target.closest('[data-edit]'); if (ed) return editActivity(acts.find((x) => x.id === ed.dataset.edit));
+    const ex = e.target.closest('[data-explain]');
+    if (ex) return openPointMedia(acts.find((x) => x.id === ex.dataset.explain), (n) => { mediaCount.set(ex.dataset.explain, n); drawActs(); });
   });
   drawActs();
 }
 
 function drawActs() {
-  const cat = cats.find((c) => c.slug === actTracker);
+  const cat = cats.find((c) => c.slug === actTracker) || cats[0];
   const list = acts.filter((a) => a.category_id === cat.id);
   $('#act-list').innerHTML = `<div class="people">${list.map((a) => {
     const img = activityImageUrl(a.image_path);
@@ -568,7 +601,8 @@ function drawActs() {
       <div class="who"><b>#${String(a.number).padStart(2, '0')} · ${esc(a.default_name)}</b>
         <div class="meta"><span>${esc(a.description || 'No description')}</span></div>
         <div class="meta"><span class="pill gold" style="text-transform:none;letter-spacing:0">${a.points} pts</span>${a.is_active ? '' : '<span class="pill bad">Hidden</span>'}</div></div>
-      <div class="acts"><button class="btn btn-sm btn-ghost" data-edit="${a.id}">${icon('pencil')}Edit</button></div></article>`; }).join('')}</div>`;
+      <div class="acts"><button class="btn btn-sm btn-ghost" data-edit="${a.id}">${icon('pencil')}Edit</button>
+        <button class="btn btn-sm ${mediaCount.get(a.id) ? 'btn-soft' : 'btn-ghost'}" data-explain="${a.id}">${icon('mic')}Explain${mediaCount.get(a.id) ? ` · ${mediaCount.get(a.id)}` : ''}</button></div></article>`; }).join('')}</div>`;
 }
 
 // Resize/crop to 640×480 and encode as WebP (JPEG where WebP encoding is unsupported).

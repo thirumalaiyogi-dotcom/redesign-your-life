@@ -4,10 +4,11 @@ import { supabase, app } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, memberNav, memberTopbar, formatDate, confirmDialog } from './ui.js';
 import { signedUrls, mediaHTML } from './media.js';
+import { memberPicUrls } from './point.js';
 
 const page = document.body.dataset.page;
 let me;
-const L = { tab: 'sessions', sessions: [], media: [], notes: [], doubts: [] };
+const L = { tab: 'sessions', sessions: [], media: [], notes: [], doubts: [], pics: {} };
 
 function chrome(current) {
   $('#top').innerHTML = memberTopbar(me.profile, me.user.email);
@@ -30,12 +31,13 @@ async function loadLearn() {
   const [s, m, n, d] = await Promise.all([
     supabase.from('sessions').select('id, title, session_date, body, created_at').order('session_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
     supabase.from('session_media').select('id, session_id, kind, ref, caption, sort_order').order('sort_order').order('created_at'),
-    supabase.from('session_notes').select('id, session_id, situation, application, created_at, updated_at').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200),
-    supabase.from('doubts').select('id, session_id, question, answer, answered_at, created_at').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200)
+    supabase.from('session_notes').select('id, session_id, activity_id, situation, application, image_ref, created_at, updated_at, activities(default_name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200),
+    supabase.from('doubts').select('id, session_id, activity_id, question, answer, answered_at, created_at, activities(default_name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200)
   ]);
   const err = s.error || m.error || n.error || d.error;
   if (err) throw err;
   L.sessions = s.data || []; L.media = m.data || []; L.notes = n.data || []; L.doubts = d.data || [];
+  L.pics = await memberPicUrls(L.notes.filter((x) => x.image_ref).map((x) => x.image_ref));
 }
 const sessionTitle = (id) => L.sessions.find((x) => x.id === id)?.title;
 
@@ -44,7 +46,8 @@ function noteHTML(n, withSession = true) {
   return `<article class="ln-item" data-note="${n.id}">
     <div class="ln-row"><span class="tag t-sit">Situation</span><p>${esc(n.situation)}</p></div>
     ${n.application ? `<div class="ln-row"><span class="tag t-app">Application</span><p>${esc(n.application)}</p></div>` : ''}
-    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${esc(ago(n.created_at))}</small>
+    ${n.image_ref && L.pics[n.image_ref] ? `<a class="ln-pic" href="${esc(L.pics[n.image_ref])}" target="_blank" rel="noopener"><img src="${esc(L.pics[n.image_ref])}" alt="Picture added with this note" loading="lazy"></a>` : ''}
+    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${n.activities?.default_name ? `${icon('list-checks')}${esc(n.activities.default_name)} · ` : ''}${esc(ago(n.created_at))}</small>
       <button class="lnk-del" data-del-note="${n.id}" aria-label="Delete this note">${icon('x')}</button></div></article>`;
 }
 function doubtHTML(q, withSession = true) {
@@ -53,7 +56,7 @@ function doubtHTML(q, withSession = true) {
     <div class="q-q"><span class="qa-ic">${icon('message-square')}</span><p>${esc(q.question)}</p></div>
     ${q.answered_at ? `<div class="q-a"><span class="qa-ic">${icon('check')}</span><div><small>Coach answered · ${esc(ago(q.answered_at))}</small><p>${esc(q.answer)}</p></div></div>`
       : `<div class="q-wait">${icon('hourglass')}Waiting for your coach's answer</div>`}
-    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}Asked ${esc(ago(q.created_at))}</small>
+    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${q.activities?.default_name ? `${icon('list-checks')}${esc(q.activities.default_name)} · ` : ''}Asked ${esc(ago(q.created_at))}</small>
       ${q.answered_at ? '' : `<button class="lnk-del" data-del-q="${q.id}" aria-label="Delete this question">${icon('x')}</button>`}</div></article>`;
 }
 function noteForm(sessionId = '') {
@@ -187,8 +190,14 @@ async function renderLearn() {
   main.addEventListener('input', (e) => { const f = e.target.closest('.field.invalid'); if (f) { f.classList.remove('invalid'); f.querySelector('.err').textContent = ''; } });
 }
 
-// ======================= TO-DO =======================
-let todos = [], showDone = false;
+// ======================= TO-DO (priority matrix) =======================
+let todos = [], showDone = false, addQ = 1;
+const QUADS = [
+  [1, 'Urgent & important', 'Do it today'],
+  [2, 'Important, not urgent', 'Plan a time for it'],
+  [3, 'Urgent, not important', 'Finish fast or hand over'],
+  [4, 'Not urgent, not important', 'Later, or drop it']
+];
 const istToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 const dueLabel = (d) => {
   if (!d) return '';
@@ -197,40 +206,47 @@ const dueLabel = (d) => {
   if (diff === 0) return 'Today'; if (diff === 1) return 'Tomorrow'; if (diff === -1) return 'Yesterday';
   return new Date(d + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 };
+const byDue = (a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : a.created_at < b.created_at ? -1 : 1;
 
 function todoHTML(t) {
   const over = !t.done_at && t.due_date && t.due_date < istToday();
   return `<li class="td ${t.done_at ? 'is-done' : ''} ${over ? 'is-over' : ''}">
     <button class="td-chk" data-done="${t.id}" aria-pressed="${!!t.done_at}" aria-label="${t.done_at ? 'Mark not done' : 'Mark done'}: ${esc(t.title)}">${icon('check')}</button>
     <span class="td-tx"><b>${esc(t.title)}</b>${t.due_date ? `<small>${icon('calendar')}${over ? 'Overdue · ' : ''}${esc(dueLabel(t.due_date))}</small>` : ''}</span>
+    ${t.done_at ? '' : `<select class="td-move" data-move="${t.id}" aria-label="Move: ${esc(t.title)}">${QUADS.map(([q, l]) => `<option value="${q}" ${q === t.quadrant ? 'selected' : ''}>${q} · ${esc(l)}</option>`).join('')}</select>`}
     <button class="lnk-del" data-del="${t.id}" aria-label="Delete: ${esc(t.title)}">${icon('x')}</button></li>`;
 }
 function drawTodo() {
-  const open = todos.filter((t) => !t.done_at).sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : a.created_at < b.created_at ? -1 : 1);
+  const open = todos.filter((t) => !t.done_at);
   const done = todos.filter((t) => t.done_at).sort((a, b) => (a.done_at < b.done_at ? 1 : -1));
-  $('#td-open').innerHTML = open.length ? open.map(todoHTML).join('') : `<li class="td-empty">${icon('check-check')}<span>Nothing pending. Add your next task above.</span></li>`;
+  $('#qd-grid').innerHTML = QUADS.map(([q, l, sub]) => {
+    const list = open.filter((t) => (t.quadrant || 2) === q).sort(byDue);
+    return `<section class="card card-pad qd q${q}" aria-label="${esc(l)}"><div class="qd-h"><i></i><b>${esc(l)}</b><small>${list.length}</small></div><p class="qd-sub">${esc(sub)}</p>
+      <ul class="td-list" data-q="${q}">${list.length ? list.map(todoHTML).join('') : `<li class="td-empty">${icon('check-check')}<span>Nothing here</span></li>`}</ul></section>`;
+  }).join('');
   $('#td-count').textContent = open.length ? `${open.length} to do` : 'All clear';
   $('#td-done-wrap').hidden = !done.length;
   $('#td-done-btn').innerHTML = `${icon(showDone ? 'chevron-left' : 'chevron-right')}${showDone ? 'Hide' : 'Show'} completed (${done.length})`;
   $('#td-done').hidden = !showDone;
   $('#td-done').innerHTML = done.map(todoHTML).join('');
+  $$('#td-qpick button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.q) === addQ)));
 }
 async function renderTodo() {
   const main = $('#main');
   main.innerHTML = `
-    <div class="page-h"><span class="date">Just for you</span><h1>To-do</h1><p>Your own list. Your coach does not see it.</p></div>
+    <div class="page-h"><span class="date">Just for you</span><h1>To-do</h1><p>Sort tasks by urgent and important. Your coach does not see this list.</p></div>
     <form class="card card-pad td-add" id="td-form" novalidate>
       <label class="visually-hidden" for="td-title">New task</label>
       <input id="td-title" maxlength="200" placeholder="Add a task, e.g. Call the bank" autocomplete="off">
+      <div class="td-q" id="td-qpick" role="group" aria-label="Priority">${QUADS.map(([q, l]) => `<button type="button" class="q${q}" data-q="${q}" aria-pressed="${q === addQ}"><i></i>${esc(l)}</button>`).join('')}</div>
       <div class="td-add-row"><label class="td-due"><span>${icon('calendar')}Due</span><input id="td-due" type="date" min="${istToday()}" aria-label="Due date (optional)"></label>
         <button class="btn btn-primary" type="submit">${icon('check')}Add</button></div>
     </form>
-    <section class="card card-pad"><div class="card-h"><h3>My list</h3><span class="muted" id="td-count" style="font-size:13px"></span></div>
-      <ul class="td-list" id="td-open"><li><div class="skeleton" style="height:48px"></div></li></ul>
-      <div id="td-done-wrap" hidden><button class="lnk td-toggle" id="td-done-btn" type="button"></button><ul class="td-list" id="td-done" hidden></ul></div>
-    </section>`;
-  const { data, error } = await supabase.from('todos').select('id, title, due_date, done_at, created_at').eq('member_id', me.user.id).order('created_at').limit(500);
-  if (error) return errorPanel($('#td-open').closest('section'), error, renderTodo);
+    <div class="sec-h"><h2>My tasks</h2><span class="sub" id="td-count"></span></div>
+    <div class="qd-grid" id="qd-grid"><div class="skeleton" style="height:120px"></div></div>
+    <section class="card card-pad" id="td-done-wrap" hidden><button class="lnk td-toggle" id="td-done-btn" type="button"></button><ul class="td-list" id="td-done" hidden></ul></section>`;
+  const { data, error } = await supabase.from('todos').select('id, title, due_date, done_at, created_at, quadrant').eq('member_id', me.user.id).order('created_at').limit(500);
+  if (error) return errorPanel($('#qd-grid'), error, renderTodo);
   todos = data || []; drawTodo();
 
   $('#td-form').addEventListener('submit', async (e) => {
@@ -238,12 +254,20 @@ async function renderTodo() {
     const title = $('#td-title').value.trim(), due = $('#td-due').value || null;
     if (!title) { $('#td-title').focus(); return toast('Type a task first', 'info'); }
     await withBusy(e.target.querySelector('[type=submit]'), 'Adding…', async () => {
-      const { data: row, error: err } = await supabase.from('todos').insert({ member_id: me.user.id, title, due_date: due }).select('id, title, due_date, done_at, created_at').single();
+      const { data: row, error: err } = await supabase.from('todos').insert({ member_id: me.user.id, title, due_date: due, quadrant: addQ }).select('id, title, due_date, done_at, created_at, quadrant').single();
       if (err) return toast(friendlyError(err), 'bad');
-      todos.push(row); e.target.reset(); drawTodo(); $('#td-title').focus();
+      todos.push(row); $('#td-title').value = ''; $('#td-due').value = ''; drawTodo(); $('#td-title').focus();
     });
   });
+  main.addEventListener('change', async (e) => {
+    const m = e.target.closest('[data-move]'); if (!m) return;
+    const t = todos.find((y) => y.id === m.dataset.move), q = Number(m.value);
+    const { error: err } = await supabase.from('todos').update({ quadrant: q }).eq('id', t.id);
+    if (err) { m.value = t.quadrant; return toast(friendlyError(err), 'bad'); }
+    t.quadrant = q; drawTodo(); toast('Moved');
+  });
   main.addEventListener('click', async (e) => {
+    const qp = e.target.closest('#td-qpick [data-q]'); if (qp) { addQ = Number(qp.dataset.q); return drawTodo(); }
     const d = e.target.closest('[data-done]'), x = e.target.closest('[data-del]');
     if (e.target.closest('#td-done-btn')) { showDone = !showDone; return drawTodo(); }
     if (d) {

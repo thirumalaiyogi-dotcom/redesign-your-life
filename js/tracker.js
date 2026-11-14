@@ -4,8 +4,10 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
+import { openPoint } from './point.js';
 
 const page = document.body.dataset.page;
+let pointKinds = new Map();
 const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
 const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp' };
 const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target', couple: 'heart-handshake', mugilan: 'rocket' };
@@ -71,6 +73,7 @@ async function renderList() {
         <div class="counts"><span class="c-ok"><i></i>${done} done</span><span class="c-no"><i></i>${miss} not done</span><span class="c-left"><i></i>${Math.max(0, total - done - miss)} to mark</span></div></div>
       <span class="pts">+${formatNumber(d.today_points)}<small>pts today</small></span>
     </section>
+    ${(d.trackers || []).length ? '' : `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Your trackers open soon</b><span>Your coach opens each tracker after the session that teaches it. You will get a notification.</span></div>`}
     <div class="tlist">${(d.trackers || []).map((t) => {
       const p = t.total ? Math.round(100 * t.done_today / t.total) : 0;
       const nd = t.not_done_today || 0, left = Math.max(0, t.total - t.done_today - nd);
@@ -114,6 +117,7 @@ function cardHTML(a) {
       ${thisWeek && !voided ? `<span class="ptag">${st === 'done' ? '+' + a.points : st === 'not_done' ? '0' : '+' + a.points} pts</span>` : ''}</div>
     <div class="body"><h3>${esc(a.default_name)}</h3>${a.description ? `<p class="desc">${esc(a.description)}</p>` : ''}</div>
     <div class="days">${Array.from({ length: 7 }, (_, i) => dayCell(a.id, addDays(weekStart, i), i)).join('')}</div>
+    <button class="pt-open" type="button" data-point="${a.id}">${pointKinds.get(a.id)?.has('audio') ? icon('mic') : pointKinds.get(a.id)?.size ? icon('play') : icon('book-open')}<span>Learn · Real life · Ask</span>${pointKinds.get(a.id)?.size ? '<i class="dot" aria-label="Coach added an explanation"></i>' : ''}</button>
     ${voided ? `<p class="void">${icon('alert-triangle', 'icon')} Your coach removed today's entry: ${esc(r.void_reason || '')}</p>`
       : thisWeek ? `<div class="mark" role="group" aria-label="${esc(a.default_name)} today">
         <button class="mk mk-ok" data-mark="done" aria-pressed="${st === 'done'}">${icon('check', '')}<span>Done</span></button>
@@ -304,7 +308,7 @@ async function renderDetail() {
   const slug = new URLSearchParams(location.search).get('t') || 'wealth';
   cat = cats.find((c) => c.slug === slug);
   if (!cat) {
-    main.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Tracker not found</b>
+    main.innerHTML = `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>This tracker is not open for you yet</b>
       <span>Pick one of your trackers.</span><a class="btn btn-gold btn-sm" href="${app('member/trackers.html')}">See all trackers</a></div>`;
     return;
   }
@@ -313,6 +317,12 @@ async function renderDetail() {
     .eq('category_id', cat.id).eq('is_active', true).order('number');
   if (error) return errorPanel(main, error, renderDetail);
   acts = data || [];
+  // which points have the coach's audio / video / pictures (badge on the card)
+  pointKinds = new Map();
+  if (acts.length) {
+    const { data: pm } = await supabase.from('activity_media').select('activity_id, kind').in('activity_id', acts.map((x) => x.id));
+    for (const r of pm || []) { if (!pointKinds.has(r.activity_id)) pointKinds.set(r.activity_id, new Set()); pointKinds.get(r.activity_id).add(r.kind); }
+  }
   weekStart = mondayOf(today);
   main.style.setProperty('--tc', tColor(cat.slug));
   main.innerHTML = `
@@ -340,6 +350,7 @@ async function renderDetail() {
     const v = e.target.closest('[data-view]'); if (v) return setView(v.dataset.view);
     const m = e.target.closest('[data-mark]'); if (m) return mark(m.closest('.act'), m.dataset.mark);
     const n = e.target.closest('[data-note]'); if (n) return noteDialog(n.closest('.act'));
+    const pt = e.target.closest('[data-point]'); if (pt) return openPoint(acts.find((x) => x.id === pt.dataset.point), me.user.id, { color: tColor(cat.slug) });
   });
   // New day while the app was in the background → refresh.
   document.addEventListener('visibilitychange', async () => {

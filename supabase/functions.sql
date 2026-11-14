@@ -841,6 +841,34 @@ begin
   perform public._audit('doubt.answer', 'doubts', p_doubt::text, jsonb_build_object('member', v_member));
 end; $$;
 
+-- open / close one tracker for every active member at once (e.g. after the session that teaches it)
+create or replace function public.admin_set_tracker_all(p_category uuid, p_on boolean)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v_cat record; r record; n int := 0;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  select id, name, audience into v_cat from public.tracker_categories where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  if v_cat.audience <> 'assigned' then raise exception 'This tracker is already open to everyone.' using errcode = '22023'; end if;
+  if coalesce(p_on, false) then
+    for r in insert into public.tracker_assignments(category_id, member_id, assigned_by)
+             select p_category, p.id, auth.uid() from public.profiles p where p.role = 'member' and p.is_active
+             on conflict do nothing returning member_id loop
+      perform public._notify(r.member_id, 'info', 'New tracker: ' || v_cat.name, 'Your coach opened this tracker for you. Open Track to start.');
+      perform public._recalc_bonuses(r.member_id, public.app_today());
+      n := n + 1;
+    end loop;
+  else
+    for r in delete from public.tracker_assignments where category_id = p_category returning member_id loop
+      perform public._recalc_bonuses(r.member_id, public.app_today());
+      n := n + 1;
+    end loop;
+  end if;
+  perform public._audit(case when p_on then 'tracker.assign_all' else 'tracker.unassign_all' end, 'tracker_categories', p_category::text,
+                        jsonb_build_object('members', n));
+  return n;
+end; $$;
+
 -- ---------------------------------------------------------------------
 -- Automatic reminders (run by pg_cron, see supabase/push.sql). Internal: not callable from the app.
 -- Each one only inserts in-app notifications; the send-push Edge Function delivers them to phones.
@@ -853,10 +881,26 @@ begin
   insert into public.notifications(member_id, kind, title, body)
   select p.id, 'reminder', 'Your habits are waiting', 'Take 2 minutes to tick today''s habits before midnight.'
   from public.profiles p
-  where p.role = 'member' and p.is_active
+  where p.role = 'member' and p.is_active and public._total_for(p.id) > 0
     and not exists (select 1 from public.daily_checkins c where c.member_id = p.id and c.checkin_date = d)
     and not exists (select 1 from public.notifications x where x.member_id = p.id and x.kind = 'reminder'
                     and x.title = 'Your habits are waiting' and x.created_at >= now() - interval '20 hours');
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+
+-- morning note for members who did not mark anything yesterday (they had trackers and had joined)
+create or replace function public._queue_missed_yesterday()
+returns int language plpgsql security definer set search_path = '' as $$
+declare y date := public.app_today() - 1; n int;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select p.id, 'reminder', 'Yesterday''s habits were not submitted', 'No worries. Today is a fresh start: tick today''s habits before midnight.'
+  from public.profiles p
+  where p.role = 'member' and p.is_active and p.joined_on <= y and public._total_for(p.id) > 0
+    and not exists (select 1 from public.daily_checkins c where c.member_id = p.id and c.checkin_date = y)
+    and not exists (select 1 from public.notifications x where x.member_id = p.id and x.kind = 'reminder'
+                    and x.title = 'Yesterday''s habits were not submitted' and x.created_at >= now() - interval '20 hours');
   get diagnostics n = row_count;
   return n;
 end; $$;
@@ -920,7 +964,8 @@ grant execute on function
   public.admin_checkins(date, text, text, text, int),
   public.admin_day_summary(date), public.admin_member_checkins(uuid, date, date),
   public.admin_set_tracker_member(uuid, uuid, boolean), public.i_see_tracker(uuid),
-  public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text)
+  public.admin_answer_doubt(uuid, text), public.save_push_subscription(text, text, text),
+  public.admin_set_tracker_all(uuid, boolean)
 to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;

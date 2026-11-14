@@ -295,3 +295,34 @@ create table if not exists public.push_subscriptions (
 create index if not exists push_subscriptions_member_idx on public.push_subscriptions(member_id);
 alter table public.notifications add column if not exists pushed_at timestamptz;
 create index if not exists notifications_unpushed_idx on public.notifications(created_at) where pushed_at is null;
+
+-- =====================================================================
+-- Redesign 2.2 (Nov 2026): coach opens every tracker per member, per-point
+-- coach media, per-point notes/questions with member pictures, to-do quadrants.
+-- =====================================================================
+-- coach's explanation for one habit point: audio, pictures, video links (files in "session-media" under <activity id>/)
+create table if not exists public.activity_media (
+  id           uuid primary key default gen_random_uuid(),
+  activity_id  uuid not null references public.activities(id) on delete cascade,
+  kind         text not null check (kind in ('image','audio','video_link','link')),
+  ref          text not null,
+  caption      text check (caption is null or char_length(caption) <= 160),
+  sort_order   smallint not null default 0,
+  created_at   timestamptz not null default now(),
+  check (case when kind in ('image','audio')
+              then ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$'
+              else char_length(ref) <= 500 and ref ~* '^https://[^\s/$.?#][^\s]*$' end)
+);
+create index if not exists activity_media_activity_idx on public.activity_media(activity_id, sort_order);
+
+-- notes and questions can be about one habit point
+alter table public.session_notes add column if not exists activity_id uuid references public.activities(id) on delete set null;
+alter table public.doubts        add column if not exists activity_id uuid references public.activities(id) on delete set null;
+create index if not exists session_notes_activity_idx on public.session_notes(activity_id) where activity_id is not null;
+create index if not exists doubts_activity_idx on public.doubts(activity_id) where activity_id is not null;
+-- a member's own picture with a real-life note (private bucket "member-media", folder = member id)
+alter table public.session_notes add column if not exists image_ref text
+  check (image_ref is null or image_ref ~ '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,100}$');
+
+-- to-do priority: 1 urgent+important, 2 important not urgent, 3 urgent not important, 4 neither
+alter table public.todos add column if not exists quadrant smallint not null default 2 check (quadrant between 1 and 4);

@@ -99,7 +99,7 @@ function heroHTML() {
     <div class="hero-main">
       ${ringHTML(pct, { size: 128, stroke: 12, gradient: grad, mid: `<div><b id="hero-pct">${pct}%</b><small>Today</small></div>` })}
       <div class="hero-txt"><span class="eyebrow">Today's progress</span>
-        <h2 id="hero-count">${done} of ${total} activities completed</h2>
+        <h2 id="hero-count">${total ? `${done} of ${total} activities completed` : 'Your trackers open soon'}</h2>
         <p id="hero-msg">${esc(message(pct, done))}</p></div>
     </div>
     <div class="hero-stats">
@@ -166,7 +166,7 @@ function renderActivities() {
   const list = cat ? S.acts.filter((a) => a.category_id === cat.id) : [];
   const box = $('#act-list');
   if (!list.length) {
-    box.innerHTML = `<div class="card empty-state"><span class="ic">${icon('list-checks')}</span><b>No activities here yet</b><span>Your coach will add them soon.</span></div>`;
+    box.innerHTML = `<div class="card empty-state"><span class="ic">${icon('list-checks')}</span><b>${S.cats.length ? 'No activities here yet' : 'Your trackers open soon'}</b><span>${S.cats.length ? 'Your coach will add them soon.' : 'Your coach opens each tracker after the session that teaches it. You will get a notification.'}</span></div>`;
     return;
   }
   const t = trackerStats(cat);
@@ -356,7 +356,7 @@ function updateLiveBits() {
   const pct = total ? Math.round(100 * done / total) : 0;
   setRing($('#hero .pring'), pct);
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-  set('#hero-pct', `${pct}%`); set('#hero-count', `${done} of ${total} activities completed`);
+  set('#hero-pct', `${pct}%`); set('#hero-count', total ? `${done} of ${total} activities completed` : 'Your trackers open soon');
   set('#hero-msg', message(pct, done)); set('#hero-pts', `+${formatNumber(d.today_points)}`);
   set('#hero-streak', `${d.streak} ${d.streak === 1 ? 'day' : 'days'}`);
   for (const c of S.cats) {

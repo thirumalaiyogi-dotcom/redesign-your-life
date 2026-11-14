@@ -64,3 +64,10 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **Member details & goals:** each member fills City, Profession, Dream, Hobbies, Website and private Goals (incl. net worth, turnover, profit) in Profile. Coaches see them on the member's Progress page; other members never do.
 - **To-do:** a personal list for each member. Coaches do not see it.
 - **Phone notifications:** members turn them on in Profile. Reminders at 8 pm (if nothing ticked) and 7 am (to-dos due). On iPhone the app must be added to the Home Screen first. Setup steps are in `supabase/README.md`.
+
+## New in Redesign 2.2 (Nov 2026)
+- **Coach opens every tracker.** A new member sees no tracker until you open one. Coach console → Members → **Tracker access** → "Open for all" after the session that teaches it, or **Trackers** on one person. Everyone who joined before 14 Nov already has the 4 main trackers.
+- **Explain each point:** Activities → pick a tracker → **Explain** on a habit → add an audio (on a phone you can record a voice note), pictures or a YouTube link. Members tap “Learn · Real life · Ask” on that habit's card.
+- **Per-point real life and questions:** members write a real situation for a habit, can attach their own picture, and ask a question about that habit. You see them under Sessions → Questions / Real life (with the habit name) and on the member's Progress page.
+- **To-do priority boxes:** Urgent & important / Important, not urgent / Urgent, not important / Not urgent, not important.
+- **Morning note at 7:30 am** to members who did not mark anything yesterday (besides the 8 pm reminder).

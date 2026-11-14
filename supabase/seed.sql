@@ -144,3 +144,7 @@ from (values
 ) as v(slug, number, default_name, description, icon)
 join public.tracker_categories c on c.slug = v.slug
 on conflict (category_id, number) do nothing;
+
+-- Redesign 2.2: every tracker is opened per member by the coach (Members → Trackers, or "Open for all").
+-- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
+update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';

@@ -285,3 +285,53 @@ drop policy if exists push_own on public.push_subscriptions;
 create policy push_own on public.push_subscriptions for all to authenticated
   using (member_id = (select auth.uid()))
   with check (member_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+-- ---------- Redesign 2.2 ----------
+alter table public.activity_media enable row level security;
+revoke all on public.activity_media from anon, authenticated;
+grant select, delete on public.activity_media to authenticated;
+grant insert (activity_id, kind, ref, caption, sort_order) on public.activity_media to authenticated;
+grant update (caption, sort_order) on public.activity_media to authenticated;
+drop policy if exists activity_media_read on public.activity_media;
+create policy activity_media_read on public.activity_media for select to authenticated
+  using ((select public.is_admin())
+         or exists (select 1 from public.activities a where a.id = activity_id and a.is_active and public.i_see_tracker(a.category_id)));
+drop policy if exists activity_media_admin_insert on public.activity_media;
+create policy activity_media_admin_insert on public.activity_media for insert to authenticated with check ((select public.is_admin()));
+drop policy if exists activity_media_admin_update on public.activity_media;
+create policy activity_media_admin_update on public.activity_media for update to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+drop policy if exists activity_media_admin_delete on public.activity_media;
+create policy activity_media_admin_delete on public.activity_media for delete to authenticated using ((select public.is_admin()));
+
+grant insert (activity_id) on public.session_notes to authenticated;
+grant update (activity_id) on public.session_notes to authenticated;
+grant insert (activity_id) on public.doubts to authenticated;
+grant insert (image_ref) on public.session_notes to authenticated;
+grant update (image_ref) on public.session_notes to authenticated;
+-- a note's picture must be in the writer's own folder
+drop policy if exists notes_insert_own on public.session_notes;
+create policy notes_insert_own on public.session_notes for insert to authenticated
+  with check (member_id = (select auth.uid()) and (select public.my_role()) is not null
+              and (image_ref is null or split_part(image_ref, '/', 1) = (select auth.uid())::text));
+drop policy if exists notes_update_own on public.session_notes;
+create policy notes_update_own on public.session_notes for update to authenticated
+  using (member_id = (select auth.uid()) and (select public.my_role()) is not null)
+  with check (member_id = (select auth.uid()) and (image_ref is null or split_part(image_ref, '/', 1) = (select auth.uid())::text));
+grant insert (quadrant) on public.todos to authenticated;
+grant update (quadrant) on public.todos to authenticated;
+
+-- members' own pictures: private bucket; each member writes only <their-id>/..., reads their own; coaches read all
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('member-media', 'member-media', false, 5242880, array['image/webp','image/jpeg','image/png'])
+on conflict (id) do update set public = excluded.public,
+  file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists member_media_read on storage.objects;
+create policy member_media_read on storage.objects for select to authenticated
+  using (bucket_id = 'member-media' and ((storage.foldername(name))[1] = (select auth.uid())::text or (select public.is_admin())));
+drop policy if exists member_media_insert on storage.objects;
+create policy member_media_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'member-media' and (storage.foldername(name))[1] = (select auth.uid())::text and (select public.my_role()) is not null);
+drop policy if exists member_media_delete on storage.objects;
+create policy member_media_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'member-media' and (storage.foldername(name))[1] = (select auth.uid())::text);

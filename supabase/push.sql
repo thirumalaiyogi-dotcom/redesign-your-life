@@ -46,8 +46,9 @@ create trigger notifications_push after insert on public.notifications
   for each statement execute function public._wake_push();
 
 -- daily reminders (times in UTC: 14:30 UTC = 8:00 pm IST, 01:30 UTC = 7:00 am IST)
-select cron.unschedule(jobname) from cron.job where jobname in ('ryl-evening-reminder', 'ryl-todo-reminder', 'ryl-push-catchup');
+select cron.unschedule(jobname) from cron.job where jobname in ('ryl-evening-reminder', 'ryl-todo-reminder', 'ryl-push-catchup', 'ryl-missed-yesterday');
 select cron.schedule('ryl-evening-reminder', '30 14 * * *', $$select public._queue_daily_reminders()$$);
 select cron.schedule('ryl-todo-reminder',    '30 1 * * *',  $$select public._queue_todo_reminders()$$);
+select cron.schedule('ryl-missed-yesterday', '0 2 * * *',   $$select public._queue_missed_yesterday()$$);   -- 7:30 am IST
 -- safety net: retry anything not delivered (e.g. a phone was offline)
 select cron.schedule('ryl-push-catchup', '*/30 * * * *', $$select net.http_post(url := 'https://gcbizlnpryihrrmjwbdv.supabase.co/functions/v1/send-push', headers := '{"Content-Type":"application/json"}'::jsonb, body := '{}'::jsonb)$$);
