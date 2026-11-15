@@ -168,3 +168,6 @@ on conflict (program_id, day_no) do nothing;
 -- Conscious Couple pictures (Nov 2026)
 update public.activities a set image_path = 'couple-' || lpad(a.number::text, 2, '0') || '.webp'
 from public.tracker_categories c where c.id = a.category_id and c.slug = 'couple' and a.image_path is null;
+-- Mugilan's Habits pictures (Nov 2026)
+update public.activities a set image_path = 'mugilan-' || lpad(a.number::text, 2, '0') || '.webp'
+from public.tracker_categories c where c.id = a.category_id and c.slug = 'mugilan' and a.image_path is null;
