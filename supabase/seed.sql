@@ -165,3 +165,6 @@ insert into public.program_steps(program_id, day_no, title)
 select p.id, g, 'Day ' || g from public.programs p, generate_series(1, 7) g
 where p.name = '7-Day Online Program'
 on conflict (program_id, day_no) do nothing;
+-- Conscious Couple pictures (Nov 2026); habit 12 still uses its icon until its picture arrives
+update public.activities a set image_path = 'couple-' || lpad(a.number::text, 2, '0') || '.webp'
+from public.tracker_categories c where c.id = a.category_id and c.slug = 'couple' and a.number <> 12 and a.image_path is null;
