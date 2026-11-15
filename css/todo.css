@@ -21,7 +21,8 @@
 .tdc .icon { width: 15px; height: 15px; }
 .tdc[aria-pressed="true"], .tdc.on { background: var(--c-text); border-color: var(--c-text); color: var(--c-bg); }
 .tdc:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
-.tdc input[type=date] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.tdc-date { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; margin: 0; }
+.td-chips, .tdm-row { position: relative; }
 .tdc-sep { flex: 1 0 0; min-width: 0; }
 .tdc.flag { padding: 6px 10px; }
 .tdc.flag.imp[aria-pressed="true"] { background: #f4c542; border-color: #f4c542; color: #3b2a00; }

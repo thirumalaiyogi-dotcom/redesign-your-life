@@ -335,7 +335,7 @@ function drawAddChips() {
   const box = $('#td-chips'); if (!box) return;
   const chip = (k, l) => `<button type="button" class="tdc" data-when="${k}" aria-pressed="${addWhen === k}">${l}</button>`;
   box.innerHTML = `${chip('today', 'Today')}${chip('tomorrow', 'Tomorrow')}${chip('week', 'This week')}
-    <label class="tdc ${addWhen === 'date' ? 'on' : ''}">${icon('calendar')}<span>${addWhen === 'date' && addDate ? esc(dueLabel(addDate)) : 'Date'}</span><input type="date" id="td-date" min="${istToday()}" aria-label="Pick a date"></label>
+    <button type="button" class="tdc ${addWhen === 'date' ? 'on' : ''}" data-pick="td-date">${icon('calendar')}<span>${addWhen === 'date' && addDate ? esc(dueLabel(addDate)) : 'Date'}</span></button><input type="date" class="tdc-date" id="td-date" min="${istToday()}" tabindex="-1" aria-hidden="true">
     ${chip('none', 'No date')}
     <button type="button" class="tdc ${addRep ? 'on' : ''}" data-rep-cycle aria-label="Repeat: ${esc(repLabel(addRep))}">${icon('repeat')}<span>${addRep ? esc(repLabel(addRep)) : 'Repeat'}</span></button><span class="tdc-sep"></span>
     <button type="button" class="tdc flag imp" data-flag="imp" aria-pressed="${addImp}" aria-label="Important">${icon('star')}</button>
@@ -347,13 +347,21 @@ function drawTodo() {
   body.innerHTML = tdView === 'today' ? drawToday() : tdView === 'week' ? drawWeek() : tdView === 'month' ? drawMonth() : drawMatrix();
 }
 
+// open the phone's date picker straight away (a hidden date box does not open on every phone by itself)
+function openPicker(id) {
+  const inp = document.getElementById(id); if (!inp) return;
+  try { if (inp.showPicker) { inp.showPicker(); return; } } catch { /* fall back below */ }
+  inp.focus(); inp.click();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (b) openPicker(b.dataset.pick); });
+
 // ⋯ menu for one task: when, flags, delete
 async function moreMenu(t) {
   const today = istToday();
   const scrim = document.createElement('div'); scrim.className = 'scrim';
   scrim.innerHTML = `<div class="dialog td-menu" role="dialog" aria-modal="true" aria-labelledby="tdm-t"><h2 id="tdm-t">${esc(t.title)}</h2>
     <div class="tdm-row">${[['Today', today], ['Tomorrow', addD(today, 1)], ['Next week', addD(mondayOf(today), 7)], ['No date', '']].map(([l, d]) => `<button class="tdc" data-set-due="${d}" aria-pressed="${(t.due_date || '') === d}">${l}</button>`).join('')}
-      <label class="tdc">${icon('calendar')}<span>Pick date</span><input type="date" id="tdm-date" value="${t.due_date || ''}"></label></div>
+      <button type="button" class="tdc" data-pick="tdm-date">${icon('calendar')}<span>Pick date</span></button><input type="date" class="tdc-date" id="tdm-date" value="${t.due_date || ''}" tabindex="-1" aria-hidden="true"></div>
     <div class="tdm-row"><span class="tdm-l">${icon('repeat')}Repeat</span>${REP.map(([k, l]) => `<button class="tdc" data-set-rep="${k || ''}" aria-pressed="${(t.repeat || '') === (k || '')}">${l}</button>`).join('')}</div>
     <div class="tdm-row"><button class="tdc flag imp" data-set-flag="imp" aria-pressed="${isImp(t)}">${icon('star')}Important</button><button class="tdc flag urg" data-set-flag="urg" aria-pressed="${isUrg(t)}">${icon('flame')}Urgent</button></div>
     <div class="actions"><button class="btn btn-ghost" data-tdm-del style="color:var(--c-danger-ink)">${icon('x')}Delete</button><button class="btn btn-gold" data-tdm-close>Done</button></div></div>`;
