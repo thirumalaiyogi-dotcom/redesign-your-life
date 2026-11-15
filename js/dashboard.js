@@ -48,8 +48,12 @@ function greeting() {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'Good morning';
   if (h >= 12 && h < 17) return 'Good afternoon';
-  if (h >= 17 && h < 22) return 'Good evening';
-  return 'Welcome back';
+  if (h >= 17 && h < 20) return 'Good evening';
+  return 'Good night';     // 8 PM – 5 AM: how people here greet at night
+}
+function greetingLine() {
+  const h = new Date().getHours();
+  return h >= 20 || h < 5 ? "Finish today's habits and journal before you sleep." : "Let's make today count.";
 }
 function message(pct, done) {
   if (!done) return "A fresh start. Tick your first habit and the day begins.";
@@ -316,7 +320,7 @@ async function renderDashboard() {
   main.innerHTML = `
     <div class="hello"><span class="date">${esc(formatToday())}</span>
       <h1>${esc(greeting())}, ${esc(firstName(S.profile.full_name, S.user.email))}</h1>
-      <p>Let's make today count.</p></div>
+      <p>${esc(greetingLine())}</p></div>
     <div data-install-slot></div>
     <div id="push-ask"></div>
     <div class="dash">
