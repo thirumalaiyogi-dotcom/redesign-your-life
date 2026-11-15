@@ -107,7 +107,8 @@ on conflict (code) do update set name = excluded.name, description = excluded.de
 -- ---------------------------------------------------------------------
 insert into public.tracker_categories(slug, name, tagline, color, icon, sort_order, audience) values
   ('couple', 'Conscious Couple', 'Husband & Wife Relationship Tracker', '#d9465f', 'heart-handshake', 5, 'assigned'),
-  ('mugilan', 'Mugilan''s Habits', 'Get 1% Better Everyday', '#7a5cd6', 'rocket', 6, 'assigned')
+  ('mugilan', 'Mugilan''s Habits', 'Get 1% Better Everyday', '#7a5cd6', 'rocket', 6, 'assigned'),
+  ('nithilla', 'Nithilla''s Habits', 'Get 1% Better Everyday', '#d6559a', 'flower-2', 7, 'assigned')
 on conflict (slug) do nothing;
 
 insert into public.activities(category_id, number, default_name, description, icon, image_path, points)
@@ -131,16 +132,30 @@ from (values
   ('mugilan', 2, 'Empty Bowel - Hydrate', null, 'glass-water'),
   ('mugilan', 3, 'Ready to School - On Time', null, 'clock'),
   ('mugilan', 4, 'Learn to Create & Solve', null, 'lightbulb'),
-  ('mugilan', 5, 'Play with Friends', null, 'users'),
+  ('mugilan', 5, 'Play - Friends', null, 'users'),
   ('mugilan', 6, 'Tiffin Box Wash', null, 'sparkle'),
-  ('mugilan', 7, 'Avoid Mobile', null, 'smartphone'),
+  ('mugilan', 7, 'Avoid Mobile / TV', null, 'smartphone'),
   ('mugilan', 8, 'Prepare for Future Expert', null, 'rocket'),
-  ('mugilan', 9, 'Help Mom - No Anger / Shouting', null, 'hand-heart'),
-  ('mugilan', 10, 'Help Nithilla', null, 'heart-handshake'),
+  ('mugilan', 9, 'Help Mom & Nithilla - No Fighting', null, 'hand-heart'),
+  ('mugilan', 10, 'Family Time / Hug Everyone', null, 'heart'),
   ('mugilan', 11, 'Eat Healthy - Early Dinner', null, 'apple'),
   ('mugilan', 12, 'Tofu Walking / Play', null, 'leaf'),
   ('mugilan', 13, 'Ready for Tomorrow', 'Homework, assignments, uniform ironing', 'book-open'),
-  ('mugilan', 14, 'Early to Bed - Read Books', null, 'moon')
+  ('mugilan', 14, 'Early to Bed - Read Books', null, 'moon'),
+  ('nithilla', 1, 'Early Wakeup', null, 'sunrise'),
+  ('nithilla', 2, 'Empty Bowel - Hydrate', null, 'glass-water'),
+  ('nithilla', 3, 'Ready to School - On Time', null, 'clock'),
+  ('nithilla', 4, 'Learn to Create & Solve', null, 'lightbulb'),
+  ('nithilla', 5, 'Play - Friends', null, 'users'),
+  ('nithilla', 6, 'Tiffin Box Wash', null, 'sparkle'),
+  ('nithilla', 7, 'Avoid Mobile / TV', null, 'smartphone'),
+  ('nithilla', 8, 'Prepare for Future Expert', null, 'rocket'),
+  ('nithilla', 9, 'Help Mom & Mugilan - No Fighting', null, 'hand-heart'),
+  ('nithilla', 10, 'Family Time / Hug Everyone', null, 'heart'),
+  ('nithilla', 11, 'Eat Healthy - Early Dinner', null, 'apple'),
+  ('nithilla', 12, 'Tofu Walking / Play', null, 'leaf'),
+  ('nithilla', 13, 'Ready for Tomorrow', 'Homework, assignments, uniform ironing', 'book-open'),
+  ('nithilla', 14, 'Early to Bed - Read Books', null, 'moon')
 ) as v(slug, number, default_name, description, icon)
 join public.tracker_categories c on c.slug = v.slug
 on conflict (category_id, number) do nothing;
@@ -148,7 +163,7 @@ on conflict (category_id, number) do nothing;
 -- Redesign 2.2: every tracker is opened per member by the coach (Members → Trackers, or "Open for all").
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
-update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan') and not show_locked;
+update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan','nithilla') and not show_locked;
 
 -- ---------- Redesign 2.4 ----------
 -- open_signup: true = anyone can make an account on the Join page; false = only accounts the coach creates
