@@ -6,6 +6,7 @@
 // Ticking goes only through mark_activity() (today only, server-side points), exactly like the tracker page.
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
+import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
@@ -285,6 +286,11 @@ async function loadActivities() {
   S.acts = (acts.data || []).filter((a) => catIds.has(a.category_id));
   const active = new Set(S.acts.map((a) => a.id));
   S.rows = new Map((rows.data || []).filter((r) => active.has(r.activity_id)).map((r) => [r.activity_id, r]));
+  // ticks kept on the phone while offline show as marked until they are sent
+  for (const [id, st] of Object.entries(pendingFor(S.user.id, S.today))) {
+    if (!active.has(id)) continue;
+    if (st) S.rows.set(id, { activity_id: id, status: st, voided_at: null, pending: true }); else S.rows.delete(id);
+  }
   S.week = new Map();
   for (const r of week.data || []) if (active.has(r.activity_id)) S.week.set(r.checkin_date, (S.week.get(r.checkin_date) || 0) + 1);
   // default tracker: the remembered one, else the first with something left to mark
@@ -428,6 +434,13 @@ async function mark(id, value) {
 
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
   S.busy.delete(id);
+  if (error && isOfflineError(error)) {
+    // no internet: keep the tick on the phone, it is sent as soon as the phone is online
+    keepTick(S.user.id, S.today, id, next);
+    refreshRow(id);
+    if (!S.offlineTold) { S.offlineTold = true; toast('No internet. Your ticks are saved on this phone and will be sent when you are back online.', 'info'); }
+    return;
+  }
   if (error) {
     S.lastTap.delete(tapKey);
     if (before) S.rows.set(id, before); else S.rows.delete(id);
@@ -435,6 +448,7 @@ async function mark(id, value) {
     if (/removed today/i.test(error.message || '')) { await renderLive(); }
     return toast(friendlyError(error), 'bad');
   }
+  forgetTick(S.user.id, id);
   if (data?.date && data.date !== S.today) { toast('A new day has started. Reloading…', 'info'); return setTimeout(() => location.reload(), 900); }
   // server numbers win: points, totals and streak come from mark_activity()
   Object.assign(S.d, { done_today: data.done_today, today_points: data.points_today, total_points: data.total_points, streak: data.streak });
@@ -747,6 +761,13 @@ document.addEventListener('error', (e) => { if (e.target.matches?.('img[data-fal
     const { profile, user } = await requireRole(['member']);
     S.profile = profile; S.user = user;
     if (page === 'member-dashboard') {
+      // send ticks kept while offline (now, when the phone is back online, and when the app is reopened)
+      await autoSend(user.id, (r) => {
+        if (r.sent) toast(`${r.sent} saved tick${r.sent > 1 ? 's' : ''} sent ✓`);
+        if (r.stale) toast(`${r.stale} tick${r.stale > 1 ? 's' : ''} saved offline yesterday could not be sent (only today's habits can be ticked).`, 'info');
+        S.offlineTold = false;
+        if (S.d) renderLive().catch(() => {});
+      }).catch(() => {});
       header();
       document.body.insertAdjacentHTML('beforeend', memberNav('dashboard'));
       wireDashboard();

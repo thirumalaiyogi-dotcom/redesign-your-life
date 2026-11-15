@@ -120,7 +120,7 @@ function render(rows) {
           <small>${formatNumber(r.activities_done)} done · ${Math.round(r.consistency)}% consistent · ${r.streak}-day streak</small></div></div>
         <div class="score"><b class="num">${formatNumber(r.points)}</b>${movement(r.movement, r.prev_rank != null)}</div></div>`).join('')}
     </section>` : ''}
-    <p class="tiebreak hint-line">${icon('info')}<span>Same points? Higher consistency ranks first, then the longer streak, then whoever reached the score first. Only ticked habits and coach bonuses count, never minus points.</span></p>`;
+    <p class="tiebreak hint-line">${icon('info')}<span>Points = habits done + bonuses (all habits done in a day, every 7th streak day, perfect week, coach bonus). Never minus points. Same points? Higher consistency ranks first, then the longer streak, then whoever reached the score first.</span></p>`;
 }
 
 function renderRecog(r) {

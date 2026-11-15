@@ -7,8 +7,10 @@ import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, 
 import { openTrackerSheet } from './point.js';
 import { tickFx } from './fx.js';
 import { signedUrls, mediaHTML } from './media.js';
+import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
 
 const page = document.body.dataset.page;
+let offlineTold = false;
 let pointKinds = new Map();
 const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
 const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp', couple: 'couple-cover.webp', mugilan: 'mugilan-cover.webp' };
@@ -129,7 +131,7 @@ function cardHTML(a) {
       : thisWeek ? `<div class="mark" role="group" aria-label="${esc(a.default_name)} today">
         <button class="mk mk-ok" data-mark="done" aria-pressed="${st === 'done'}">${icon('check', '')}<span>Done</span></button>
         <button class="mk mk-no" data-mark="not_done" aria-pressed="${st === 'not_done'}">${icon('x', '')}<span>Not done</span></button></div>` : ''}
-    ${thisWeek && !voided && st ? `<div class="foot">${r?.note ? `<span class="note">“${esc(r.note)}”</span>` : `<span>${st === 'done' ? 'Done today' : 'Not done today'}</span>`}
+    ${thisWeek && !voided && st ? `<div class="foot">${r?.note ? `<span class="note">“${esc(r.note)}”</span>` : `<span>${r?.pending ? 'Saved on phone · sends when online' : st === 'done' ? 'Done today' : 'Not done today'}</span>`}
       <button data-note>${icon('pencil')}${r?.note ? 'Edit note' : 'Add note'}</button></div>` : ''}
   </article>`;
 }
@@ -152,6 +154,14 @@ async function loadWeek() {
   if (error) throw error;
   for (const k of [...rows.keys()]) { const d = k.split('|')[1]; if (d >= weekStart && d <= addDays(weekStart, 6)) rows.delete(k); }
   for (const r of data || []) rows.set(`${r.activity_id}|${r.checkin_date}`, r);
+  overlayKept();
+}
+// ticks kept on the phone (no internet) show as marked until they are sent
+function overlayKept() {
+  for (const [id, st] of Object.entries(pendingFor(me.user.id, today))) {
+    const k = `${id}|${today}`;
+    if (st) rows.set(k, { ...(rows.get(k) || {}), activity_id: id, checkin_date: today, status: st, voided_at: null, pending: true }); else rows.delete(k);
+  }
 }
 
 // ---- layout (cards / compact list) and Quick tick (one habit at a time) ----
@@ -334,6 +344,14 @@ async function mark(card, value, fxBtn = null, fxAll = false) {
 
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
   busy.delete(id);
+  if (error && isOfflineError(error)) {
+    // no internet: keep the tick on the phone, it is sent as soon as the phone is online
+    keepTick(me.user.id, today, id, next);
+    if (next) rows.set(key, { ...rows.get(key), pending: true });
+    refreshCard(id);
+    if (!offlineTold) { offlineTold = true; toast('No internet. Your ticks are saved on this phone and will be sent when you are back online.', 'info'); }
+    return;
+  }
   if (error) {
     lastTap.delete(tapKey);   // let the member retry straight away
     if (before) rows.set(key, before); else rows.delete(key);
@@ -342,6 +360,7 @@ async function mark(card, value, fxBtn = null, fxAll = false) {
     if (error.message && /log in/i.test(error.message)) return toast('Your session has ended. Please log in again.', 'bad');
     return toast(friendlyError(error), 'bad');
   }
+  forgetTick(me.user.id, id);
   if (data?.date && data.date !== today) { toast('A new day has started. Reloading…', 'info'); return setTimeout(() => location.reload(), 900); }
   refreshCard(id);
   const left = acts.filter((x) => !rows.get(`${x.id}|${today}`)).length;
@@ -499,6 +518,13 @@ async function renderLocked(main) {
     me = await requireRole(['member']);
     chrome('trackers');
     await loadToday();
+    // send ticks kept while offline (now, when the phone comes back online, and when the app is reopened)
+    await autoSend(me.user.id, (r) => {
+      if (r.sent) toast(`${r.sent} saved tick${r.sent > 1 ? 's' : ''} sent ✓`);
+      if (r.stale) toast(`${r.stale} tick${r.stale > 1 ? 's' : ''} saved offline yesterday could not be sent (only today's habits can be ticked).`, 'info');
+      offlineTold = false;
+      if (page === 'member-tracker' && acts.length) loadWeek().then(renderWeek).catch(() => {});
+    }).catch(() => {});
     if (page === 'member-trackers') await renderList();
     if (page === 'member-tracker') { await loadCats(); await renderDetail(); }
   } catch (err) {
