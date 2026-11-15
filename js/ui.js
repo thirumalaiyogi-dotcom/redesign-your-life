@@ -123,8 +123,8 @@ export function memberNav(current) {
     [app('member/profile.html'), 'user-round', 'Profile', 'Profile', 'profile']
   ];
   setTimeout(todoBadge, 0);
-  const onTodo = /member\/todo\.html/.test(location.pathname);
-  const fab = onTodo ? '' : `<a class="todo-fab" href="${app('member/todo.html#add')}" aria-label="To-do list"><span class="tf-ic">${icon('list-checks')}</span><span class="tf-l">To-do</span><i class="tf-badge" id="tf-badge" hidden></i></a>`;
+  // only on Home: on Track it would sit over the tick buttons
+  const fab = current !== 'dashboard' || !/member\/dashboard\.html/.test(location.pathname) ? '' : `<a class="todo-fab" href="${app('member/todo.html#add')}" aria-label="To-do list"><span class="tf-ic">${icon('list-checks')}</span><span class="tf-l">To-do</span><i class="tf-badge" id="tf-badge" hidden></i></a>`;
   return fab + `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, short, key]) =>
     `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} aria-label="${esc(label)}">${icon(ic)}${label === short
       ? `<span>${esc(label)}</span>` : `<span class="l-long">${esc(label)}</span><span class="l-short">${esc(short)}</span>`}</a>`).join('')}</div></nav>`;
