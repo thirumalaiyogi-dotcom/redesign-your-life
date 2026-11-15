@@ -113,7 +113,7 @@ export function validatePassword(pw) {
   return '';
 }
 
-export function brandHTML(href, title = 'Redesign Your Life', sub = "Deepak's Program") {
+export function brandHTML(href, title = "Deepak's 10X Life", sub = 'Get 1% better every day') {
   return `<a class="brand" href="${href}"><span class="crest">${icon('tenx')}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span></a>`;
 }
 
@@ -166,7 +166,7 @@ export function adminNav(current) {
 // Coach console header: logo, role, theme toggle, log out, then the coach menu.
 export function coachTopbar(role, roleLabel, current) {
   const dark = currentTheme() === 'dark';
-  return `<div class="dash-top coach-top">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
+  return `<div class="dash-top coach-top">${brandHTML(app('admin/dashboard.html'), 'Coach Console', "Deepak's 10X Life")}
     <div class="actions"><span class="pill ${role === 'super_admin' ? 'gold' : 'blue'}">${esc(roleLabel)}</span>
       <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
       <a class="iconbtn" href="${app('member/dashboard.html')}" aria-label="Member view: see the app as members see it" title="Member view">${icon('smartphone')}</a>

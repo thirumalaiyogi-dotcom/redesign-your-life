@@ -114,7 +114,7 @@ async function drawSession(id) {
   const main = $('#main');
   const s = L.sessions.find((x) => x.id === id);
   if (!s) { main.innerHTML = empty('book-open', 'Session not found', `It may have been removed. <a href="${app('member/learn.html')}">See all sessions</a>`); return; }
-  document.title = `${s.title} · Redesign Your Life`;
+  document.title = `${s.title} · Deepak's 10X Life`;
   const media = L.media.filter((x) => x.session_id === id);
   const notes = L.notes.filter((x) => x.session_id === id), qs = L.doubts.filter((x) => x.session_id === id);
   main.innerHTML = `

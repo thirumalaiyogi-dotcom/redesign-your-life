@@ -424,7 +424,7 @@ async function renderDetail() {
       <span>Pick one of your trackers.</span><a class="btn btn-gold btn-sm" href="${app('member/trackers.html')}">See all trackers</a></div>`;
     return;
   }
-  document.title = `${cat.name} · Redesign Your Life`;
+  document.title = `${cat.name} · Deepak's 10X Life`;
   const { data, error } = await supabase.from('activities').select('id, number, default_name, description, image_path, icon, points')
     .eq('category_id', cat.id).eq('is_active', true).order('number');
   if (error) return errorPanel(main, error, renderDetail);

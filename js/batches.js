@@ -50,13 +50,13 @@ export function waLink(phone, text) {
 export function loginMessage(name, email, pw) {
   const first = String(name || '').trim().split(/\s+/)[0];
   const gmail = /@(gmail|googlemail)\.com$/i.test(email);
-  return `Hi${first ? ' ' + first : ''},\n\nRedesign Your Life app login details\n\nLink: ${app('login.html')}\n`
+  return `Hi${first ? ' ' + first : ''},\n\nDeepak's 10X Life app login details\n\nLink: ${app('login.html')}\n`
     + (gmail ? `\n"Continue with Google" click panni ${email} select pannunga, udane ulla poidalam.\n\nIllana email password vechum login pannalam:\n` : '\n')
     + `Email: ${email}\nPassword: ${pw}\n\nPassword vechu first time login pannumbothu unga own password set panna sollum.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
 }
 // one message for the whole WhatsApp group: everyone with a Gmail just taps "Continue with Google"
 export function groupMessage() {
-  return `Redesign Your Life app ready 🙏\n\nLink: ${app('login.html')}\n\n"Continue with Google" click panni, coach kitta kudutha Gmail select pannunga. Udane ulla poidalam.\n\nGmail illathavangalukku email, password thaniya anuppurom.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
+  return `Deepak's 10X Life app ready 🙏\n\nLink: ${app('login.html')}\n\n"Continue with Google" click panni, coach kitta kudutha Gmail select pannunga. Udane ulla poidalam.\n\nGmail illathavangalukku email, password thaniya anuppurom.\nPhone la open panni "Add to Home screen" pannina app maari use pannalam.`;
 }
 
 const B = { tab: 'batches', programs: [], steps: [], stepTrackers: [], batches: [], done: [], trackers: [], habits: [], open: null, prog: null, trk: null, added: [], signup: null };

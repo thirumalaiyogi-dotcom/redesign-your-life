@@ -1,4 +1,4 @@
-// Supabase client — Deepak's Redesign Your Life
+// Supabase client — Deepak's 10X Life
 // Load /js/vendor/supabase.js (classic script) BEFORE any module that imports this file.
 // The anon key is meant to be public: every table is protected by Row Level Security
 // (see supabase/policies.sql). NEVER put the service_role key anywhere in this app.

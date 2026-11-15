@@ -13,7 +13,7 @@ HEAD = '''<!doctype html>
 <meta name="theme-color" content="#123b2e">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>{title} · Redesign Your Life</title>
+<title>{title} · Deepak's 10X Life</title>
 <meta name="description" content="{desc}">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -52,7 +52,7 @@ def step(i, sid, title, intro, shots, items, note=None):
 def page(fname, title, desc, hero_h, hero_p, cta, flow, steps, extra=''):
     toc = '<ul class="g-toc">' + ''.join(f'<li><a href="#{s[0]}"><b>{i}</b>{s[1]}</a></li>' for i, s in enumerate(steps, 1)) + '</ul>'
     body = ''.join(step(i, *s) for i, s in enumerate(steps, 1))
-    doc = HEAD.format(title=title, desc=desc) + f'''<header class="g-hero"><div class="g-brand"><img src="assets/icons/logo-96.png" alt="">Deepak's Redesign Your Life</div>
+    doc = HEAD.format(title=title, desc=desc) + f'''<header class="g-hero"><div class="g-brand"><img src="assets/icons/logo-96.png" alt="">Deepak's 10X Life</div>
 <h1>{hero_h}</h1><p>{hero_p}</p><a class="g-cta" href="{cta[1]}">{cta[0]}</a></header>
 {flow}{toc}{body}{extra}
 <p class="g-foot">சிவப்பு எண் ① ② ③ = படத்தில் தட்ட வேண்டிய இடம்.<br>படங்கள் மாதிரி கணக்கு (demo) வைத்து எடுத்தவை; உங்க app-ல உங்க பெயர், உங்க points வரும்.<br><a href="privacy.html">Privacy</a></p>
@@ -130,7 +130,7 @@ M_FLOW = '''<div class="g-flow"><h2>தினமும் 3 வேலை மட�
 <li>ஒவ்வொரு habit-க்கும் <b>✓ Done</b> அல்லது <b>✗ Not done</b> (அல்லது Quick tick).</li>
 <li>இரவு 2 நிமிஷம் <b>Journal</b>.</li></ol></div>'''
 
-page('guide.html', 'App guide', 'Redesign Your Life app-ஐ எப்படி பயன்படுத்துவது - படிப்படியா.',
+page('guide.html', 'App guide', "Deepak's 10X Life app-ஐ எப்படி பயன்படுத்துவது - படிப்படியா.",
      'App-ஐ எப்படி பயன்படுத்துவது', 'Login முதல் badges வரை, படத்தோட படிப்படியா. சிவப்பு எண் இருக்கிற இடத்தை தட்டுங்க.',
      ('App-ஐ திறங்க →', 'login.html'), M_FLOW, M)
 

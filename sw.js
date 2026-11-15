@@ -1,7 +1,7 @@
-// Service worker — Deepak's Redesign Your Life
+// Service worker — Deepak's 10X Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v61';
+const VERSION = 'ryl-v62';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;
@@ -89,8 +89,8 @@ self.addEventListener('message', (e) => { if (e.data === 'skipWaiting') self.ski
 // ---- phone notifications (Web Push). Payload: { title, body, url, tag } from the send-push function ----
 self.addEventListener('push', (event) => {
   let d = {};
-  try { d = event.data ? event.data.json() : {}; } catch { d = { title: event.data?.text() || 'Redesign Your Life' }; }
-  event.waitUntil(self.registration.showNotification(d.title || 'Redesign Your Life', {
+  try { d = event.data ? event.data.json() : {}; } catch { d = { title: event.data?.text() || "Deepak's 10X Life" }; }
+  event.waitUntil(self.registration.showNotification(d.title || "Deepak's 10X Life", {
     body: d.body || '', tag: d.tag || undefined, icon: 'assets/icons/icon-192.png', badge: 'assets/icons/favicon-32.png',
     data: { url: d.url || 'member/dashboard.html' }
   }));
