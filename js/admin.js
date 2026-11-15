@@ -3,6 +3,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { renderBatches } from './batches.js';
+import { pushState, enablePush } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
@@ -14,6 +15,25 @@ function chrome(current) {
   $('#top').innerHTML = coachTopbar(me.profile.role, ROLE_LABEL[me.profile.role], current);
   { const cur = document.querySelector('.admin-nav a[aria-current]'), bar = document.querySelector('.admin-nav .an-inner'); if (cur && bar) bar.scrollLeft = cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2; }
   $('#logout').addEventListener('click', () => signOut());
+  // red count on Sessions: members' questions waiting for an answer (like unread chats)
+  supabase.from('doubts').select('id', { count: 'exact', head: true }).is('answered_at', null).then(({ count }) => {
+    const a = document.querySelector(`.admin-nav a[href$="admin/sessions.html"]`);
+    if (a && count) a.insertAdjacentHTML('beforeend', `<i class="nav-badge" aria-label="${count} unanswered">${count > 99 ? '99+' : count}</i>`);
+  });
+}
+
+// coach's phone: buzz when a member asks a question
+async function coachPushCard(box) {
+  const st = await pushState().catch(() => 'unsupported');
+  if (!box || st === 'on' || st === 'unsupported') return;
+  box.innerHTML = `<div class="card push-ask coach-push"><span class="si">${icon('bell')}</span>
+    <span><b>Get a phone notification for every new question</b><small>${st === 'blocked' ? 'Notifications are blocked. Allow them for this site in your browser settings.' : st === 'ios-install' ? 'On iPhone: Share → Add to Home Screen first, then open the app from there.' : 'Like a WhatsApp message: tap it to open the question and reply.'}</small></span>
+    ${st === 'off' ? `<button class="btn btn-gold btn-sm" id="coach-push-on">Turn on</button>` : ''}</div>`;
+  $('#coach-push-on')?.addEventListener('click', async (e) => {
+    await withBusy(e.currentTarget, 'Turning on…', async () => {
+      try { await enablePush(); box.innerHTML = ''; toast('Notifications turned on'); } catch (err) { toast(friendlyError(err), 'bad'); }
+    });
+  });
 }
 
 function errorPanel(target, err, retry) {
@@ -50,7 +70,7 @@ async function renderOverview() {
   supabase.from('doubts').select('id', { count: 'exact', head: true }).is('answered_at', null).then(({ count, error: e }) => {
     if (e || !count || !$('#q-waiting')) return;
     $('#q-waiting').innerHTML = `<a class="card q-banner" href="${app('admin/sessions.html?tab=questions')}"><span class="si">${icon('message-square')}</span>
-      <span><b>${count} question${count > 1 ? 's' : ''} waiting for your answer</b><small>Members asked from their Sessions page</small></span>${icon('chevron-right')}</a>`;
+      <span><b>${count} question${count > 1 ? 's' : ''} waiting for your answer</b><small>Tap to read and answer</small></span>${icon('chevron-right')}</a>`;
   });
   const recent = o.recent || [];
   main.innerHTML = `
@@ -63,6 +83,7 @@ async function renderOverview() {
       ${o.inactive_today > 0 ? `<a class="tp-link" href="${app('admin/members.html')}">${icon('hourglass')}${formatNumber(o.inactive_today)} not active yet today →</a>` : `<span class="tp-ok">${icon('check-circle-2')}Everyone has ticked today</span>`}</div>
   </section>
   <div id="q-waiting"></div>
+  <div id="coach-push"></div>
   <section class="akpis">${kpis.map(([l, v, s, c, ic]) => `<div class="card akpi ${c || ''}"><span class="ai">${icon(ic)}</span><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
     <section class="card"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
@@ -75,6 +96,7 @@ async function renderOverview() {
         <div class="track"><i style="width:${Math.min(100, c.pct)}%;background:${TRACKER_COLOR[c.slug] || 'var(--c-accent)'}"></i></div></div>`).join('')}</div>
     </section>
   </div>`;
+  coachPushCard($('#coach-push'));
 }
 
 // ---------------- MEMBERS & ROLES ----------------

@@ -1353,6 +1353,24 @@ end; $$;
 drop trigger if exists todos_repeat on public.todos;
 create trigger todos_repeat after update of done_at on public.todos for each row execute function public.todo_repeat();
 
+-- a member's new question tells every coach (in-app + phone push, like a chat message)
+create or replace function public.notify_new_doubt()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_name text; v_topic text;
+begin
+  select nullif(trim(full_name), '') into v_name from public.profiles where id = new.member_id;
+  select coalesce((select c.name from public.tracker_categories c where c.id = new.category_id),
+                  (select a.default_name from public.activities a where a.id = new.activity_id),
+                  (select s.title from public.sessions s where s.id = new.session_id)) into v_topic;
+  insert into public.notifications(member_id, kind, title, body)
+  select p.id, 'info', left('New question from ' || coalesce(v_name, 'a member'), 120),
+         left(coalesce(v_topic || ': ', '') || new.question, 300)
+  from public.profiles p where p.role in ('admin', 'super_admin') and p.is_active;
+  return new;
+end; $$;
+drop trigger if exists doubts_notify on public.doubts;
+create trigger doubts_notify after insert on public.doubts for each row execute function public.notify_new_doubt();
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------

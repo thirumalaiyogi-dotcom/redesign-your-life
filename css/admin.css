@@ -321,3 +321,11 @@ details.j-entry { border-top: 1px solid var(--c-border); }
 .bt-person.sel { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
 .bt-tick { display: grid; place-items: center; width: 28px; flex: none; cursor: pointer; }
 .bt-tick input { width: 20px; height: 20px; }
+/* coach push card + unanswered-questions badge */
+.coach-push { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); background: color-mix(in srgb, var(--c-primary) 6%, var(--c-surface)); }
+.coach-push .si { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--c-primary); color: var(--c-on-primary, #fff); }
+.coach-push .si .icon { width: 19px; height: 19px; }
+.coach-push small { display: block; color: var(--c-text-2); font-size: 12.5px; margin-top: 2px; }
+.admin-nav a { position: relative; }
+.nav-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #e5484d; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--c-bg); }
+@media (max-width: 560px) { .coach-push { grid-template-columns: auto minmax(0, 1fr); } .coach-push .btn { grid-column: 2; justify-self: start; } }

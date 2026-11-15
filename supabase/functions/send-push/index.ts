@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
     let url = LINK[n.kind] || 'member/dashboard.html';
     if (/answered your question|New session:/.test(n.title)) url = 'member/learn.html' + (n.title.startsWith('New session') ? '' : '?tab=questions');
     if (/to-do|To-do/.test(n.title)) url = 'member/todo.html';
+    if (n.title.startsWith('New question from')) url = 'admin/sessions.html?tab=questions';   // coaches
     const payload = JSON.stringify({ title: n.title, body: n.body || '', url, tag: n.kind + '-' + n.id });
     for (const s of subsBy.get(n.member_id) || []) {
       try {
