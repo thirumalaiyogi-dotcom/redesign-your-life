@@ -39,7 +39,7 @@ p { margin: 0; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--c-text); min-width: 0; }
 .crest { width: 36px; height: 36px; border-radius: 11px; background: var(--c-primary); display: grid; place-items: center; color: var(--c-accent); flex: none; box-shadow: var(--shadow-1); }
 :root[data-theme="dark"] .crest { background: var(--c-primary-light); }
-.crest .icon { width: 20px; height: 20px; }
+.crest .icon { width: 24px; height: 24px; }
 .brand b { font-family: var(--f-display); font-weight: 800; font-size: 15.5px; letter-spacing: -.01em; line-height: 1.1; display: block; white-space: nowrap; }
 .brand small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--c-accent-ink); }
 

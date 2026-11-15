@@ -108,7 +108,7 @@ export function validatePassword(pw) {
 }
 
 export function brandHTML(href, title = 'Redesign Your Life', sub = "Deepak's Program") {
-  return `<a class="brand" href="${href}"><span class="crest">${icon('crown')}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span></a>`;
+  return `<a class="brand" href="${href}"><span class="crest">${icon('tenx')}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span></a>`;
 }
 
 const SOON = 'data-soon';
