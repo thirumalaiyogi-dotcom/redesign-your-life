@@ -117,6 +117,16 @@ if (page === 'login') {
     return true;
   };
   $('#otp-btn').addEventListener('click', () => setMode(mode === 'pw' ? 'ask' : 'pw'));
+  // paste from the email (Gmail's "Copy code") and check right away when 6 digits are in
+  const tryAuto = () => { const v = $('#otp').value.replace(/\D/g, ''); if (v.length === 6 && mode === 'code') $('#login-form').requestSubmit(); };
+  $('#otp').addEventListener('input', tryAuto);
+  $('#otp-paste').addEventListener('click', async () => {
+    try {
+      const t = (await navigator.clipboard.readText()).match(/\d{6}/);
+      if (!t) return showNotice('info', 'Copy the 6-digit code from the email first, then tap Paste.');
+      $('#otp').value = t[0]; tryAuto();
+    } catch { $('#otp').focus(); showNotice('info', 'Long-press the code box and choose Paste.'); }
+  });
   document.addEventListener('click', async (e) => {
     if (!e.target.closest('#otp-resend')) return;
     e.target.disabled = true; if (await sendCode()) $('#otp').focus(); e.target.disabled = false;

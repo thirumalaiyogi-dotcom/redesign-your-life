@@ -55,7 +55,8 @@
       </div>
       <div class="field" id="otp-field" hidden>
         <label for="otp">Code from your email</label>
-        <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code" pattern="[0-9]*">
+        <div class="otp-row"><input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code" pattern="[0-9]*">
+          <button type="button" class="btn btn-ghost" id="otp-paste"><span data-icon="copy"></span>Paste</button></div>
         <span class="err" aria-live="polite"></span>
         <small class="muted otp-hint" id="otp-hint"></small>
       </div>
