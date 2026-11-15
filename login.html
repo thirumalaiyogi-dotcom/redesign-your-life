@@ -38,7 +38,7 @@
         <button class="btn btn-google btn-block" type="button" id="google-btn" disabled><span data-icon="log-in"></span><span id="google-l">Continue with Google</span></button>
         <p class="muted g-hint" id="google-hint">Use the Gmail you gave your coach.</p>
       </div>
-      <div class="or-line"><span>or log in with email and password</span></div>
+      <div class="or-line"><span>or log in with your email</span></div>
       <div class="field">
         <label for="email">Email</label>
         <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
@@ -53,7 +53,14 @@
         <label class="check"><input type="checkbox" id="remember" checked>Keep me logged in</label>
         <a class="link" href="forgot.html">Forgot password?</a>
       </div>
+      <div class="field" id="otp-field" hidden>
+        <label for="otp">Code from your email</label>
+        <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code" pattern="[0-9]*">
+        <span class="err" aria-live="polite"></span>
+        <small class="muted otp-hint" id="otp-hint"></small>
+      </div>
       <button class="btn btn-gold btn-block" type="submit" id="login-btn">Log in</button>
+      <button class="btn btn-ghost btn-block" type="button" id="otp-btn"><span data-icon="mail"></span><span id="otp-btn-l">Get a login code by email</span></button>
       <p class="muted" style="text-align:center;font-size:14px">New member? Your coach sends your login on WhatsApp. <a class="link" href="register.html">How it works</a></p>
     </form>
   </div>

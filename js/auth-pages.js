@@ -87,8 +87,54 @@ if (page === 'login') {
   if (params.get('next') && !m) showNotice('info', 'Please log in to continue.');
   redirectIfSignedIn();
 
+  // login with a one-time code sent to the email (works for Gmail, Yahoo, Zoho, office mail…).
+  // shouldCreateUser:false → only emails the coach added get a code.
+  let otpMode = false;
+  const otpOn = (on) => {
+    otpMode = on;
+    $('#password').closest('.field').hidden = on; $('.row-between').hidden = on;
+    $('#otp-field').hidden = !on;
+    $('#login-btn').textContent = on ? 'Verify code' : 'Log in';
+    $('#otp-btn-l').textContent = on ? 'Use password instead' : 'Get a login code by email';
+  };
+  const sendCode = async () => {
+    const email = $('#email');
+    if (!checkEmail(email)) { email.focus(); return false; }
+    const { error } = await supabase.auth.signInWithOtp({ email: email.value.trim().toLowerCase(), options: { shouldCreateUser: false } });
+    if (error) {
+      const m = (error.message || '').toLowerCase();
+      showNotice('bad', m.includes('signups not allowed') || m.includes('not found') || m.includes('database error')
+        ? "This email is not on your coach's list. Use the email you gave your coach."
+        : m.includes('rate limit') || m.includes('security purposes') ? 'A code was sent just now. Wait a minute, then try again.' : friendlyError(error));
+      return false;
+    }
+    $('#otp-hint').textContent = `We sent a code to ${email.value.trim()}. Check your inbox and spam folder. It can take a minute.`;
+    showNotice('ok', 'Code sent. Type it below.');
+    return true;
+  };
+  $('#otp-btn').addEventListener('click', async (e) => {
+    if (otpMode) { otpOn(false); $('#notice').hidden = true; return; }
+    let sent = false;
+    await withBusy(e.currentTarget, 'Sending code…', async () => { sent = await sendCode(); });
+    if (sent) { otpOn(true); $('#otp').focus(); }
+  });
+
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (otpMode) {
+      const email = $('#email'), code = $('#otp'), v = code.value.replace(/\D/g, '');
+      if (!checkEmail(email) || !setFieldError(code, v.length < 6 ? 'Type the code from your email.' : '')) return;
+      return withBusy($('#login-btn'), 'Checking…', async () => {
+        setRemember($('#remember').checked);
+        const { data, error } = await supabase.auth.verifyOtp({ email: email.value.trim().toLowerCase(), token: v, type: 'email' });
+        if (error) return showNotice('bad', /expired|invalid/i.test(error.message) ? 'That code is wrong or has expired. Check it, or tap "Use password instead" and ask for a new code.' : friendlyError(error));
+        let profile = await fetchProfile(data.user.id).catch(() => null);
+        if (!profile?.is_active) { await supabase.auth.signOut(); return showNotice('bad', 'Your account is paused. Please contact your coach.'); }
+        // they proved the email: no need to change the coach's temporary password first
+        if (profile.must_change) { await supabase.rpc('skip_temp_password'); }
+        location.replace(safeNext(params.get('next')) || homeFor(profile.role));
+      });
+    }
     const email = $('#email'), pw = $('#password');
     const ok = [checkEmail(email), setFieldError(pw, pw.value ? '' : 'Enter your password.')].every(Boolean);
     if (!ok) { $('.field.invalid input')?.focus(); return; }

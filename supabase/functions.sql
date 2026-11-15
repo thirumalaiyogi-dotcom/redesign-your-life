@@ -1371,6 +1371,12 @@ end; $$;
 drop trigger if exists doubts_notify on public.doubts;
 create trigger doubts_notify after insert on public.doubts for each row execute function public.notify_new_doubt();
 
+-- signed in with a code sent to their own email: they do not need to change the coach's temporary password first
+create or replace function public.skip_temp_password()
+returns void language sql security definer set search_path = '' as $$
+  update public.profiles set must_change = false where id = auth.uid() and must_change;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -1399,5 +1405,6 @@ grant execute on function
 to authenticated;
 -- the sign-up page checks this before anyone is logged in
 grant execute on function public.signup_open() to anon, authenticated;
+grant execute on function public.skip_temp_password() to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
