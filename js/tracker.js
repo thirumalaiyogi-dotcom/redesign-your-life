@@ -154,6 +154,83 @@ async function loadWeek() {
   for (const r of data || []) rows.set(`${r.activity_id}|${r.checkin_date}`, r);
 }
 
+// ---- layout (cards / compact list) and Quick tick (one habit at a time) ----
+let layout = (() => { try { return localStorage.getItem('ryl.layout') || 'grid'; } catch { return 'grid'; } })();
+const isMarked = (a) => { const r = rows.get(`${a.id}|${today}`); return !!r && (!!r.status || !!r.voided_at); };
+function quickStartHTML() {
+  const left = acts.filter((a) => !isMarked(a)).length;
+  return `<button class="qt-start" id="qt-start" type="button" ${left ? '' : 'data-alldone'}><span class="qs-ic">${icon(left ? 'play' : 'check-check')}</span>
+    <span class="qs-tx"><b>${left ? 'Quick tick' : 'All marked for today'}</b><small>${left ? `${left} habit${left > 1 ? 's' : ''} left · one at a time, about 30 seconds` : 'Great work. Come back tomorrow.'}</small></span>${left ? icon('chevron-right') : ''}</button>`;
+}
+function refreshQuickStart() { const b = $('#qt-start'); if (b) b.outerHTML = quickStartHTML(); }
+
+function quickTick() {
+  const queue = acts.filter((a) => !isMarked(a));
+  if (!queue.length) return toast('Every habit is marked for today.', 'info');
+  let i = 0, nDone = 0, nMiss = 0, gained = 0;
+  const scrim = document.createElement('div');
+  scrim.className = 'qt'; scrim.setAttribute('role', 'dialog'); scrim.setAttribute('aria-modal', 'true'); scrim.setAttribute('aria-label', 'Quick tick');
+  document.body.appendChild(scrim); document.body.style.overflow = 'hidden';
+  const close = () => { scrim.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); refreshQuickStart(); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') answer('done'); if (e.key === 'ArrowLeft') answer('not_done'); };
+  document.addEventListener('keydown', onKey);
+  const doneCount = () => acts.filter((a) => rows.get(`${a.id}|${today}`)?.status === 'done').length;
+  const draw = () => {
+    if (i >= queue.length) return summary();
+    const a = queue[i], img = activityImageUrl(a.image_path), marked = acts.filter(isMarked).length;
+    scrim.innerHTML = `<div class="qt-top"><button class="iconbtn" data-qt-close aria-label="Close">${icon('x')}</button>
+        <div class="qt-prog"><i style="width:${Math.round(100 * marked / acts.length)}%"></i></div><b class="qt-count">${marked}/${acts.length}</b></div>
+      <div class="qt-card" id="qt-card" style="--tc:${tColor(cat.slug)}">
+        <div class="qt-art">${icon(a.icon || 'circle-dot')}${img ? `<img src="${esc(img)}" alt="" data-fallback>` : ''}<span class="no">${String(a.number).padStart(2, '0')}</span><span class="ptag">+${a.points} pts</span>
+          <span class="qt-stamp ok">${icon('check')}</span><span class="qt-stamp no">${icon('x')}</span></div>
+        <div class="qt-body"><h2>${esc(a.default_name)}</h2>${a.description ? `<p>${esc(a.description)}</p>` : ''}<small>Did you do this today?</small></div>
+      </div>
+      <div class="qt-btns"><button class="qt-b no" data-qt="not_done" aria-label="Not done">${icon('x')}<span>Not done</span></button>
+        <button class="qt-b ok" data-qt="done" aria-label="Done">${icon('check')}<span>Done</span></button></div>
+      <div class="qt-foot"><span>Swipe → done · ← not done</span><button class="link" data-qt-skip>Skip</button></div>`;
+    wireSwipe($('#qt-card', scrim));
+  };
+  const answer = (v) => {
+    if (i >= queue.length) return;
+    const a = queue[i], card = $('#qt-card', scrim), btn = scrim.querySelector(`[data-qt="${v}"]`);
+    if (card) { card.classList.add(v === 'done' ? 'out-r' : 'out-l'); }
+    if (v === 'done') { nDone++; gained += a.points; } else nMiss++;
+    mark({ dataset: { id: a.id } }, v, btn, i === queue.length - 1 && acts.every((x) => x.id === a.id || isMarked(x)) && v === 'done');
+    i++; setTimeout(draw, 260);
+  };
+  const summary = () => {
+    const all = acts.every(isMarked), d = doneCount();
+    scrim.innerHTML = `<div class="qt-top"><button class="iconbtn" data-qt-close aria-label="Close">${icon('x')}</button><div class="qt-prog"><i style="width:100%"></i></div><b class="qt-count">${acts.filter(isMarked).length}/${acts.length}</b></div>
+      <div class="qt-sum"><span class="qt-sum-ic">${icon(nDone ? 'trophy' : 'sprout')}</span>
+        <h2>${nDone ? (all && d === acts.length ? 'Perfect day! 🎉' : 'Well done!') : 'All marked'}</h2>
+        <p>${nDone} done${nMiss ? ` · ${nMiss} not done` : ''} just now${gained ? ` · <b>+${gained} pts</b>` : ''}</p>
+        <p class="muted">${d} of ${acts.length} ${esc(cat.name)} habits done today.</p>
+        <button class="btn btn-gold btn-block" data-qt-close>Back to ${esc(cat.name)}</button></div>`;
+  };
+  function wireSwipe(card) {
+    if (!card) return;
+    let x0 = null, dx = 0;
+    card.addEventListener('pointerdown', (e) => { x0 = e.clientX; dx = 0; card.setPointerCapture(e.pointerId); card.classList.add('drag'); });
+    card.addEventListener('pointermove', (e) => {
+      if (x0 == null) return; dx = e.clientX - x0;
+      card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+      card.classList.toggle('lean-r', dx > 40); card.classList.toggle('lean-l', dx < -40);
+    });
+    const end = () => {
+      if (x0 == null) return; x0 = null; card.classList.remove('drag');
+      if (dx > 90) answer('done'); else if (dx < -90) answer('not_done');
+      else { card.style.transform = ''; card.classList.remove('lean-r', 'lean-l'); }
+    };
+    card.addEventListener('pointerup', end); card.addEventListener('pointercancel', end);
+  }
+  scrim.addEventListener('click', (e) => {
+    if (e.target.closest('[data-qt-close]')) return close();
+    if (e.target.closest('[data-qt-skip]')) { i++; return draw(); }
+    const b = e.target.closest('[data-qt]'); if (b) answer(b.dataset.qt);
+  });
+  draw();
+}
+
 function renderWeek() {
   const minWeek = mondayOf(me.profile.joined_on > today ? today : me.profile.joined_on);
   const thisWeek = mondayOf(today);
@@ -163,8 +240,10 @@ function renderWeek() {
       <span>${fmtShort(weekStart)} – ${fmtShort(addDays(weekStart, 6))}</span>
       <button id="next-w" aria-label="Next week" ${weekStart >= thisWeek ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
       ${weekStart !== thisWeek ? `<button class="btn btn-ghost btn-sm" id="this-w">Back to this week</button>` : ''}</div>
-    <div class="legend"><span><i style="background:var(--c-success)"></i>Done</span><span><i style="background:color-mix(in srgb, var(--c-danger) 35%, transparent)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
-    <div class="acts">${acts.map(cardHTML).join('')}</div>
+    ${weekStart === thisWeek ? quickStartHTML() : ''}
+    <div class="legend-row"><div class="legend"><span><i style="background:var(--c-success)"></i>Done</span><span><i style="background:color-mix(in srgb, var(--c-danger) 35%, transparent)"></i>Not done (0 pts)</span><span><i style="border:1.5px solid var(--gold-hi)"></i>Today</span></div>
+      <div class="t-view" role="group" aria-label="Layout"><button data-lay="grid" aria-pressed="${layout === 'grid'}" aria-label="Cards">${icon('grid-2x2')}</button><button data-lay="list" aria-pressed="${layout === 'list'}" aria-label="List">${icon('list-checks')}</button></div></div>
+    <div class="acts ${layout === 'list' ? 'is-list' : ''}" id="acts">${acts.map(cardHTML).join('')}</div>
     ${weekStart !== thisWeek ? `<p class="muted" style="font-size:13px">Past weeks are view-only. Only today can be marked.</p>` : ''}`;
   $('#prev-w')?.addEventListener('click', () => shiftWeek(-7));
   $('#next-w')?.addEventListener('click', () => shiftWeek(7));
@@ -230,7 +309,7 @@ function setView(v) {
   if (v === 'week') showWeek(); else if (v === 'month') showMonth(); else showHistory();
 }
 
-async function mark(card, value) {
+async function mark(card, value, fxBtn = null, fxAll = false) {
   const id = card.dataset.id;
   if (busy.has(id)) return;
   const tapKey = `${id}|${value}`, now = Date.now();
@@ -250,7 +329,7 @@ async function mark(card, value) {
   if (next) {   // instant reward: chime, buzz, pop, "+10"
     const c = $(`.act[data-id="${id}"]`), leftNow = acts.filter((x) => !rows.get(`${x.id}|${today}`)).length;
     if (next === 'done') { c?.classList.add('just-done'); setTimeout(() => c?.classList.remove('just-done'), 500); }
-    tickFx(c?.querySelector(`[data-mark="${next}"]`), { kind: next === 'done' ? (leftNow === 0 ? 'all' : 'done') : 'miss', points: next === 'done' ? a.points : 0 });
+    tickFx(fxBtn || c?.querySelector(`[data-mark="${next}"]`), { kind: next === 'done' ? (leftNow === 0 || fxAll ? 'all' : 'done') : 'miss', points: next === 'done' ? a.points : 0 });
   }
 
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
@@ -278,6 +357,7 @@ function refreshCard(id, pending = false) {
   const a = acts.find((x) => x.id === id);
   old.outerHTML = cardHTML(a);
   if (pending) $$(`.act[data-id="${id}"] .mk`).forEach((b) => { b.disabled = true; });
+  refreshQuickStart();
   const bar = $('#today-bar'), oldFg = bar.querySelector('.fg');
   const prev = oldFg ? oldFg.style.strokeDashoffset : '';
   bar.innerHTML = todayBar();
@@ -369,6 +449,10 @@ async function renderDetail() {
     const m = e.target.closest('[data-mark]'); if (m) return mark(m.closest('.act'), m.dataset.mark);
     const n = e.target.closest('[data-note]'); if (n) return noteDialog(n.closest('.act'));
     if (e.target.closest('#t-notes')) return openTrackerSheet(cat, acts, me.user.id, { color: tColor(cat.slug) });
+    if (e.target.closest('#qt-start')) return quickTick();
+    const ly = e.target.closest('[data-lay]');
+    if (ly) { layout = ly.dataset.lay; try { localStorage.setItem('ryl.layout', layout); } catch { /* ignore */ }
+      $('#acts')?.classList.toggle('is-list', layout === 'list'); $$('[data-lay]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lay === layout))); return; }
   });
   // New day while the app was in the background → refresh.
   document.addEventListener('visibilitychange', async () => {
