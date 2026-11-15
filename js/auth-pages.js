@@ -89,13 +89,17 @@ if (page === 'login') {
 
   // login with a one-time code sent to the email (works for Gmail, Yahoo, Zoho, office mail…).
   // shouldCreateUser:false → only emails the coach added get a code.
-  let otpMode = false;
-  const otpOn = (on) => {
-    otpMode = on;
-    $('#password').closest('.field').hidden = on; $('.row-between').hidden = on;
-    $('#otp-field').hidden = !on;
-    $('#login-btn').textContent = on ? 'Verify code' : 'Log in';
-    $('#otp-btn-l').textContent = on ? 'Use password instead' : 'Get a login code by email';
+  // mode: 'pw' (email + password) | 'ask' (email → Send code) | 'code' (type the code)
+  let mode = 'pw';
+  const setMode = (m) => {
+    mode = m;
+    $('#password').closest('.field').hidden = m !== 'pw'; $('.row-between').hidden = m !== 'pw';
+    $('#otp-field').hidden = m !== 'code';
+    $('#login-btn').textContent = m === 'pw' ? 'Log in' : m === 'ask' ? 'Send code to my email' : 'Verify code';
+    $('#otp-btn-l').textContent = m === 'pw' ? 'Get a login code by email' : 'Use password instead';
+    const em = $('#email'); setFieldError(em, '');
+    if (m === 'ask') { $('#otp-hint').textContent = ''; showNotice('info', 'Type your email and tap "Send code". We will email you a 6-digit code.'); (em.value ? $('#login-btn') : em).focus(); }
+    if (m === 'pw') $('#notice').hidden = true;
   };
   const sendCode = async () => {
     const email = $('#email');
@@ -108,20 +112,25 @@ if (page === 'login') {
         : m.includes('rate limit') || m.includes('security purposes') ? 'A code was sent just now. Wait a minute, then try again.' : friendlyError(error));
       return false;
     }
-    $('#otp-hint').textContent = `We sent a code to ${email.value.trim()}. Check your inbox and spam folder. It can take a minute.`;
+    $('#otp-hint').innerHTML = `We sent a code to ${esc(email.value.trim())}. Check your inbox and spam folder. <button type="button" class="link" id="otp-resend">Send again</button>`;
     showNotice('ok', 'Code sent. Type it below.');
     return true;
   };
-  $('#otp-btn').addEventListener('click', async (e) => {
-    if (otpMode) { otpOn(false); $('#notice').hidden = true; return; }
-    let sent = false;
-    await withBusy(e.currentTarget, 'Sending code…', async () => { sent = await sendCode(); });
-    if (sent) { otpOn(true); $('#otp').focus(); }
+  $('#otp-btn').addEventListener('click', () => setMode(mode === 'pw' ? 'ask' : 'pw'));
+  document.addEventListener('click', async (e) => {
+    if (!e.target.closest('#otp-resend')) return;
+    e.target.disabled = true; if (await sendCode()) $('#otp').focus(); e.target.disabled = false;
   });
 
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (otpMode) {
+    if (mode === 'ask') {
+      let sent = false;
+      await withBusy($('#login-btn'), 'Sending code…', async () => { sent = await sendCode(); });
+      if (sent) { setMode('code'); $('#otp').focus(); }
+      return;
+    }
+    if (mode === 'code') {
       const email = $('#email'), code = $('#otp'), v = code.value.replace(/\D/g, '');
       if (!checkEmail(email) || !setFieldError(code, v.length < 6 ? 'Type the code from your email.' : '')) return;
       return withBusy($('#login-btn'), 'Checking…', async () => {
