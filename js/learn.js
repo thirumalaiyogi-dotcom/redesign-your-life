@@ -403,6 +403,7 @@ async function renderTodo() {
   const { data, error } = await supabase.from('todos').select(TCOLS).eq('member_id', me.user.id).order('created_at').limit(1000);
   if (error) return errorPanel($('#td-body'), error, renderTodo);
   todos = data || []; drawTodo(); drawAddChips();
+  if (location.hash === '#add') { setTimeout(() => { $('#td-title').focus(); $('#td-chips').hidden = false; }, 150); history.replaceState(null, '', location.pathname); }
 
   const title = $('#td-title');
   const openChips = () => { $('#td-chips').hidden = false; };

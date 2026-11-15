@@ -1,6 +1,6 @@
 // Shared UI helpers: escaping, toast, busy buttons, confirm dialog, navigation chrome.
 import { icon } from './icons.js';
-import { app } from './supabase.js';
+import { app, supabase } from './supabase.js';
 import { toggleTheme, currentTheme } from './theme.js';
 export { icon };
 
@@ -122,9 +122,23 @@ export function memberNav(current) {
     [app('member/journal.html'), 'notebook-pen', 'Journal', 'Journal', 'journal'],
     [app('member/profile.html'), 'user-round', 'Profile', 'Profile', 'profile']
   ];
-  return `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, short, key]) =>
+  setTimeout(todoBadge, 0);
+  const onTodo = /member\/todo\.html/.test(location.pathname);
+  const fab = onTodo ? '' : `<a class="todo-fab" href="${app('member/todo.html#add')}" aria-label="To-do list"><span class="tf-ic">${icon('list-checks')}</span><span class="tf-l">To-do</span><i class="tf-badge" id="tf-badge" hidden></i></a>`;
+  return fab + `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, short, key]) =>
     `<a href="${href}" ${key === current ? 'aria-current="page"' : ''} aria-label="${esc(label)}">${icon(ic)}${label === short
       ? `<span>${esc(label)}</span>` : `<span class="l-long">${esc(label)}</span><span class="l-short">${esc(short)}</span>`}</a>`).join('')}</div></nav>`;
+}
+
+// red number on the To-do button: tasks for today that are still open (incl. overdue)
+async function todoBadge() {
+  const b = document.getElementById('tf-badge'); if (!b) return;
+  try {
+    const { data } = await supabase.auth.getSession(); const uid = data.session?.user?.id; if (!uid) return;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const { count } = await supabase.from('todos').select('id', { count: 'exact', head: true }).eq('member_id', uid).is('done_at', null).lte('due_date', today);
+    if (count) { b.textContent = count > 99 ? '99+' : count; b.hidden = false; b.parentElement.setAttribute('aria-label', `To-do list: ${count} for today`); }
+  } catch { /* badge is optional */ }
 }
 
 export function adminNav(current) {

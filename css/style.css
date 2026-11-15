@@ -252,3 +252,17 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
 .preview-bar .icon { width: 16px; height: 16px; flex: none; }
 .preview-bar span { flex: 1; min-width: 0; }
 .preview-bar a { display: inline-flex; align-items: center; gap: 4px; color: var(--c-primary); text-decoration: none; white-space: nowrap; }
+
+/* floating To-do button (like WhatsApp's chat button), above the bottom menu */
+.todo-fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 41;
+  display: inline-flex; align-items: center; gap: 8px; height: 56px; padding: 0 20px 0 16px; border-radius: 18px; text-decoration: none;
+  background: var(--c-primary); color: #fff; box-shadow: 0 10px 26px rgba(14, 50, 38, .35), 0 2px 6px rgba(0, 0, 0, .15); font-weight: 750; font-size: 15px; }
+.todo-fab .tf-ic { display: grid; place-items: center; }
+.todo-fab .icon { width: 22px; height: 22px; }
+.todo-fab:active { transform: scale(.96); }
+.todo-fab:focus-visible { outline: 3px solid var(--c-accent, #e6c98c); outline-offset: 2px; }
+.tf-badge { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; background: #e5484d; color: #fff;
+  font-style: normal; font-size: 12px; font-weight: 800; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px var(--c-bg); }
+:root[data-theme="dark"] .todo-fab { background: var(--c-primary-light, #2c6b55); }
+/* keep page bottoms clear of the button */
+body:has(.todo-fab) .app { padding-bottom: 72px; }
