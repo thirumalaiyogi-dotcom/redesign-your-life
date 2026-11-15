@@ -33,8 +33,61 @@ if (!window.supabase?.createClient) {
   throw new Error('Supabase library not loaded. Add <script src="/js/vendor/supabase.js"></script> before app modules.');
 }
 
+// ---- Offline: the habits a member last saw are kept on the phone ----
+// Only a few read-only member requests are kept (tracker list, habits, this week's ticks, profile, today's date,
+// home summary), per user, for 3 days, and cleared on log-out. When the phone has no internet the app shows
+// these instead of an error. Writes (ticks) never come from here: they are kept separately and sent later.
+const OFFLINE_KEY = 'ryl.offline';
+const OFFLINE_TABLES = /\/rest\/v1\/(tracker_categories|activities|daily_checkins|profiles|tracker_assignments)$/;
+const OFFLINE_RPC = /\/rest\/v1\/rpc\/(app_today|get_my_dashboard|get_my_streaks)$/;
+const OFFLINE_MAX_AGE = 3 * 864e5;
+const userOf = (auth) => { try { return JSON.parse(atob(String(auth).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || ''; } catch { return ''; } };
+const readOffline = () => safe(() => JSON.parse(localStorage.getItem(OFFLINE_KEY) || '{}'), {}) || {};
+// The saved login (used only when the phone is offline and the login could not be refreshed)
+export function storedSession() {
+  const v = safe(() => JSON.parse(sessionStore.getItem('ryl.auth') || 'null'));
+  const sess = v?.currentSession || v;
+  return sess?.user?.id ? sess : null;
+}
+export function clearOfflineData() { safe(() => localStorage.removeItem(OFFLINE_KEY)); }
+
+async function offlineFetch(input, init = {}) {
+  const url = typeof input === 'string' ? input : input.url;
+  const method = String(init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+  const path = safe(() => new URL(url).pathname, '');
+  const keep = (method === 'GET' && OFFLINE_TABLES.test(path)) || (method === 'POST' && OFFLINE_RPC.test(path));
+  if (!keep) return fetch(input, init);
+  const h = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
+  const uid = userOf((h.get('Authorization') || '').replace(/^Bearer /, ''));
+  const key = `${uid}|${method} ${url}|${typeof init.body === 'string' ? init.body : ''}|${h.get('Accept') || ''}`;
+  try {
+    const res = await fetch(input, init);
+    if (res.ok && uid) {
+      const text = await res.clone().text();
+      if (text.length < 200000) safe(() => {
+        const all = readOffline();
+        all[key] = { t: text, ct: res.headers.get('content-type'), cr: res.headers.get('content-range'), at: Date.now() };
+        const keys = Object.keys(all).sort((x, y) => all[y].at - all[x].at);
+        for (const k of keys.slice(80)) delete all[k];       // keep the 80 most recent answers
+        localStorage.setItem(OFFLINE_KEY, JSON.stringify(all));
+      });
+    }
+    return res;
+  } catch (err) {
+    const all = readOffline();
+    const alt = uid ? key : key.replace(/^[^|]*/, storedSession()?.user?.id || '');
+    const hit = all[key] || all[alt];
+    if (!hit || Date.now() - hit.at > OFFLINE_MAX_AGE) throw err;
+    safe(() => dispatchEvent(new CustomEvent('ryl:offline-data')));
+    const headers = { 'content-type': hit.ct || 'application/json' };
+    if (hit.cr) headers['content-range'] = hit.cr;
+    return new Response(hit.t, { status: 200, headers });
+  }
+}
+
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: sessionStore, storageKey: 'ryl.auth' }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: sessionStore, storageKey: 'ryl.auth' },
+  global: { fetch: offlineFetch }
 });
 
 // Activity images: bundled files live in /assets/images/, coach uploads live in Storage (full URL).

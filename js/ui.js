@@ -28,6 +28,12 @@ export const formatToday = () => fmtDay.format(new Date());
 export const formatNumber = (n) => Number(n || 0).toLocaleString('en-IN');
 
 let toastTimer;
+// No internet: pages are showing the habits saved on this phone (see supabase.js)
+let offlineToldOnce = false;
+addEventListener('ryl:offline-data', () => {
+  if (offlineToldOnce) return; offlineToldOnce = true;
+  setTimeout(() => toast('No internet. Showing your saved habits; your ticks will be sent when you are back online.', 'info'), 300);
+});
 export function toast(message, kind = 'ok') {
   let el = $('#toast');
   if (!el) {

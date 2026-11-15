@@ -1,7 +1,7 @@
 // Service worker — Deepak's Redesign Your Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v57';
+const VERSION = 'ryl-v59';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;
@@ -14,8 +14,18 @@ const PRECACHE = [
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/favicon-32.png', 'assets/icons/logo-96.png'
 ];
 
+// member pages are saved too, so the app opens with no internet (it then shows the habits saved on the phone)
+const MEMBER_PAGES = ['dashboard', 'trackers', 'tracker-detail', 'leaderboard', 'journal', 'profile', 'progress', 'todo', 'learn'].map((p) => `member/${p}.html`);
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE.map((p) => new Request(p, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  event.waitUntil((async () => {
+    await (await caches.open(SHELL)).addAll(PRECACHE.map((p) => new Request(p, { cache: 'reload' })));
+    const pages = await caches.open(PAGES);
+    await Promise.all(MEMBER_PAGES.map(async (p) => {
+      try { const res = await fetch(new Request(p, { cache: 'reload' })); if (res.ok) await pages.put(new Request(new URL(p, self.registration.scope).href), res); } catch { /* next visit caches it */ }
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {

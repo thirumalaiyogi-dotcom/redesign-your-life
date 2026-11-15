@@ -1,6 +1,6 @@
 // Authentication & role-based access for every page.
 // Roles come only from public.profiles (set by the database), never from the browser.
-import { supabase, setRemember, app, APP_ROOT } from './supabase.js';
+import { supabase, setRemember, app, APP_ROOT, clearOfflineData, storedSession } from './supabase.js';
 
 export const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Coach', member: 'Member' };
 export const isCoach = (role) => role === 'admin' || role === 'super_admin';
@@ -81,6 +81,8 @@ function goLogin(message) {
 export async function requireRole(allowed) {
   let session;
   try { session = await getSession(); } catch { session = null; }
+  // no internet and the login could not be refreshed: keep going with the saved login (pages show saved data)
+  if (!session && navigator.onLine === false) session = storedSession();
   if (!session) { goLogin(); return new Promise(() => {}); }
 
   // Pages open straight away with the profile from the last page (this tab, last 10 minutes);
@@ -90,7 +92,7 @@ export async function requireRole(allowed) {
   if (profile) {
     fetchProfile(session.user.id).then((fresh) => {
       if (!fresh || fresh.role !== profile.role || !fresh.is_active || fresh.must_change) { clearProfileCache(); location.reload(); }
-      else saveProfile(fresh);
+      else if (fresh.is_active && !fresh.must_change) saveProfile(fresh);
     }).catch(() => { /* offline: keep going */ });
   } else {
     try { profile = await fetchProfile(session.user.id); }
@@ -98,7 +100,7 @@ export async function requireRole(allowed) {
       document.body.classList.remove('guarding');
       throw e;   // page shows a connection error instead of redirect-looping
     }
-    if (profile) saveProfile(profile);
+    if (profile?.is_active && !profile.must_change) saveProfile(profile);   // never remember a profile that must be redirected
   }
   if (!profile) { await supabase.auth.signOut(); goLogin('noprofile'); return new Promise(() => {}); }
   if (!profile.is_active) { await supabase.auth.signOut(); goLogin('paused'); return new Promise(() => {}); }
@@ -109,7 +111,7 @@ export async function requireRole(allowed) {
   if (!allowed.includes(profile.role) && !preview) { location.replace(homeFor(profile.role)); return new Promise(() => {}); }
 
   // Another tab logged out → leave protected pages.
-  supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') { clearProfileCache(); goLogin(); } });
+  supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') { clearProfileCache(); clearOfflineData(); goLogin(); } });
   document.body.classList.remove('guarding');
   return { session, user: session.user, profile };
 }
@@ -155,7 +157,7 @@ export async function updatePassword(password) {
 
 export async function signOut() {
   leaving = true;
-  clearProfileCache();
+  clearProfileCache(); clearOfflineData();
   await supabase.auth.signOut();
   location.replace(app('login.html?msg=signedout'));
 }
