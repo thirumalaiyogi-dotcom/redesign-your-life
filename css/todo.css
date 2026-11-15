@@ -138,3 +138,5 @@
 .qd .tdl { border: none; border-radius: 0; background: transparent; }
 .qd .tdi { padding-left: 0; }
 @media (prefers-reduced-motion: reduce) { .tdi, .tdi-chk, .td-ring .fg, .td-fold > .icon { transition: none; } }
+.tdm-l { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; color: var(--c-text-2); width: 100%; }
+.tdm-l .icon { width: 15px; height: 15px; }

@@ -217,12 +217,16 @@ const dueLabel = (d) => {
 };
 // important first, then urgent, then oldest
 const rank = (a, b) => (a.quadrant || 4) - (b.quadrant || 4) || (a.created_at < b.created_at ? -1 : 1);
-const TCOLS = 'id, title, due_date, done_at, created_at, quadrant';
+const TCOLS = 'id, title, due_date, done_at, created_at, quadrant, repeat, repeat_of';
+const REP = [[null, 'Never'], ['daily', 'Every day'], ['weekdays', 'Mon–Fri'], ['weekly', 'Every week'], ['monthly', 'Every month']];
+const repLabel = (r) => (REP.find((x) => x[0] === r) || REP[0])[1];
+let addRep = null;
 
 function rowHTML(t, { showDate = true } = {}) {
   const today = istToday(), over = !t.done_at && t.due_date && t.due_date < today;
   const meta = [showDate && t.due_date ? `<span class="${over ? 'late' : ''}">${icon('calendar')}${esc(dueLabel(t.due_date))}</span>` : '',
-    isUrg(t) && !t.done_at ? `<span class="urg">${icon('flame')}Urgent</span>` : ''].filter(Boolean).join('');
+    isUrg(t) && !t.done_at ? `<span class="urg">${icon('flame')}Urgent</span>` : '',
+    t.repeat ? `<span>${icon('repeat')}${esc(repLabel(t.repeat))}</span>` : ''].filter(Boolean).join('');
   return `<li class="tdi ${t.done_at ? 'is-done' : ''} ${over ? 'is-over' : ''} ${isImp(t) ? 'is-imp' : ''}" data-id="${t.id}">
     <button class="tdi-chk" data-done="${t.id}" aria-pressed="${!!t.done_at}" aria-label="${t.done_at ? 'Mark not done' : 'Mark done'}: ${esc(t.title)}">${icon('check')}</button>
     <span class="tdi-tx"><b>${esc(t.title)}</b>${meta ? `<small>${meta}</small>` : ''}</span>
@@ -332,7 +336,8 @@ function drawAddChips() {
   const chip = (k, l) => `<button type="button" class="tdc" data-when="${k}" aria-pressed="${addWhen === k}">${l}</button>`;
   box.innerHTML = `${chip('today', 'Today')}${chip('tomorrow', 'Tomorrow')}${chip('week', 'This week')}
     <label class="tdc ${addWhen === 'date' ? 'on' : ''}">${icon('calendar')}<span>${addWhen === 'date' && addDate ? esc(dueLabel(addDate)) : 'Date'}</span><input type="date" id="td-date" min="${istToday()}" aria-label="Pick a date"></label>
-    ${chip('none', 'No date')}<span class="tdc-sep"></span>
+    ${chip('none', 'No date')}
+    <button type="button" class="tdc ${addRep ? 'on' : ''}" data-rep-cycle aria-label="Repeat: ${esc(repLabel(addRep))}">${icon('repeat')}<span>${addRep ? esc(repLabel(addRep)) : 'Repeat'}</span></button><span class="tdc-sep"></span>
     <button type="button" class="tdc flag imp" data-flag="imp" aria-pressed="${addImp}" aria-label="Important">${icon('star')}</button>
     <button type="button" class="tdc flag urg" data-flag="urg" aria-pressed="${addUrg}" aria-label="Urgent">${icon('flame')}</button>`;
 }
@@ -349,6 +354,7 @@ async function moreMenu(t) {
   scrim.innerHTML = `<div class="dialog td-menu" role="dialog" aria-modal="true" aria-labelledby="tdm-t"><h2 id="tdm-t">${esc(t.title)}</h2>
     <div class="tdm-row">${[['Today', today], ['Tomorrow', addD(today, 1)], ['Next week', addD(mondayOf(today), 7)], ['No date', '']].map(([l, d]) => `<button class="tdc" data-set-due="${d}" aria-pressed="${(t.due_date || '') === d}">${l}</button>`).join('')}
       <label class="tdc">${icon('calendar')}<span>Pick date</span><input type="date" id="tdm-date" value="${t.due_date || ''}"></label></div>
+    <div class="tdm-row"><span class="tdm-l">${icon('repeat')}Repeat</span>${REP.map(([k, l]) => `<button class="tdc" data-set-rep="${k || ''}" aria-pressed="${(t.repeat || '') === (k || '')}">${l}</button>`).join('')}</div>
     <div class="tdm-row"><button class="tdc flag imp" data-set-flag="imp" aria-pressed="${isImp(t)}">${icon('star')}Important</button><button class="tdc flag urg" data-set-flag="urg" aria-pressed="${isUrg(t)}">${icon('flame')}Urgent</button></div>
     <div class="actions"><button class="btn btn-ghost" data-tdm-del style="color:var(--c-danger-ink)">${icon('x')}Delete</button><button class="btn btn-gold" data-tdm-close>Done</button></div></div>`;
   document.body.appendChild(scrim);
@@ -361,6 +367,7 @@ async function moreMenu(t) {
   scrim.addEventListener('click', async (e) => {
     if (e.target === scrim || e.target.closest('[data-tdm-close]')) return close();
     const sd = e.target.closest('[data-set-due]'); if (sd) return save({ due_date: sd.dataset.setDue || null });
+    const sr = e.target.closest('[data-set-rep]'); if (sr) return save({ repeat: sr.dataset.setRep || null, ...(sr.dataset.setRep && !t.due_date ? { due_date: today } : {}) });
     const sf = e.target.closest('[data-set-flag]');
     if (sf) { const imp = sf.dataset.setFlag === 'imp' ? !isImp(t) : isImp(t), urg = sf.dataset.setFlag === 'urg' ? !isUrg(t) : isUrg(t); return save({ quadrant: quadOf(imp, urg) }); }
     if (e.target.closest('[data-tdm-del]')) {
@@ -399,10 +406,10 @@ async function renderTodo() {
     if (!v) { title.focus(); return toast('Type a task first', 'info'); }
     const due = whenDate();
     const btn = e.target.querySelector('[type=submit]'); btn.disabled = true;
-    const { data: row, error: err } = await supabase.from('todos').insert({ member_id: me.user.id, title: v, due_date: due, quadrant: quadOf(addImp, addUrg) }).select(TCOLS).single();
+    const { data: row, error: err } = await supabase.from('todos').insert({ member_id: me.user.id, title: v, due_date: due || (addRep ? istToday() : null), quadrant: quadOf(addImp, addUrg), repeat: addRep }).select(TCOLS).single();
     btn.disabled = false;
     if (err) return toast(friendlyError(err), 'bad');
-    todos.push(row); title.value = ''; addImp = false; addUrg = false; drawAddChips(); drawTodo(); title.focus();
+    todos.push(row); title.value = ''; addImp = false; addUrg = false; addRep = null; drawAddChips(); drawTodo(); title.focus();
     toast(due ? `Added for ${dueLabel(due).toLowerCase() === 'today' ? 'today' : dueLabel(due)}` : 'Added');
   });
   main.addEventListener('change', (e) => {
@@ -413,6 +420,7 @@ async function renderTodo() {
     let t;
     if ((t = g('[data-tdv]'))) { tdView = t.dataset.tdv === tdView && tdView === 'matrix' ? 'today' : t.dataset.tdv; try { sessionStorage.setItem('ryl.td.view', tdView); } catch { /* ignore */ } $('.td-mx').setAttribute('aria-selected', String(tdView === 'matrix')); return drawTodo(); }
     if ((t = g('[data-when]'))) { addWhen = t.dataset.when; return drawAddChips(); }
+    if (g('[data-rep-cycle]')) { const i = REP.findIndex((x) => x[0] === addRep); addRep = REP[(i + 1) % REP.length][0]; return drawAddChips(); }
     if ((t = g('[data-flag]'))) { if (t.dataset.flag === 'imp') addImp = !addImp; else addUrg = !addUrg; return drawAddChips(); }
     if ((t = g('[data-day]'))) { selDay = t.dataset.day; return drawTodo(); }
     if ((t = g('[data-wk]'))) { weekOf = addD(weekOf, 7 * Number(t.dataset.wk)); selDay = null; return drawTodo(); }
@@ -440,6 +448,11 @@ async function renderTodo() {
       t.disabled = false;
       if (err) { li?.classList.remove('pop'); return toast(friendlyError(err), 'bad'); }
       x.done_at = val;
+      if (x.repeat) {   // the database made (or removed) the next copy
+        const { data: fresh } = await supabase.from('todos').select(TCOLS).eq('member_id', me.user.id).order('created_at').limit(1000);
+        if (fresh) todos = fresh;
+        if (val) toast(`Next one: ${dueLabel(todos.find((y) => y.repeat_of === x.id)?.due_date) || 'added'}`);
+      }
       setTimeout(drawTodo, val ? 380 : 0);
     }
   });

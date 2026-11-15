@@ -420,3 +420,8 @@ alter table public.session_notes add column if not exists category_id uuid refer
 alter table public.doubts        add column if not exists category_id uuid references public.tracker_categories(id) on delete set null;
 create index if not exists session_notes_category_idx on public.session_notes(category_id) where category_id is not null;
 create index if not exists doubts_category_idx on public.doubts(category_id) where category_id is not null;
+
+-- to-do repeat (2.4): daily / weekdays / weekly / monthly. Ticking one makes the next copy; unticking removes it again.
+alter table public.todos add column if not exists repeat text check (repeat in ('daily','weekdays','weekly','monthly'));
+alter table public.todos add column if not exists repeat_of uuid references public.todos(id) on delete set null;
+create index if not exists todos_repeat_of_idx on public.todos(repeat_of) where repeat_of is not null;

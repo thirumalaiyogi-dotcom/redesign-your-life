@@ -421,6 +421,11 @@ alter table public.doubts        add column if not exists category_id uuid refer
 create index if not exists session_notes_category_idx on public.session_notes(category_id) where category_id is not null;
 create index if not exists doubts_category_idx on public.doubts(category_id) where category_id is not null;
 
+-- to-do repeat (2.4): daily / weekdays / weekly / monthly. Ticking one makes the next copy; unticking removes it again.
+alter table public.todos add column if not exists repeat text check (repeat in ('daily','weekdays','weekly','monthly'));
+alter table public.todos add column if not exists repeat_of uuid references public.todos(id) on delete set null;
+create index if not exists todos_repeat_of_idx on public.todos(repeat_of) where repeat_of is not null;
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -1742,6 +1747,40 @@ drop trigger if exists on_auth_identity_linked on auth.identities;
 create trigger on_auth_identity_linked after insert on auth.identities
   for each row execute function public.clear_must_change_on_oauth();
 
+create or replace function public._todo_next_due(p_due date, p_repeat text)
+returns date language plpgsql immutable set search_path = '' as $$
+declare d date := p_due;
+begin
+  if p_repeat = 'daily' then return d + 1;
+  elsif p_repeat = 'weekly' then return d + 7;
+  elsif p_repeat = 'monthly' then return (d + interval '1 month')::date;
+  elsif p_repeat = 'weekdays' then
+    d := d + 1; while extract(isodow from d) > 5 loop d := d + 1; end loop; return d;
+  end if;
+  return null;
+end; $$;
+
+create or replace function public.todo_repeat()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_today date := public.app_today(); v_next date;
+begin
+  if new.repeat is null then return new; end if;
+  if old.done_at is null and new.done_at is not null then
+    -- next date after today (a late tick on a daily task does not leave a trail of past copies)
+    v_next := public._todo_next_due(coalesce(new.due_date, v_today), new.repeat);
+    while v_next <= v_today loop v_next := public._todo_next_due(v_next, new.repeat); end loop;
+    if not exists (select 1 from public.todos t where t.repeat_of = new.id) then
+      insert into public.todos(member_id, title, due_date, quadrant, repeat, repeat_of)
+      values (new.member_id, new.title, v_next, new.quadrant, new.repeat, new.id);
+    end if;
+  elsif old.done_at is not null and new.done_at is null then
+    delete from public.todos t where t.repeat_of = new.id and t.done_at is null;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists todos_repeat on public.todos;
+create trigger todos_repeat after update of done_at on public.todos for each row execute function public.todo_repeat();
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -2163,6 +2202,9 @@ create policy batch_steps_done_admin_read on public.batch_steps_done for select 
 grant insert (category_id) on public.session_notes to authenticated;
 grant update (category_id) on public.session_notes to authenticated;
 grant insert (category_id) on public.doubts to authenticated;
+
+-- to-do repeat (2.4)
+grant insert (repeat), update (repeat) on public.todos to authenticated;
 
 -- =====================================================================
 -- Deepak's Redesign Your Life — seed.sql  (run last)

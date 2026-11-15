@@ -1319,6 +1319,40 @@ drop trigger if exists on_auth_identity_linked on auth.identities;
 create trigger on_auth_identity_linked after insert on auth.identities
   for each row execute function public.clear_must_change_on_oauth();
 
+create or replace function public._todo_next_due(p_due date, p_repeat text)
+returns date language plpgsql immutable set search_path = '' as $$
+declare d date := p_due;
+begin
+  if p_repeat = 'daily' then return d + 1;
+  elsif p_repeat = 'weekly' then return d + 7;
+  elsif p_repeat = 'monthly' then return (d + interval '1 month')::date;
+  elsif p_repeat = 'weekdays' then
+    d := d + 1; while extract(isodow from d) > 5 loop d := d + 1; end loop; return d;
+  end if;
+  return null;
+end; $$;
+
+create or replace function public.todo_repeat()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_today date := public.app_today(); v_next date;
+begin
+  if new.repeat is null then return new; end if;
+  if old.done_at is null and new.done_at is not null then
+    -- next date after today (a late tick on a daily task does not leave a trail of past copies)
+    v_next := public._todo_next_due(coalesce(new.due_date, v_today), new.repeat);
+    while v_next <= v_today loop v_next := public._todo_next_due(v_next, new.repeat); end loop;
+    if not exists (select 1 from public.todos t where t.repeat_of = new.id) then
+      insert into public.todos(member_id, title, due_date, quadrant, repeat, repeat_of)
+      values (new.member_id, new.title, v_next, new.quadrant, new.repeat, new.id);
+    end if;
+  elsif old.done_at is not null and new.done_at is null then
+    delete from public.todos t where t.repeat_of = new.id and t.done_at is null;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists todos_repeat on public.todos;
+create trigger todos_repeat after update of done_at on public.todos for each row execute function public.todo_repeat();
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------

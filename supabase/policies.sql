@@ -388,3 +388,6 @@ create policy batch_steps_done_admin_read on public.batch_steps_done for select 
 grant insert (category_id) on public.session_notes to authenticated;
 grant update (category_id) on public.session_notes to authenticated;
 grant insert (category_id) on public.doubts to authenticated;
+
+-- to-do repeat (2.4)
+grant insert (repeat), update (repeat) on public.todos to authenticated;
