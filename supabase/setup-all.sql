@@ -415,6 +415,12 @@ create table if not exists public.batch_steps_done (
 );
 create index if not exists batch_steps_done_step_idx on public.batch_steps_done(step_id);
 
+-- 2.4: notes and questions can be about a whole tracker (one "Notes · Audio · Ask" sheet per tracker)
+alter table public.session_notes add column if not exists category_id uuid references public.tracker_categories(id) on delete set null;
+alter table public.doubts        add column if not exists category_id uuid references public.tracker_categories(id) on delete set null;
+create index if not exists session_notes_category_idx on public.session_notes(category_id) where category_id is not null;
+create index if not exists doubts_category_idx on public.doubts(category_id) where category_id is not null;
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -2153,6 +2159,10 @@ create policy batch_members_admin_read on public.batch_members for select to aut
 drop policy if exists batch_steps_done_admin_read on public.batch_steps_done;
 create policy batch_steps_done_admin_read on public.batch_steps_done for select to authenticated using ((select public.is_admin()));
 -- profiles.must_change (temporary password) is readable like the rest of the profile, never writable by the app
+-- tracker-level notes / questions (2.4)
+grant insert (category_id) on public.session_notes to authenticated;
+grant update (category_id) on public.session_notes to authenticated;
+grant insert (category_id) on public.doubts to authenticated;
 
 -- =====================================================================
 -- Deepak's Redesign Your Life — seed.sql  (run last)

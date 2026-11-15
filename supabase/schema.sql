@@ -414,3 +414,9 @@ create table if not exists public.batch_steps_done (
   primary key (batch_id, step_id)
 );
 create index if not exists batch_steps_done_step_idx on public.batch_steps_done(step_id);
+
+-- 2.4: notes and questions can be about a whole tracker (one "Notes · Audio · Ask" sheet per tracker)
+alter table public.session_notes add column if not exists category_id uuid references public.tracker_categories(id) on delete set null;
+alter table public.doubts        add column if not exists category_id uuid references public.tracker_categories(id) on delete set null;
+create index if not exists session_notes_category_idx on public.session_notes(category_id) where category_id is not null;
+create index if not exists doubts_category_idx on public.doubts(category_id) where category_id is not null;

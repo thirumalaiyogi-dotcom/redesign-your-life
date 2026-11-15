@@ -31,8 +31,8 @@ async function loadLearn() {
   const [s, m, n, d] = await Promise.all([
     supabase.from('sessions').select('id, title, session_date, body, created_at').order('session_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
     supabase.from('session_media').select('id, session_id, kind, ref, caption, sort_order').order('sort_order').order('created_at'),
-    supabase.from('session_notes').select('id, session_id, activity_id, situation, application, image_ref, created_at, updated_at, activities(default_name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200),
-    supabase.from('doubts').select('id, session_id, activity_id, question, answer, answered_at, created_at, activities(default_name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200)
+    supabase.from('session_notes').select('id, session_id, activity_id, situation, application, image_ref, created_at, updated_at, activities(default_name), tracker_categories(name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200),
+    supabase.from('doubts').select('id, session_id, activity_id, question, answer, answered_at, created_at, activities(default_name), tracker_categories(name)').eq('member_id', me.user.id).order('created_at', { ascending: false }).limit(200)
   ]);
   const err = s.error || m.error || n.error || d.error;
   if (err) throw err;
@@ -47,7 +47,7 @@ function noteHTML(n, withSession = true) {
     <div class="ln-row"><span class="tag t-sit">Situation</span><p>${esc(n.situation)}</p></div>
     ${n.application ? `<div class="ln-row"><span class="tag t-app">Application</span><p>${esc(n.application)}</p></div>` : ''}
     ${n.image_ref && L.pics[n.image_ref] ? `<a class="ln-pic" href="${esc(L.pics[n.image_ref])}" target="_blank" rel="noopener"><img src="${esc(L.pics[n.image_ref])}" alt="Picture added with this note" loading="lazy"></a>` : ''}
-    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${n.activities?.default_name ? `${icon('list-checks')}${esc(n.activities.default_name)} · ` : ''}${esc(ago(n.created_at))}</small>
+    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${n.tracker_categories?.name || n.activities?.default_name ? `${icon('list-checks')}${esc([n.tracker_categories?.name, n.activities?.default_name].filter(Boolean).join(' · '))} · ` : ''}${esc(ago(n.created_at))}</small>
       <button class="lnk-del" data-del-note="${n.id}" aria-label="Delete this note">${icon('x')}</button></div></article>`;
 }
 function doubtHTML(q, withSession = true) {
@@ -56,7 +56,7 @@ function doubtHTML(q, withSession = true) {
     <div class="q-q"><span class="qa-ic">${icon('message-square')}</span><p>${esc(q.question)}</p></div>
     ${q.answered_at ? `<div class="q-a"><span class="qa-ic">${icon('check')}</span><div><small>Coach answered · ${esc(ago(q.answered_at))}</small><p>${esc(q.answer)}</p></div></div>`
       : `<div class="q-wait">${icon('hourglass')}Waiting for your coach's answer</div>`}
-    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${q.activities?.default_name ? `${icon('list-checks')}${esc(q.activities.default_name)} · ` : ''}Asked ${esc(ago(q.created_at))}</small>
+    <div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)} · ` : ''}${q.tracker_categories?.name || q.activities?.default_name ? `${icon('list-checks')}${esc([q.tracker_categories?.name, q.activities?.default_name].filter(Boolean).join(' · '))} · ` : ''}Asked ${esc(ago(q.created_at))}</small>
       ${q.answered_at ? '' : `<button class="lnk-del" data-del-q="${q.id}" aria-label="Delete this question">${icon('x')}</button>`}</div></article>`;
 }
 function noteForm(sessionId = '') {

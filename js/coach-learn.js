@@ -26,14 +26,16 @@ async function loadAll() {
   const [s, m, d, n] = await Promise.all([
     supabase.from('sessions').select('id, title, session_date, body, is_published, created_at, updated_at').order('session_date', { ascending: false }).order('created_at', { ascending: false }).limit(200),
     supabase.from('session_media').select('id, session_id, kind, ref, caption, sort_order, created_at').order('sort_order').order('created_at'),
-    supabase.from('doubts').select('id, member_id, session_id, activity_id, question, answer, answered_at, created_at, profiles!doubts_member_id_fkey(full_name), activities(default_name)').order('created_at', { ascending: false }).limit(300),
-    supabase.from('session_notes').select('id, member_id, session_id, activity_id, situation, application, image_ref, created_at, profiles(full_name), activities(default_name)').order('created_at', { ascending: false }).limit(300)
+    supabase.from('doubts').select('id, member_id, session_id, activity_id, question, answer, answered_at, created_at, profiles!doubts_member_id_fkey(full_name), activities(default_name), tracker_categories(name)').order('created_at', { ascending: false }).limit(300),
+    supabase.from('session_notes').select('id, member_id, session_id, activity_id, situation, application, image_ref, created_at, profiles(full_name), activities(default_name), tracker_categories(name)').order('created_at', { ascending: false }).limit(300)
   ]);
   const err = s.error || m.error || d.error || n.error;
   if (err) throw err;
   C.sessions = s.data || []; C.media = m.data || []; C.doubts = d.data || []; C.notes = n.data || [];
   C.pics = await memberPicUrls(C.notes.filter((x) => x.image_ref).map((x) => x.image_ref));
 }
+// "Wealth Habits · E Wakeup" / "Wealth Habits" / "E Wakeup"
+const topic = (r) => [r.tracker_categories?.name, r.activities?.default_name].filter(Boolean).join(' · ');
 const sTitle = (id) => C.sessions.find((x) => x.id === id)?.title;
 
 // ---------------- list views ----------------
@@ -58,7 +60,7 @@ function doubtRow(q) {
       : `<form class="answer-form" data-answer="${q.id}" novalidate><label class="visually-hidden" for="ans-${q.id}">Your answer</label>
           <textarea id="ans-${q.id}" maxlength="2000" placeholder="Type your answer"></textarea>
           <button class="btn btn-primary btn-sm" type="submit" style="align-self:flex-start">${icon('arrow-right')}Send answer</button></form>`}
-    ${st || q.activities ? `<div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)}` : ''}${st && q.activities ? ' · ' : ''}${q.activities ? `${icon('list-checks')}${esc(q.activities.default_name)}` : ''}</small></div>` : ''}</article>`;
+    ${st || topic(q) ? `<div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)}` : ''}${st && topic(q) ? ' · ' : ''}${topic(q) ? `${icon('list-checks')}${esc(topic(q))}` : ''}</small></div>` : ''}</article>`;
 }
 function noteRow(n) {
   const st = n.session_id ? sTitle(n.session_id) : null;
@@ -67,7 +69,7 @@ function noteRow(n) {
     <div class="ln-row"><span class="tag t-sit">Situation</span><p>${esc(n.situation)}</p></div>
     ${n.application ? `<div class="ln-row"><span class="tag t-app">Application</span><p>${esc(n.application)}</p></div>` : ''}
     ${n.image_ref && C.pics?.[n.image_ref] ? `<a class="ln-pic" href="${esc(C.pics[n.image_ref])}" target="_blank" rel="noopener"><img src="${esc(C.pics[n.image_ref])}" alt="Member's picture" loading="lazy"></a>` : ''}
-    ${st || n.activities ? `<div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)}` : ''}${st && n.activities ? ' · ' : ''}${n.activities ? `${icon('list-checks')}${esc(n.activities.default_name)}` : ''}</small></div>` : ''}</article>`;
+    ${st || topic(n) ? `<div class="ln-foot"><small>${st ? `${icon('book-open')}${esc(st)}` : ''}${st && topic(n) ? ' · ' : ''}${topic(n) ? `${icon('list-checks')}${esc(topic(n))}` : ''}</small></div>` : ''}</article>`;
 }
 
 function drawList() {
@@ -285,8 +287,8 @@ export async function memberExtras(target, memberId) {
   const [p, g, n, d, s] = await Promise.all([
     supabase.from('profiles').select('city, profession, dream, hobbies, website').eq('id', memberId).maybeSingle(),
     supabase.from('member_goals').select('*').eq('member_id', memberId).maybeSingle(),
-    supabase.from('session_notes').select('id, session_id, activity_id, situation, application, image_ref, created_at, activities(default_name)').eq('member_id', memberId).order('created_at', { ascending: false }).limit(20),
-    supabase.from('doubts').select('id, session_id, activity_id, question, answer, answered_at, created_at, activities(default_name)').eq('member_id', memberId).order('created_at', { ascending: false }).limit(20),
+    supabase.from('session_notes').select('id, session_id, activity_id, situation, application, image_ref, created_at, activities(default_name), tracker_categories(name)').eq('member_id', memberId).order('created_at', { ascending: false }).limit(20),
+    supabase.from('doubts').select('id, session_id, activity_id, question, answer, answered_at, created_at, activities(default_name), tracker_categories(name)').eq('member_id', memberId).order('created_at', { ascending: false }).limit(20),
     supabase.from('sessions').select('id, title')
   ]);
   if (p.error && g.error) { target.innerHTML = ''; return; }        // older database: nothing extra to show

@@ -4,7 +4,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
-import { openPoint } from './point.js';
+import { openTrackerSheet } from './point.js';
 import { signedUrls, mediaHTML } from './media.js';
 
 const page = document.body.dataset.page;
@@ -124,7 +124,6 @@ function cardHTML(a) {
       ${thisWeek && !voided ? `<span class="ptag">${st === 'done' ? '+' + a.points : st === 'not_done' ? '0' : '+' + a.points} pts</span>` : ''}</div>
     <div class="body"><h3>${esc(a.default_name)}</h3>${a.description ? `<p class="desc">${esc(a.description)}</p>` : ''}</div>
     <div class="days">${Array.from({ length: 7 }, (_, i) => dayCell(a.id, addDays(weekStart, i), i)).join('')}</div>
-    <button class="pt-open" type="button" data-point="${a.id}">${pointKinds.get(a.id)?.has('audio') ? icon('mic') : pointKinds.get(a.id)?.size ? icon('play') : icon('book-open')}<span>Learn · Real life · Ask</span>${pointKinds.get(a.id)?.size ? '<i class="dot" aria-label="Coach added an explanation"></i>' : ''}</button>
     ${voided ? `<p class="void">${icon('alert-triangle', 'icon')} Your coach removed today's entry: ${esc(r.void_reason || '')}</p>`
       : thisWeek ? `<div class="mark" role="group" aria-label="${esc(a.default_name)} today">
         <button class="mk mk-ok" data-mark="done" aria-pressed="${st === 'done'}">${icon('check', '')}<span>Done</span></button>
@@ -344,7 +343,9 @@ async function renderDetail() {
       </div>
     </header>
     <nav class="t-switch" aria-label="Trackers">${cats.map((c) => `<a href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" ${c.slug === cat.slug ? 'aria-current="page"' : ''} style="--tc:${tColor(c.slug)}"><i></i>${esc(c.name)}</a>`).join('')}</nav>
-    <details class="card class-mat" id="class-mat" hidden><summary>${icon('book-open')}<span><b>Class materials</b><small id="cm-sub"></small></span>${icon('chevron-right')}</summary><div class="cm-body" id="cm-body"></div></details>
+    <button class="card t-notes" id="t-notes" type="button"><span class="tn-ic">${icon('book-open')}</span>
+      <span class="tn-tx"><b>Notes · Audio · Ask</b><small id="tn-sub">Coach's notes for all ${acts.length} habits, your real-life notes and questions</small></span>
+      <i class="dot" id="tn-dot" hidden aria-label="Coach added notes"></i>${icon('chevron-right')}</button>
     <div class="today-bar" id="today-bar"></div>
     <div class="seg" role="tablist" aria-label="View"><button role="tab" data-view="week" aria-selected="true">Week</button><button role="tab" data-view="month" aria-selected="false">Month</button><button role="tab" data-view="history" aria-selected="false">History</button></div>
     <div id="t-body" class="stack" style="gap:14px"></div>`;
@@ -360,7 +361,7 @@ async function renderDetail() {
     const v = e.target.closest('[data-view]'); if (v) return setView(v.dataset.view);
     const m = e.target.closest('[data-mark]'); if (m) return mark(m.closest('.act'), m.dataset.mark);
     const n = e.target.closest('[data-note]'); if (n) return noteDialog(n.closest('.act'));
-    const pt = e.target.closest('[data-point]'); if (pt) return openPoint(acts.find((x) => x.id === pt.dataset.point), me.user.id, { color: tColor(cat.slug) });
+    if (e.target.closest('#t-notes')) return openTrackerSheet(cat, acts, me.user.id, { color: tColor(cat.slug) });
   });
   // New day while the app was in the background → refresh.
   document.addEventListener('visibilitychange', async () => {
@@ -374,14 +375,14 @@ async function renderDetail() {
 // Broken activity image → show the icon underneath (no inline handlers, so the CSP can stay strict).
 document.addEventListener('error', (e) => { if (e.target.matches?.('img[data-fallback]')) e.target.remove(); }, true);
 
-// tracker-level class materials (slides PDF, audio, links) the coach added for this tracker
+// how much the coach has added for this tracker (whole-tracker materials + each habit's audio/pictures) → line on the Notes button
 async function loadClassMaterials() {
-  const { data } = await supabase.from('activity_media').select('id, kind, ref, caption, sort_order').eq('category_id', cat.id).order('sort_order').order('created_at');
-  if (!data?.length || !$('#class-mat')) return;
-  const urls = await signedUrls(data.filter((m) => m.kind === 'image' || m.kind === 'audio' || m.kind === 'file').map((m) => m.ref));
-  $('#cm-sub').textContent = `${data.length} item${data.length > 1 ? 's' : ''} from your coach`;
-  $('#cm-body').innerHTML = mediaHTML(data, urls);
-  $('#class-mat').hidden = false;
+  const n = (await supabase.from('activity_media').select('id', { count: 'exact', head: true }).eq('category_id', cat.id)).count || 0;
+  const per = [...pointKinds.values()].reduce((s, k) => s + k.size, 0);
+  if (!$('#t-notes') || !(n + per)) return;
+  const audio = [...pointKinds.values()].some((k) => k.has('audio'));
+  $('#tn-sub').textContent = `${audio ? 'Audio, ' : ''}notes and pictures from your coach · your notes and questions`;
+  $('#tn-dot').hidden = false;
 }
 
 // a program tracker the coach has not opened for this member yet: name + "opens after the class" only

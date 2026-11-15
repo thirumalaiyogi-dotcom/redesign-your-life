@@ -186,3 +186,21 @@
   .tcard .body { padding: var(--s-3); }
   .counts { gap: 2px 10px; font-size: 12px; }
 }
+
+/* 2.4 one Notes · Audio · Ask sheet per tracker */
+.t-notes { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-lg, 16px);
+  background: color-mix(in srgb, var(--tc) 10%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--tc) 35%, var(--c-border)); }
+.t-notes:focus-visible { outline: 2px solid var(--tc); outline-offset: 2px; }
+.t-notes .tn-ic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--tc); color: #fff; }
+.t-notes .tn-ic .icon { width: 22px; height: 22px; }
+.t-notes .tn-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.t-notes .tn-tx b { font-size: 15.5px; }
+.t-notes .tn-tx small { color: var(--c-text-2); font-size: 12.5px; }
+.t-notes .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c-accent, #e7b54a); }
+.t-notes > .icon:last-child { width: 18px; height: 18px; color: var(--c-text-2); }
+.ts-group { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ts-group h3 { display: flex; align-items: center; gap: 8px; font-size: 14.5px; margin: 0; }
+.ts-group h3 span { display: inline-grid; place-items: center; min-width: 28px; height: 24px; border-radius: 8px; background: color-mix(in srgb, var(--tc) 16%, transparent); font-size: 12px; font-weight: 750; }
+.ts-habit { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; color: var(--c-text-2); margin-bottom: 4px; }
+.ts-habit .icon { width: 13px; height: 13px; }
+.pt-sheet select { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); padding: 8px 10px; font: inherit; }

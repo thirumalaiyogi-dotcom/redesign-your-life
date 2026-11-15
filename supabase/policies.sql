@@ -384,3 +384,7 @@ create policy batch_members_admin_read on public.batch_members for select to aut
 drop policy if exists batch_steps_done_admin_read on public.batch_steps_done;
 create policy batch_steps_done_admin_read on public.batch_steps_done for select to authenticated using ((select public.is_admin()));
 -- profiles.must_change (temporary password) is readable like the rest of the profile, never writable by the app
+-- tracker-level notes / questions (2.4)
+grant insert (category_id) on public.session_notes to authenticated;
+grant update (category_id) on public.session_notes to authenticated;
+grant insert (category_id) on public.doubts to authenticated;
