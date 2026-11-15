@@ -260,9 +260,10 @@ async function mark(card, value) {
   if (data?.date && data.date !== today) { toast('A new day has started. Reloading…', 'info'); return setTimeout(() => location.reload(), 900); }
   refreshCard(id);
   const left = acts.filter((x) => !rows.get(`${x.id}|${today}`)).length;
-  if (next === 'done') toast(`${a.default_name} done · +${a.points} pts${left === 0 ? ' · Tracker complete!' : ''}`);
-  else if (next === 'not_done') toast(`${a.default_name}: not done · no minus points`, 'info');
-  else toast(`${a.default_name} cleared`, 'info');
+  // no pop-up per tick (it covered the next card's buttons): the card turns green and the top bar adds the points.
+  // Screen readers still hear it; the only pop-up is when the whole tracker is finished.
+  announce(next === 'done' ? `${a.default_name} done, plus ${a.points} points` : next === 'not_done' ? `${a.default_name}: not done` : `${a.default_name} cleared`);
+  if (next === 'done' && left === 0) toast('Tracker complete for today! 🎉');
 }
 
 function refreshCard(id, pending = false) {
@@ -370,6 +371,12 @@ async function renderDetail() {
     try { await loadToday(); } catch { return; }
     if (today !== prev) { weekStart = mondayOf(today); if (view === 'week') showWeek(); else setView(view); }
   });
+}
+
+function announce(msg) {
+  let el = document.getElementById('sr-live');
+  if (!el) { el = document.createElement('div'); el.id = 'sr-live'; el.className = 'visually-hidden'; el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  el.textContent = ''; setTimeout(() => { el.textContent = msg; }, 30);
 }
 
 // Broken activity image → show the icon underneath (no inline handlers, so the CSP can stay strict).
