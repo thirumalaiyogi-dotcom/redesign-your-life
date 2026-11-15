@@ -1,7 +1,7 @@
 // Service worker — Deepak's Redesign Your Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v55';
+const VERSION = 'ryl-v56';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;
@@ -35,16 +35,17 @@ self.addEventListener('fetch', (event) => {
   if (!sameOrigin(url) || !inScope(url)) return;          // Supabase, fonts, CDNs: straight to network
   if (url.pathname.endsWith('/sw.js')) return;
 
-  // Pages: network first (always fresh), cached copy when offline, offline page as last resort.
+  // Pages: open instantly from this version's cache and refresh it in the background.
+  // Every deploy bumps VERSION, so the first visit after an update always comes from the network.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
-      try {
-        const res = await fetch(req);
-        if (res.ok) (await caches.open(PAGES)).put(stripQuery(req), res.clone());
-        return res;
-      } catch {
-        return (await caches.match(stripQuery(req), { ignoreSearch: true })) || (await caches.match('offline.html', { ignoreSearch: true })) || Response.error();
-      }
+      const key = stripQuery(req);
+      const cache = await caches.open(PAGES);
+      const hit = await cache.match(key, { ignoreSearch: true });
+      const fresh = fetch(req).then((res) => { if (res.ok) cache.put(key, res.clone()); return res; });
+      if (hit) { event.waitUntil(fresh.catch(() => {})); return hit; }
+      try { return await fresh; }
+      catch { return (await caches.match('offline.html', { ignoreSearch: true })) || Response.error(); }
     })());
     return;
   }
@@ -61,16 +62,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CSS / JS / icons: network first so updates show at once; cached copy when offline.
+  // CSS / JS / icons: from this version's cache at once, refreshed in the background.
   event.respondWith((async () => {
     const cache = await caches.open(SHELL);
-    try {
-      const res = await fetch(req);
-      if (res.ok) cache.put(req, res.clone());
-      return res;
-    } catch {
-      return (await cache.match(req, { ignoreSearch: true })) || Response.error();
-    }
+    const hit = await cache.match(req, { ignoreSearch: true });
+    const fresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
+    if (hit) { event.waitUntil(fresh.catch(() => {})); return hit; }
+    try { return await fresh; } catch { return Response.error(); }
   })());
 });
 

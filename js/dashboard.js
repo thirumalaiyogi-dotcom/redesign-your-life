@@ -5,7 +5,7 @@
 //   activities / tracker_categories / daily_checkins / notifications — own rows via RLS
 // Ticking goes only through mark_activity() (today only, server-side points), exactly like the tracker page.
 import { supabase, app, activityImageUrl } from './supabase.js';
-import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL } from './auth.js';
+import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
@@ -640,7 +640,7 @@ function renderProfile() {
     await withBusy($('#save-btn'), 'Saving…', async () => {
       const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select(Object.keys(patch).join(', ')).single();
       if (error) return toast(friendlyError(error), 'bad');
-      Object.assign(profile, data); if (S.extras) Object.assign(S.extras, data);
+      Object.assign(profile, data); if (S.extras) Object.assign(S.extras, data); clearProfileCache();
       if (data.website !== undefined) web.value = data.website || '';
       $('.profile-head h1').textContent = data.full_name;
       toast('Details saved');
@@ -728,7 +728,7 @@ function renderProfile() {
       const old = profile.avatar_url;
       const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
       if (error) throw error;
-      profile.avatar_url = url;
+      profile.avatar_url = url; clearProfileCache();
       $('#dp-wrap .avatar').outerHTML = avatarHTML(profile, user.email, 'avatar lg');
       $('#top .avatar-link').innerHTML = avatarHTML(profile, user.email);
       const m = old && old.match(/\/avatars\/(.+)$/); if (m) supabase.storage.from('avatars').remove([decodeURIComponent(m[1])]);

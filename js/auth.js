@@ -53,6 +53,18 @@ export function safeNext(raw) {
   } catch { return null; }
 }
 
+const PKEY = 'ryl.prof';
+function cachedProfile(uid) {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(PKEY) || 'null');
+    return c && c.uid === uid && Date.now() - c.at < 10 * 60e3 ? c.profile : null;
+  } catch { return null; }
+}
+export function saveProfile(profile) {
+  try { sessionStorage.setItem(PKEY, JSON.stringify({ uid: profile.id, at: Date.now(), profile })); } catch { /* private mode */ }
+}
+export function clearProfileCache() { try { sessionStorage.removeItem(PKEY); } catch { /* ignore */ } }
+
 let leaving = false;   // set while we log out on purpose, so the listener doesn't redirect twice
 
 function goLogin(message) {
@@ -71,11 +83,22 @@ export async function requireRole(allowed) {
   try { session = await getSession(); } catch { session = null; }
   if (!session) { goLogin(); return new Promise(() => {}); }
 
-  let profile;
-  try { profile = await fetchProfile(session.user.id); }
-  catch (e) {
-    document.body.classList.remove('guarding');
-    throw e;   // page shows a connection error instead of redirect-looping
+  // Pages open straight away with the profile from the last page (this tab, last 10 minutes);
+  // it is re-checked in the background and the page reloads if the role or status changed.
+  // Only for showing the right screen: every read and write is still checked by the database.
+  let profile = cachedProfile(session.user.id);
+  if (profile) {
+    fetchProfile(session.user.id).then((fresh) => {
+      if (!fresh || fresh.role !== profile.role || !fresh.is_active || fresh.must_change) { clearProfileCache(); location.reload(); }
+      else saveProfile(fresh);
+    }).catch(() => { /* offline: keep going */ });
+  } else {
+    try { profile = await fetchProfile(session.user.id); }
+    catch (e) {
+      document.body.classList.remove('guarding');
+      throw e;   // page shows a connection error instead of redirect-looping
+    }
+    if (profile) saveProfile(profile);
   }
   if (!profile) { await supabase.auth.signOut(); goLogin('noprofile'); return new Promise(() => {}); }
   if (!profile.is_active) { await supabase.auth.signOut(); goLogin('paused'); return new Promise(() => {}); }
@@ -86,7 +109,7 @@ export async function requireRole(allowed) {
   if (!allowed.includes(profile.role) && !preview) { location.replace(homeFor(profile.role)); return new Promise(() => {}); }
 
   // Another tab logged out → leave protected pages.
-  supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') goLogin(); });
+  supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') { clearProfileCache(); goLogin(); } });
   document.body.classList.remove('guarding');
   return { session, user: session.user, profile };
 }
@@ -132,6 +155,7 @@ export async function updatePassword(password) {
 
 export async function signOut() {
   leaving = true;
+  clearProfileCache();
   await supabase.auth.signOut();
   location.replace(app('login.html?msg=signedout'));
 }
