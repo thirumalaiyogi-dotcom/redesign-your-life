@@ -77,7 +77,8 @@ async function renderOverview() {
   const recent = o.recent || [];
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${esc(formatToday())}</span><h1>Program overview</h1></div>
-    <a class="btn btn-gold btn-sm" href="${app('admin/members.html')}">${icon('users')}Manage members</a></div>
+    <span class="row" style="gap:8px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="${app('coach-guide.html')}">${icon('info')}Coach guide</a>
+    <a class="btn btn-gold btn-sm" href="${app('admin/members.html')}">${icon('users')}Manage members</a></span></div>
   <section class="card today-pulse" aria-label="Today at a glance">
     <div class="tp-ring" role="img" aria-label="${activePct}% of members active today" style="--p:${activePct}"><b>${activePct}%</b><small>active</small></div>
     <div class="tp-txt"><b>${formatNumber(o.active_today)} of ${formatNumber(o.total_members)} members ticked today</b>

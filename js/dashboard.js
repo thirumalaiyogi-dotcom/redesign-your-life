@@ -592,6 +592,7 @@ function renderProfile() {
           ${LANDING_PAGE ? `<a class="btn btn-sm btn-ghost" href="${app('index.html')}#coach-sec">About</a>` : ''}</div>
       </section>
       <section class="card set-links" aria-label="More">
+        ${link('guide.html', 'info', 'How to use the app', 'Step-by-step guide with pictures')}
         ${link('member/learn.html', 'book-open', 'Sessions', 'Notes, audio and videos from your coach')}
         ${link('member/learn.html?tab=questions', 'message-square', 'Ask your coach', 'Questions and doubts')}
         ${link('member/todo.html', 'check-check', 'To-do', 'Your own task list')}
