@@ -186,3 +186,6 @@ from public.tracker_categories c where c.id = a.category_id and c.slug = 'couple
 -- Mugilan's Habits pictures (Nov 2026)
 update public.activities a set image_path = 'mugilan-' || lpad(a.number::text, 2, '0') || '.webp'
 from public.tracker_categories c where c.id = a.category_id and c.slug = 'mugilan' and a.image_path is null;
+-- Nithilla's Habits pictures (Nov 2026; 1–3 and the cover still to come)
+update public.activities a set image_path = 'nithilla-' || lpad(a.number::text, 2, '0') || '.webp'
+from public.tracker_categories c where c.id = a.category_id and c.slug = 'nithilla' and a.number between 4 and 14 and a.image_path is null;
