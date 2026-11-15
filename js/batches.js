@@ -188,9 +188,24 @@ async function loadPeople(b) {
   const box = $('#bp-list'); if (!box) return;
   const { data, error } = await supabase.rpc('admin_batch_people', { p_batch: b.id });
   if (error) return errorPanel(box, error, () => loadPeople(b));
-  B.people = data || [];
+  B.people = data || []; B.sel = new Set();
   $('#bp-count').textContent = `${B.people.length} · ${B.people.filter((p) => p.must_change).length} not logged in yet`;
-  box.innerHTML = B.people.length ? `<div class="bt-people">${B.people.map((p) => `<div class="bt-person">
+  drawPeople();
+}
+// people list with tick boxes: tick some (e.g. who paid for the membership) and add them to another batch
+function drawPeople() {
+  const box = $('#bp-list'); if (!box) return;
+  const others = B.batches.filter((x) => x.is_active && x.id !== B.open);
+  const n = B.sel.size;
+  box.innerHTML = B.people.length ? `
+    <div class="bt-selbar ${n ? 'on' : ''}">
+      <label class="check"><input type="checkbox" id="sel-all" ${n && n === B.people.length ? 'checked' : ''}>${n ? `${n} selected` : 'Select people'}</label>
+      ${n ? (others.length ? `<div class="bt-move"><select id="sel-target" aria-label="Batch to add them to">${others.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
+        <button class="btn btn-primary btn-sm" data-add-sel>${icon('user-plus')}Add to batch</button></div>`
+        : '<small class="muted">Create the other batch first (e.g. 60-Day Membership), then come back.</small>') : ''}
+    </div>
+    <div class="bt-people">${B.people.map((p) => `<div class="bt-person ${B.sel.has(p.member_id) ? 'sel' : ''}">
+      <label class="bt-tick"><input type="checkbox" data-sel="${p.member_id}" ${B.sel.has(p.member_id) ? 'checked' : ''} aria-label="Select ${esc(p.full_name || p.email)}"></label>
       <div><b><a class="link" href="${app('admin/member.html')}?id=${p.member_id}">${esc(p.full_name || p.email)}</a></b>
         <small>${esc(p.email)}${p.phone ? ' · ' + esc(p.phone) : ''}</small>
         <small>${p.must_change ? `<span class="pill gold">First login pending</span>` : `<span class="pill ok">Active</span> last login ${esc(ago(p.last_sign_in_at))}`} · ${formatNumber(p.points)} pts in batch</small></div>
@@ -305,6 +320,19 @@ async function onClick(e) {
     drawAdded(); $('#ap-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return loadPeople(B.batches.find((x) => x.id === B.open));
   }
+  if ((t = g('[data-add-sel]'))) {
+    const target = B.batches.find((x) => x.id === $('#sel-target').value);
+    const picked = B.people.filter((p) => B.sel.has(p.member_id));
+    if (!target || !picked.length) return;
+    if (!(await confirmDialog({ title: `Add ${picked.length} to ${target.name}?`, body: 'They keep the same login, points and trackers, and also join this batch. They stay in this batch too.', confirmLabel: `Add ${picked.length}` }))) return;
+    return withBusy(t, 'Adding…', async () => {
+      const { data, error } = await supabase.rpc('admin_batch_add_people', { p_batch: target.id, p_people: picked.map((p) => ({ name: p.full_name, email: p.email, phone: p.phone })) });
+      if (error) return toast(friendlyError(error), 'bad');
+      const ok = (data || []).filter((r) => r.status === 'existing').length;
+      B.counts[target.id] = (B.counts[target.id] || 0) + ok;
+      toast(`${ok} added to ${target.name}`); B.sel = new Set(); drawPeople();
+    });
+  }
   if ((t = g('[data-remove]'))) {
     const p = B.people.find((x) => x.member_id === t.dataset.remove);
     if (!(await confirmDialog({ title: `Remove ${p.full_name || p.email} from this batch?`, body: 'Their account, points and open trackers stay.', confirmLabel: 'Remove', danger: true }))) return;
@@ -374,6 +402,8 @@ async function readSheet(file) {
 }
 
 async function onChange(e) {
+  if (e.target.id === 'sel-all') { B.sel = e.target.checked ? new Set(B.people.map((p) => p.member_id)) : new Set(); return drawPeople(); }
+  if (e.target.dataset?.sel) { e.target.checked ? B.sel.add(e.target.dataset.sel) : B.sel.delete(e.target.dataset.sel); return drawPeople(); }
   if (e.target.id === 'ap-file') {
     const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
     const l = $('#ap-file-l'); l.textContent = 'Reading…';
