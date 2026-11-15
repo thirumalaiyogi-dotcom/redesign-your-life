@@ -244,3 +244,4 @@ body:not(.guarding) .boot { display: none; }
 /* 10X logo (Deepak's artwork) in the header crest */
 a.brand .crest { background: url("../assets/icons/logo-96.png") center / cover no-repeat; box-shadow: none; border: none; border-radius: 10px; }
 a.brand .crest .icon { visibility: hidden; }
+button.link { background: none; border: 0; padding: 0; font: inherit; font-weight: 650; color: var(--c-primary); cursor: pointer; }
