@@ -5,6 +5,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 import { openTrackerSheet } from './point.js';
+import { tickFx } from './fx.js';
 import { signedUrls, mediaHTML } from './media.js';
 
 const page = document.body.dataset.page;
@@ -246,6 +247,11 @@ async function mark(card, value) {
   else rows.delete(key);
   busy.add(id);
   refreshCard(id, true);
+  if (next) {   // instant reward: chime, buzz, pop, "+10"
+    const c = $(`.act[data-id="${id}"]`), leftNow = acts.filter((x) => !rows.get(`${x.id}|${today}`)).length;
+    if (next === 'done') { c?.classList.add('just-done'); setTimeout(() => c?.classList.remove('just-done'), 500); }
+    tickFx(c?.querySelector(`[data-mark="${next}"]`), { kind: next === 'done' ? (leftNow === 0 ? 'all' : 'done') : 'miss', points: next === 'done' ? a.points : 0 });
+  }
 
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
   busy.delete(id);

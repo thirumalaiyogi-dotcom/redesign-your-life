@@ -11,6 +11,7 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
 import { avatarBlob, fileName } from './media.js';
+import { tickFx, soundOn, setSound } from './fx.js';
 import { pushState, enablePush, disablePush, syncPush, pushSheet } from './push.js';
 import { LANDING_PAGE, COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
 
@@ -419,6 +420,11 @@ async function mark(id, value) {
 
   if (next) S.rows.set(id, { activity_id: id, status: next, voided_at: null }); else S.rows.delete(id);
   S.busy.add(id); refreshRow(id);
+  if (next) {
+    const row = $(`.arow[data-id="${id}"]`);
+    if (next === 'done') { row?.classList.add('just-done'); setTimeout(() => row?.classList.remove('just-done'), 500); }
+    tickFx(row?.querySelector(`[data-mark="${next}"]`), { kind: next === 'done' ? 'done' : 'miss', points: next === 'done' ? a.points : 0 });
+  }
 
   const { data, error } = await supabase.rpc('mark_activity', { p_activity_id: id, p_status: next, p_note: null });
   S.busy.delete(id);
@@ -575,6 +581,10 @@ function renderProfile() {
         <p class="muted" id="pn-txt" style="font-size:13.5px">Checking…</p>
         <button class="btn btn-ghost" id="pn-btn" type="button" hidden></button>
       </section>
+      <section class="card card-pad stack" style="gap:10px" aria-labelledby="snd-h">
+        <div class="set-h"><span class="si">${icon('sparkles')}</span><h2 id="snd-h">Tick sound</h2></div>
+        <label class="check"><input type="checkbox" id="snd-on" ${soundOn() ? 'checked' : ''}>Play a small sound and buzz when I tick a habit</label>
+      </section>
       <section class="card coach-mini" aria-label="Your coach">
         <img src="${app(COACH.face)}" alt="" width="56" height="56">
         <div><small>Your coach</small><b>${esc(COACH.name)}</b><span>${esc(COACH.title)}</span></div>
@@ -700,6 +710,7 @@ function renderProfile() {
   });
 
   // ---- profile photo: square-cropped, small WebP in the avatars bucket ----
+  $('#snd-on')?.addEventListener('change', (e) => { setSound(e.target.checked); toast(e.target.checked ? 'Tick sound on' : 'Tick sound off'); });
   $('#dp-file').addEventListener('change', async (e) => {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
