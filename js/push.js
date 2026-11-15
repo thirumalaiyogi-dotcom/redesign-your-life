@@ -36,3 +36,40 @@ export async function disablePush() {
   await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
   await sub.unsubscribe();
 }
+
+// Already allowed on this phone → make sure the server has this phone for the person signed in now
+// (e.g. someone else used this phone before, or the first save failed). Silent; never asks.
+export async function syncPush() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || Notification.permission !== 'granted') return false;
+    await enablePush();
+    return true;
+  } catch { return false; }
+}
+
+// A clear "Allow notifications" sheet (browsers need a tap before they show their own question).
+// Shown when notifications are off on this phone; "Later" waits a day.
+const LATER = 'ryl.push.sheet.later';
+export async function pushSheet({ text, onToast } = {}) {
+  let later = 0; try { later = Number(localStorage.getItem(LATER) || 0); } catch { /* ignore */ }
+  if (later > Date.now() - 864e5) return;
+  const st = await pushState().catch(() => 'unsupported');
+  if (st !== 'off') return;
+  const { icon } = await import('./ui.js');
+  const scrim = document.createElement('div'); scrim.className = 'scrim';
+  scrim.innerHTML = `<div class="dialog push-sheet" role="dialog" aria-modal="true" aria-labelledby="ps-t">
+    <span class="ps-ic">${icon('bell')}</span><h2 id="ps-t">Turn on notifications</h2>
+    <p class="muted">${text || 'Get your coach\'s answers, class updates and your evening reminder on this phone, like a WhatsApp message.'}</p>
+    <div class="actions"><button class="btn btn-ghost" data-ps="later">Later</button><button class="btn btn-gold" data-ps="on">Allow</button></div></div>`;
+  document.body.appendChild(scrim);
+  return new Promise((resolve) => {
+    scrim.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-ps]');
+      if (!b && e.target !== scrim) return;
+      if (!b || b.dataset.ps === 'later') { try { localStorage.setItem(LATER, String(Date.now())); } catch { /* ignore */ } scrim.remove(); return resolve(false); }
+      b.disabled = true; b.textContent = 'Please wait…';
+      try { await enablePush(); scrim.remove(); onToast?.('Notifications turned on', 'ok'); resolve(true); }
+      catch (err) { scrim.remove(); onToast?.(err.message || 'Notifications were not allowed.', 'bad'); resolve(false); }
+    });
+  });
+}

@@ -11,7 +11,7 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
 import { avatarBlob, fileName } from './media.js';
-import { pushState, enablePush, disablePush } from './push.js';
+import { pushState, enablePush, disablePush, syncPush, pushSheet } from './push.js';
 import { LANDING_PAGE, COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
 
 const page = document.body.dataset.page;
@@ -328,6 +328,9 @@ async function renderDashboard() {
 const PUSH_LATER = 'ryl.push.later';
 async function askPush() {
   const box = $('#push-ask'); if (!box) return;
+  if (await syncPush()) return;                                   // already allowed: just keep the server up to date
+  if (await pushSheet({ onToast: toast })) return;                // clear Allow / Later sheet once a day
+
   let later = 0; try { later = Number(localStorage.getItem(PUSH_LATER) || 0); } catch { /* ignore */ }
   if (later > Date.now() - 3 * 864e5) return;
   const st = await pushState().catch(() => 'unsupported');

@@ -3,7 +3,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { renderBatches } from './batches.js';
-import { pushState, enablePush } from './push.js';
+import { pushState, enablePush, syncPush, pushSheet } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
 
@@ -24,6 +24,8 @@ function chrome(current) {
 
 // coach's phone: buzz when a member asks a question
 async function coachPushCard(box) {
+  if (await syncPush()) return;
+  if (await pushSheet({ text: 'Get a phone notification when a member asks a question, like a WhatsApp message. Tap it to open and reply.', onToast: toast })) return;
   const st = await pushState().catch(() => 'unsupported');
   if (!box || st === 'on' || st === 'unsupported') return;
   box.innerHTML = `<div class="card push-ask coach-push"><span class="si">${icon('bell')}</span>
