@@ -81,7 +81,9 @@ export async function requireRole(allowed) {
   if (!profile.is_active) { await supabase.auth.signOut(); goLogin('paused'); return new Promise(() => {}); }
   // still on the temporary password the coach sent → choose their own first
   if (profile.must_change) { location.replace(app('reset.html?first=1')); return new Promise(() => {}); }
-  if (!allowed.includes(profile.role)) { location.replace(homeFor(profile.role)); return new Promise(() => {}); }
+  // coaches may open member pages ("Member view") to see exactly what members see
+  const preview = allowed.includes('member') && isCoach(profile.role);
+  if (!allowed.includes(profile.role) && !preview) { location.replace(homeFor(profile.role)); return new Promise(() => {}); }
 
   // Another tab logged out → leave protected pages.
   supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') goLogin(); });

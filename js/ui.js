@@ -149,6 +149,7 @@ export function coachTopbar(role, roleLabel, current) {
   return `<div class="dash-top coach-top">${brandHTML(app('admin/dashboard.html'), 'Coach Console', 'Redesign Your Life')}
     <div class="actions"><span class="pill ${role === 'super_admin' ? 'gold' : 'blue'}">${esc(roleLabel)}</span>
       <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
+      <a class="iconbtn" href="${app('member/dashboard.html')}" aria-label="Member view: see the app as members see it" title="Member view">${icon('smartphone')}</a>
       <button class="iconbtn" id="logout" type="button" aria-label="Log out" title="Log out">${icon('log-out')}</button></div></div>${adminNav(current)}`;
 }
 
@@ -196,7 +197,8 @@ export function avatarHTML(profile, email = '', cls = 'avatar') {
 // Member page header: logo, theme toggle, avatar → profile. extraHTML goes before the toggle.
 export function memberTopbar(profile, email, extraHTML = '') {
   const dark = currentTheme() === 'dark';
-  return `<div class="dash-top">${brandHTML(app('member/dashboard.html'))}
+  const coach = profile?.role === 'admin' || profile?.role === 'super_admin';
+  return `${coach ? `<div class="preview-bar">${icon('eye')}<span>Member view: this is what members see</span><a href="${app('admin/dashboard.html')}">${icon('arrow-left')}Coach console</a></div>` : ''}<div class="dash-top">${brandHTML(app('member/dashboard.html'))}
     <div class="actions">${extraHTML}
       <button class="iconbtn theme-btn" id="theme-btn" type="button" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}" title="${dark ? 'Light mode' : 'Dark mode'}">${icon(dark ? 'sun' : 'moon')}</button>
       <a class="avatar-link" href="${app('member/profile.html')}" aria-label="My profile">${avatarHTML(profile, email)}</a>

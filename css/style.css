@@ -248,3 +248,7 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
 .otp-row { display: flex; gap: 8px; }
 .otp-row input { flex: 1; min-width: 0; font-size: 20px; letter-spacing: 6px; font-variant-numeric: tabular-nums; }
 .otp-row .btn { flex: none; }
+.preview-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c-accent, #e6c98c) 22%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--c-accent, #e6c98c) 55%, transparent); font-size: 13px; font-weight: 650; }
+.preview-bar .icon { width: 16px; height: 16px; flex: none; }
+.preview-bar span { flex: 1; min-width: 0; }
+.preview-bar a { display: inline-flex; align-items: center; gap: 4px; color: var(--c-primary); text-decoration: none; white-space: nowrap; }

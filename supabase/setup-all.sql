@@ -481,7 +481,8 @@ returns boolean language sql stable security definer set search_path = '' as $$
                  where c.id = p_category
                    and (c.audience = 'all'
                         or exists (select 1 from public.tracker_assignments t
-                                   where t.category_id = c.id and t.member_id = p_member)));
+                                   where t.category_id = c.id and t.member_id = p_member)
+                        or exists (select 1 from public.profiles pp where pp.id = p_member and pp.role in ('admin','super_admin'))));   -- coaches see every tracker in "Member view"
 $$;
 
 -- the same check for the signed-in user (used by row-level security)
@@ -497,7 +498,8 @@ returns int language sql stable security definer set search_path = '' as $$
   from public.activities a join public.tracker_categories c on c.id = a.category_id
   where a.is_active and c.is_active and (p_category is null or a.category_id = p_category)
     and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
-                                       where t.category_id = c.id and t.member_id = p_member));
+                                       where t.category_id = c.id and t.member_id = p_member)
+         or exists (select 1 from public.profiles pp where pp.id = p_member and pp.role in ('admin','super_admin')));
 $$;
 
 -- number of activities that currently count (active activity in an active tracker)
@@ -520,7 +522,8 @@ returns int language sql stable security definer set search_path = '' as $$
     and a.is_active and c.is_active
     and (p_category is null or a.category_id = p_category)
     and (c.audience = 'all' or exists (select 1 from public.tracker_assignments t
-                                       where t.category_id = c.id and t.member_id = p_member));
+                                       where t.category_id = c.id and t.member_id = p_member)
+         or exists (select 1 from public.profiles pp where pp.id = p_member and pp.role in ('admin','super_admin')));
 $$;
 
 -- consecutive days ending exactly on p_as_of with >= streak_min_daily done
@@ -1799,6 +1802,12 @@ end; $$;
 drop trigger if exists doubts_notify on public.doubts;
 create trigger doubts_notify after insert on public.doubts for each row execute function public.notify_new_doubt();
 
+-- signed in with a code sent to their own email: they do not need to change the coach's temporary password first
+create or replace function public.skip_temp_password()
+returns void language sql security definer set search_path = '' as $$
+  update public.profiles set must_change = false where id = auth.uid() and must_change;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Execute permissions: nothing is callable by default
 -- ---------------------------------------------------------------------
@@ -1827,6 +1836,7 @@ grant execute on function
 to authenticated;
 -- the sign-up page checks this before anyone is logged in
 grant execute on function public.signup_open() to anon, authenticated;
+grant execute on function public.skip_temp_password() to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
 
