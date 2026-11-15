@@ -26,15 +26,19 @@
     });
   } catch (e) { /* old browsers: applied once on load */ }
   window.__rylTheme = { KEY: KEY, saved: saved, resolve: resolve, apply: apply };
-  // Keep the 10X loading logo on screen long enough to see its animation:
-  // longer the first time the app opens in a session, shorter between pages.
+  // First app page of a visit shows the 10X logo for a moment; later pages open straight away.
+  // (login.html has no loading screen, so the logo waits for the first page that does.)
   try {
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      var first = true;
-      try { first = !sessionStorage.getItem('ryl.boot'); sessionStorage.setItem('ryl.boot', '1'); } catch (e) { /* private mode */ }
+    var seen = false;
+    try { seen = !!sessionStorage.getItem('ryl.boot'); } catch (e) { seen = true; }
+    if (!seen) {
       var root = document.documentElement;
-      root.classList.add('boot-hold');
-      setTimeout(function () { root.classList.remove('boot-hold'); }, first ? 1500 : 800);
+      root.classList.add('boot-first', 'boot-hold');
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!document.querySelector('.boot')) { root.classList.remove('boot-first', 'boot-hold'); return; }
+        try { sessionStorage.setItem('ryl.boot', '1'); } catch (e) { /* ignore */ }
+        setTimeout(function () { root.classList.remove('boot-hold'); }, 900);
+      });
     }
   } catch (e) { /* never block the page */ }
 })();

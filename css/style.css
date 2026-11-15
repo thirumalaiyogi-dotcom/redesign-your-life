@@ -268,11 +268,9 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
 /* keep page bottoms clear of the button */
 body:has(.todo-fab) .app { padding-bottom: 72px; }
 
-/* Loading screen between pages: the 10X logo grows in, then breathes with a gold shine */
-.boot .crest { width: 78px; height: 78px; border-radius: 22px; background: url("../assets/icons/icon-192.png") center / cover no-repeat; position: relative; overflow: hidden; box-shadow: 0 12px 32px rgba(18, 59, 46, .28); animation: boot-pop 1s cubic-bezier(.25, 1.15, .5, 1) both, boot-breathe 3s ease-in-out 1s infinite; }
+/* App opening: the 10X logo fades in once, calmly. Between pages there is no logo, the page just appears. */
+.boot .crest { width: 78px; height: 78px; border-radius: 22px; background: url("../assets/icons/icon-192.png") center / cover no-repeat; box-shadow: 0 12px 32px rgba(18, 59, 46, .22); animation: boot-in .5s ease-out both; }
 .boot .crest .icon { visibility: hidden; }
-.boot .crest::after { content: ""; position: absolute; inset: -30%; background: linear-gradient(115deg, transparent 35%, rgba(255, 236, 180, .45) 50%, transparent 65%); transform: translateX(-130%); animation: boot-shine 3s ease-in-out .3s infinite; }
-@keyframes boot-pop { 0% { transform: scale(.7); opacity: 0; } 70% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes boot-breathe { 50% { transform: scale(.97); } }
-@keyframes boot-shine { 0% { transform: translateX(-130%); } 45%, 100% { transform: translateX(130%); } }
-@media (prefers-reduced-motion: reduce) { .boot .crest, .boot .crest::after { animation: none; } }
+html:not(.boot-first) .boot .crest { display: none; }
+@keyframes boot-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .boot .crest { animation: none; } }
