@@ -240,3 +240,7 @@ body:not(.guarding) .boot { display: none; }
 .g-hint { font-size: 13px; text-align: center; margin: 0; }
 .or-line { display: flex; align-items: center; gap: 10px; color: var(--c-muted); font-size: 12.5px; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--c-border); }
+
+/* 10X logo (Deepak's artwork) in the header crest */
+a.brand .crest { background: url("../assets/icons/logo-96.png") center / cover no-repeat; box-shadow: none; border: none; border-radius: 10px; }
+a.brand .crest .icon { visibility: hidden; }
