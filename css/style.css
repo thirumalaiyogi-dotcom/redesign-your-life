@@ -180,7 +180,8 @@ body.guarding .app { visibility: hidden; }
 .boot { position: fixed; inset: 0; display: grid; place-items: center; background: var(--c-bg); z-index: 90; }
 .boot .crest { width: 56px; height: 56px; border-radius: 16px; animation: pulse 1.2s ease-in-out infinite; }
 .boot .crest .icon { width: 30px; height: 30px; }
-body:not(.guarding) .boot { display: none; }
+body:not(.guarding) .boot { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .35s ease, visibility 0s .35s; }
+html.boot-hold body .boot { opacity: 1; visibility: visible; transition: none; }
 @keyframes pulse { 50% { transform: scale(.92); opacity: .7; } }
 .skeleton { background: linear-gradient(90deg, var(--c-sunken) 0%, color-mix(in srgb, var(--c-sunken) 60%, var(--c-border)) 50%, var(--c-sunken) 100%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; border-radius: var(--r-lg); }
 @keyframes shimmer { to { background-position: -200% 0; } }
@@ -270,8 +271,8 @@ body:has(.todo-fab) .app { padding-bottom: 72px; }
 /* Loading screen between pages: the 10X logo grows in, then breathes with a gold shine */
 .boot .crest { width: 78px; height: 78px; border-radius: 22px; background: url("../assets/icons/icon-192.png") center / cover no-repeat; position: relative; overflow: hidden; box-shadow: 0 12px 32px rgba(18, 59, 46, .28); animation: boot-pop .9s cubic-bezier(.3, 1.5, .5, 1) both, boot-breathe 1.6s ease-in-out .9s infinite; }
 .boot .crest .icon { visibility: hidden; }
-.boot .crest::after { content: ""; position: absolute; inset: -30%; background: linear-gradient(115deg, transparent 38%, rgba(255, 233, 160, .9) 50%, transparent 62%); transform: translateX(-130%); animation: boot-shine 1.6s ease-in-out .25s infinite; }
+.boot .crest::after { content: ""; position: absolute; inset: -30%; background: linear-gradient(115deg, transparent 38%, rgba(255, 233, 160, .9) 50%, transparent 62%); transform: translateX(-130%); animation: boot-shine 1.5s ease-in-out .15s infinite; }
 @keyframes boot-pop { 0% { transform: scale(.45); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes boot-breathe { 50% { transform: scale(.93); } }
-@keyframes boot-shine { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(130%); } }
+@keyframes boot-shine { 0% { transform: translateX(-130%); } 40%, 100% { transform: translateX(130%); } }
 @media (prefers-reduced-motion: reduce) { .boot .crest, .boot .crest::after { animation: none; } }

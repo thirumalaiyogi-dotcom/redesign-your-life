@@ -26,4 +26,15 @@
     });
   } catch (e) { /* old browsers: applied once on load */ }
   window.__rylTheme = { KEY: KEY, saved: saved, resolve: resolve, apply: apply };
+  // Keep the 10X loading logo on screen long enough to see its animation:
+  // longer the first time the app opens in a session, shorter between pages.
+  try {
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      var first = true;
+      try { first = !sessionStorage.getItem('ryl.boot'); sessionStorage.setItem('ryl.boot', '1'); } catch (e) { /* private mode */ }
+      var root = document.documentElement;
+      root.classList.add('boot-hold');
+      setTimeout(function () { root.classList.remove('boot-hold'); }, first ? 1500 : 800);
+    }
+  } catch (e) { /* never block the page */ }
 })();
