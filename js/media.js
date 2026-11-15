@@ -82,3 +82,60 @@ export async function avatarBlob(file) {
 }
 
 export const fileName = (ext) => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+// Profile photo cropper: drag to move, pinch or slider to zoom, inside a round frame.
+// Resolves with a 512px square WebP blob, or null if the member cancels.
+export async function cropAvatar(file) {
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) throw new Error('This file is not a picture we can read.');
+  const V = 280;                                    // on-screen frame size (CSS px)
+  const base = V / Math.min(bmp.width, bmp.height); // "cover" scale
+  let zoom = 1, x = 0, y = 0;                       // offset of the image centre from the frame centre (CSS px)
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim';
+  scrim.innerHTML = `<div class="dialog crop-dlg" role="dialog" aria-modal="true" aria-labelledby="crop-t">
+    <h2 id="crop-t">Adjust your photo</h2><p class="muted">Drag to move. Pinch or use the slider to zoom.</p>
+    <div class="crop-view" style="--v:${V}px"><canvas width="${V * 2}" height="${V * 2}"></canvas><i class="crop-ring" aria-hidden="true"></i></div>
+    <label class="crop-zoom"><span aria-hidden="true">−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
+    <div class="actions"><button class="btn btn-ghost" data-c="0">Cancel</button><button class="btn btn-gold" data-c="1">Use photo</button></div></div>`;
+  document.body.appendChild(scrim);
+  const cv = scrim.querySelector('canvas'), g = cv.getContext('2d'), range = scrim.querySelector('input[type=range]');
+  const clamp = () => {
+    const w = bmp.width * base * zoom, h = bmp.height * base * zoom;
+    const mx = Math.max(0, (w - V) / 2), my = Math.max(0, (h - V) / 2);
+    x = Math.min(mx, Math.max(-mx, x)); y = Math.min(my, Math.max(-my, y));
+  };
+  const draw = () => {
+    clamp();
+    const s = base * zoom * 2, w = bmp.width * s, h = bmp.height * s;
+    g.fillStyle = '#111'; g.fillRect(0, 0, cv.width, cv.height);
+    g.drawImage(bmp, cv.width / 2 + x * 2 - w / 2, cv.height / 2 + y * 2 - h / 2, w, h);
+  };
+  draw();
+  const pts = new Map(); let startDist = 0, startZoom = 1;
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; startDist = Math.hypot(a.x - b.x, a.y - b.y); startZoom = zoom; } });
+  cv.addEventListener('pointermove', (e) => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 1) { x += e.clientX - p.x; y += e.clientY - p.y; }
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2 && startDist) { const [a, b] = [...pts.values()]; zoom = Math.min(4, Math.max(1, startZoom * Math.hypot(a.x - b.x, a.y - b.y) / startDist)); range.value = zoom; }
+    draw();
+  });
+  const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) startDist = 0; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); zoom = Math.min(4, Math.max(1, zoom * (e.deltaY < 0 ? 1.08 : 0.93))); range.value = zoom; draw(); }, { passive: false });
+  range.addEventListener('input', () => { zoom = Number(range.value); draw(); });
+  return new Promise((resolve) => {
+    scrim.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-c]'); if (!b) return;
+      if (b.dataset.c === '0') { scrim.remove(); bmp.close?.(); return resolve(null); }
+      const OUT = 512, k = OUT / V, out = document.createElement('canvas'); out.width = out.height = OUT;
+      const s = base * zoom * k, w = bmp.width * s, h = bmp.height * s;
+      out.getContext('2d').drawImage(bmp, OUT / 2 + x * k - w / 2, OUT / 2 + y * k - h / 2, w, h);
+      const blob = await new Promise((res) => out.toBlob(res, 'image/webp', 0.86));
+      scrim.remove(); bmp.close?.();
+      resolve(blob);
+    });
+  });
+}

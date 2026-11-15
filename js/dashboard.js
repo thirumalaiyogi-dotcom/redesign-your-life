@@ -10,7 +10,7 @@ import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, 
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
-import { avatarBlob, fileName } from './media.js';
+import { avatarBlob, cropAvatar, fileName } from './media.js';
 import { tickFx, soundOn, setSound } from './fx.js';
 import { pushState, enablePush, disablePush, syncPush, pushSheet } from './push.js';
 import { LANDING_PAGE, COACH, WORKSHOP, waLink, workshopState, workshopDate } from './site-content.js';
@@ -715,9 +715,11 @@ function renderProfile() {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
     if (!/^image\//.test(file.type)) return toast('Choose a picture file.', 'bad');
+    let blob;
+    try { blob = await cropAvatar(file); } catch (err) { return toast(friendlyError(err), 'bad'); }
+    if (!blob) return;                                  // cancelled
     const btn = $('.dp-btn'); btn.classList.add('busy');
     try {
-      const blob = await avatarBlob(file);
       const path = `${user.id}/${fileName('webp')}`;
       const up = await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/webp', upsert: false });
       if (up.error) throw up.error;
