@@ -105,4 +105,4 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 ## Shared demo login (Nov 2026)
 - `demo@deepak10xlifecoach.com` — a member account with every tracker open, for group demos. Password is with the owner (not in the repo).
 - `app_settings.demo_account` holds its user id; trigger `on_auth_demo_guard` blocks changing its email or password.
-- Everyone using it shares the same ticks and journal. Delete it (or set `is_active = false`) after the demo.
+- Demo mode (js/supabase.js): the app never saves for this login. Ticks are answered on the phone (each person sees only their own, gone on reload); every other save shows "nothing is saved". A gold DEMO bar shows on every page. One-tap link: demo.html. Delete the account (or set `is_active = false`) after the demo.

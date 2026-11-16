@@ -51,13 +51,39 @@ export function storedSession() {
 }
 export function clearOfflineData() { safe(() => localStorage.removeItem(OFFLINE_KEY)); }
 
+// ---- Demo login: everything works on screen, nothing is saved ----
+// The shared demo member (see HANDOVER.md) only reads from the server. A tick is answered here on the phone
+// (so each person trying the demo sees only their own ticks); any other save shows a friendly "demo" message.
+export const DEMO_EMAIL = 'demo@deepak10xlifecoach.com';
+const claimsOf = (auth) => { try { return JSON.parse(atob(String(auth).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { return {}; } };
+const READ_RPC = /\/rpc\/(app_today|get_my_dashboard|get_my_streaks|get_leaderboard|get_batch_leaderboard|get_recognitions|my_batches|signup_open)$/;
+const demoDay = () => new Date(Date.now() + 5.5 * 36e5).toISOString().slice(0, 10);   // India date
+function demoTicks() { return safe(() => JSON.parse(sessionStorage.getItem('ryl.demo') || '{}'), {}) || {}; }
+function demoReply(url, init) {
+  const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  if (/\/rpc\/mark_activity$/.test(url)) {
+    const b = safe(() => JSON.parse(init.body || '{}'), {}) || {};
+    const day = demoDay(); let t = demoTicks(); if (t.day !== day) t = { day, marks: {} };
+    if (b.p_status) t.marks[b.p_activity_id] = b.p_status; else delete t.marks[b.p_activity_id];
+    safe(() => sessionStorage.setItem('ryl.demo', JSON.stringify(t)));
+    const done = Object.values(t.marks).filter((v) => v === 'done').length;
+    safe(() => dispatchEvent(new CustomEvent('ryl:demo-save')));
+    return json(200, { status: b.p_status, date: day, points_today: done * 10, total_points: done * 10, done_today: done, streak: done ? 1 : 0 });
+  }
+  safe(() => dispatchEvent(new CustomEvent('ryl:demo-save', { detail: 'blocked' })));
+  return json(400, { message: 'This is the demo login, so nothing is saved. Log in with your own account to save.', code: 'DEMO' });
+}
+
 async function offlineFetch(input, init = {}) {
   const url = typeof input === 'string' ? input : input.url;
   const method = String(init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
   const path = safe(() => new URL(url).pathname, '');
+  const h = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
+  const isDemo = claimsOf((h.get('Authorization') || '').replace(/^Bearer /, '')).email === DEMO_EMAIL;
+  const writes = method !== 'GET' && method !== 'HEAD' && (/\/rest\/v1\//.test(path) || /\/storage\/v1\/object/.test(path)) && !READ_RPC.test(path);
+  if (isDemo && writes) return demoReply(url, init);
   const keep = (method === 'GET' && OFFLINE_TABLES.test(path)) || (method === 'POST' && OFFLINE_RPC.test(path));
   if (!keep) return fetch(input, init);
-  const h = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
   const uid = userOf((h.get('Authorization') || '').replace(/^Bearer /, ''));
   const key = `${uid}|${method} ${url}|${typeof init.body === 'string' ? init.body : ''}|${h.get('Accept') || ''}`;
   try {
@@ -96,3 +122,16 @@ export function activityImageUrl(path) {
   if (/^https?:\/\//.test(path)) return path;
   return app(`assets/images/${encodeURIComponent(path)}`);
 }
+
+// Demo login: a small bar on every page so people know nothing is saved
+safe(() => {
+  if (storedSession()?.user?.email !== DEMO_EMAIL) return;
+  const show = () => {
+    if (document.querySelector('.demo-bar')) return;
+    const bar = document.createElement('div');
+    bar.className = 'demo-bar';
+    bar.textContent = 'DEMO · try everything, nothing is saved';
+    document.body.prepend(bar);
+  };
+  if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+});
