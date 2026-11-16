@@ -1840,6 +1840,24 @@ grant execute on function public.skip_temp_password() to authenticated;
 
 alter default privileges in schema public revoke execute on functions from public, anon;
 
+-- A shared demo login (app_settings 'demo_account' = its user id) must keep its email and password,
+-- so one person cannot lock everyone else out. (migration ryl_27_demo_account_guard)
+create or replace function public.guard_demo_account()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_demo text;
+begin
+  select s.value #>> '{}' into v_demo from public.app_settings s where s.key = 'demo_account';
+  if v_demo is not null and old.id::text = v_demo then
+    if tg_table_schema = 'auth' and (new.encrypted_password is distinct from old.encrypted_password or new.email is distinct from old.email) then
+      raise exception 'The shared demo login cannot be changed.' using errcode = 'P0001';
+    end if;
+  end if;
+  return new;
+end $$;
+revoke all on function public.guard_demo_account() from public, anon, authenticated;
+drop trigger if exists on_auth_demo_guard on auth.users;
+create trigger on_auth_demo_guard before update on auth.users for each row execute function public.guard_demo_account();
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
 -- Row Level Security on every table + column-level grants.

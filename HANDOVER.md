@@ -101,3 +101,8 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - **Tick rewards**: ticking ✓ plays a soft two-note chime, a short buzz (Android), a card pop and a floating "+10" with a small burst; finishing a whole tracker plays a longer chime. Members can turn the sound/buzz off in Profile → *Tick sound*. Sounds are generated in the browser (js/fx.js, no audio files). Respects "reduce motion".
 - **Quick tick** on every tracker: a big "Quick tick · N left" button opens one habit at a time, full screen (big picture, Done / Not done, or swipe right / left), moves to the next by itself, and ends with a summary (+points). **Cards / List** switch next to the legend: List shows compact rows with the still-to-do habits first; the choice is remembered on the phone.
 - **Profile photo crop**: choosing a photo opens "Adjust your photo" (drag to move, pinch or slider to zoom, round frame); the saved picture is exactly what was inside the circle (512px WebP).
+
+## Shared demo login (Nov 2026)
+- `demo@deepak10xlifecoach.com` — a member account with every tracker open, for group demos. Password is with the owner (not in the repo).
+- `app_settings.demo_account` holds its user id; trigger `on_auth_demo_guard` blocks changing its email or password.
+- Everyone using it shares the same ticks and journal. Delete it (or set `is_active = false`) after the demo.
