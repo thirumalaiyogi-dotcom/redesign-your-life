@@ -85,7 +85,7 @@ if (page === 'login') {
   }
   wireGoogle();
   if (params.get('next') && !m) showNotice('info', 'Please log in to continue.');
-  redirectIfSignedIn();
+  if (params.get('demo') === '1') openDemo(); else redirectIfSignedIn();
 
   // login with a one-time code sent to the email (works for Gmail, Yahoo, Zoho, office mail…).
   // shouldCreateUser:false → only emails the coach added get a code.
@@ -310,3 +310,17 @@ document.addEventListener('input', (e) => {
   if (e.target.closest('.field.invalid')) setFieldError(e.target, '');
 });
 window.addEventListener('unhandledrejection', (e) => { toast(friendlyError(e.reason), 'bad'); });
+
+// One link for group demos (demo.html → login.html?demo=1): logs straight into the shared demo member.
+// This login is meant to be public; the database stops anyone changing its email or password.
+async function openDemo() {
+  const s = await getSession().catch(() => null);
+  if (s) { redirectIfSignedIn(); return; }          // already logged in: just open the app
+  showNotice('info', 'Opening the demo…');
+  try {
+    const { profile } = await signIn('demo@deepak10xlifecoach.com', '10Xlife2026', true);
+    location.replace(homeFor(profile));
+  } catch (err) {
+    showNotice('bad', /paused|invalid login/i.test(err?.message || '') ? 'The demo has ended. Please log in with your own account.' : friendlyError(err));
+  }
+}
