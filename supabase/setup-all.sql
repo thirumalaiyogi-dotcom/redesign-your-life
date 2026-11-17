@@ -2500,6 +2500,9 @@ from public.tracker_categories c where c.id = a.category_id and c.slug = 'mugila
 -- Nithilla's Habits pictures (Nov 2026)
 update public.activities a set image_path = 'nithilla-' || lpad(a.number::text, 2, '0') || '.webp'
 from public.tracker_categories c where c.id = a.category_id and c.slug = 'nithilla' and a.image_path is null;
+-- The Secret - 16 Basics pictures (Nov 2026)
+update public.activities a set image_path = 'secret-' || lpad(a.number::text, 2, '0') || '.webp'
+from public.tracker_categories c where c.id = a.category_id and c.slug = 'secret' and a.image_path is null;
 
 -- >>>>>>>>>>>>>>>>>>>> FIRST SUPER ADMIN (run once, after you sign up in the app)
 -- Replace the email with the client's login email, then run just this line:

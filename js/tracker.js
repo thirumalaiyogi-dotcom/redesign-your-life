@@ -13,7 +13,7 @@ const page = document.body.dataset.page;
 let offlineTold = false;
 let pointKinds = new Map();
 const COLOR = { wealth: 'var(--t-wealth)', conscious: 'var(--t-conscious)', karma: 'var(--t-karma)', champion: 'var(--t-champion)', couple: 'var(--t-couple)', mugilan: 'var(--t-mugilan)' };
-const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp', couple: 'couple-cover.webp', mugilan: 'mugilan-cover.webp', nithilla: 'nithilla-cover.webp' };
+const COVER = { wealth: 'wealth-01.webp', conscious: 'conscious-02.webp', karma: 'karma-01.webp', champion: 'champion-01.webp', couple: 'couple-cover.webp', mugilan: 'mugilan-cover.webp', nithilla: 'nithilla-cover.webp', secret: 'secret-cover.webp' };
 const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion: 'target', couple: 'heart-handshake', mugilan: 'rocket' };
 // trackers added later (e.g. Conscious Couple) use their own colour/icon from the database and a plain cover
 const catOf = (slug) => cats.find((c) => c.slug === slug) || {};
