@@ -1429,3 +1429,37 @@ end $$;
 revoke all on function public.guard_demo_account() from public, anon, authenticated;
 drop trigger if exists on_auth_demo_guard on auth.users;
 create trigger on_auth_demo_guard before update on auth.users for each row execute function public.guard_demo_account();
+
+-- Membership dates (migration ryl_28_membership_dates)
+create or replace function public.admin_set_membership(p_member uuid, p_since date, p_renews date)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change membership dates.' using errcode = '42501'; end if;
+  if p_since is not null and p_renews is not null and p_renews < p_since then
+    raise exception 'Renewal date must be after the joining date.' using errcode = '22023';
+  end if;
+  update public.profiles set member_since = p_since, renews_on = p_renews where id = p_member;
+  if not found then raise exception 'Member not found.' using errcode = 'P0002'; end if;
+  perform public._audit('member.membership', 'profiles', p_member::text,
+                        jsonb_build_object('member_since', p_since, 'renews_on', p_renews));
+end $$;
+revoke all on function public.admin_set_membership(uuid, date, date) from public, anon;
+grant execute on function public.admin_set_membership(uuid, date, date) to authenticated;
+
+-- Coaches get a notification 7 days before, 1 day before and on the renewal day.
+create or replace function public._queue_renewal_reminders()
+returns integer language plpgsql security definer set search_path = '' as $$
+declare v_today date := public.app_today(); n integer;
+begin
+  insert into public.notifications(member_id, kind, title, body)
+  select a.id, 'info',
+         left(case m.renews_on - v_today when 0 then 'Renewal today: ' when 1 then 'Renewal tomorrow: ' else 'Renewal in 7 days: ' end
+              || coalesce(nullif(m.full_name, ''), 'a member'), 120),
+         'Membership renews on ' || to_char(m.renews_on, 'DD Mon YYYY') || coalesce(' · ' || m.phone, '')
+  from public.profiles m
+  join public.profiles a on a.role in ('admin', 'super_admin') and a.is_active
+  where m.role = 'member' and m.is_active and m.renews_on - v_today in (7, 1, 0);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public._queue_renewal_reminders() from public, anon, authenticated;

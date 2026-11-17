@@ -108,13 +108,16 @@ let people = [], filter = 'all', query = '';
 let extraCats = [], extraOf = new Map();
 
 async function loadPeople() {
-  const [ppl, cats, asg] = await Promise.all([
+  const [ppl, cats, asg, mem] = await Promise.all([
     supabase.rpc('admin_list_people'),
     supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),   // all trackers are opened per member
-    supabase.from('tracker_assignments').select('category_id, member_id')
+    supabase.from('tracker_assignments').select('category_id, member_id'),
+    supabase.from('profiles').select('id, member_since, renews_on').or('member_since.not.is.null,renews_on.not.is.null')
   ]);
   if (ppl.error) throw ppl.error;
   people = ppl.data || [];
+  const dates = new Map((mem.error ? [] : mem.data || []).map((m) => [m.id, m]));
+  for (const p of people) Object.assign(p, { member_since: dates.get(p.id)?.member_since || null, renews_on: dates.get(p.id)?.renews_on || null });
   extraCats = cats.error ? [] : cats.data || [];
   extraOf = new Map();
   for (const a of asg.error ? [] : asg.data || []) {
@@ -166,9 +169,22 @@ function counts() {
     all: people.length,
     member: people.filter((p) => p.role === 'member').length,
     coach: people.filter((p) => p.role !== 'member').length,
-    paused: people.filter((p) => !p.is_active).length
+    paused: people.filter((p) => !p.is_active).length,
+    renew: people.filter(renewDue).length
   };
 }
+
+// membership renewal: days left (negative = overdue)
+const todayISO = () => new Date(Date.now() + 5.5 * 36e5).toISOString().slice(0, 10);
+const daysTo = (d) => Math.round((new Date(d + 'T00:00:00Z') - new Date(todayISO() + 'T00:00:00Z')) / 864e5);
+function renewHTML(p) {
+  if (!p.renews_on && !p.member_since) return '';
+  const left = p.renews_on ? daysTo(p.renews_on) : null;
+  const tone = left === null ? '' : left < 0 ? 'color:var(--c-danger,#c0392b);font-weight:700' : left <= 7 ? 'color:var(--c-warning-ink,#8a5a00);font-weight:700' : '';
+  const when = left === null ? '' : left < 0 ? ` (overdue ${-left} day${left === -1 ? '' : 's'})` : left === 0 ? ' (today)' : left <= 30 ? ` (in ${left} day${left === 1 ? '' : 's'})` : '';
+  return `${p.member_since ? `<span>Member since ${esc(formatDate(p.member_since))}</span>` : ''}${p.renews_on ? `<span style="${tone}">Renews ${esc(formatDate(p.renews_on))}${when}</span>` : ''}`;
+}
+const renewDue = (p) => p.role === 'member' && p.renews_on && daysTo(p.renews_on) <= 30;
 
 function personHTML(p) {
   const isMe = p.id === me.user.id;
@@ -182,11 +198,12 @@ function personHTML(p) {
     <span class="avatar" aria-hidden="true">${esc(initials(p.full_name, p.email))}</span>
     <div class="who"><b>${esc(p.full_name || '(no name yet)')}${isMe ? ' <span class="muted" style="font-weight:600">(you)</span>' : ''}</b>
       <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
-      <span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
+      ${renewHTML(p)}<span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
       ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
+      ${p.role === 'member' ? `<button class="btn btn-sm btn-ghost" data-mship="${p.id}">${icon('calendar')}Membership</button>` : ''}
       ${p.role === 'member' && p.is_active ? `<button class="btn btn-sm btn-ghost" data-bonus="${p.id}">${icon('sparkles')}Bonus</button>
         <button class="btn btn-sm btn-ghost" data-notice="${p.id}">${icon('bell')}Notify</button>` : ''}
       ${canToggle ? `<button class="btn btn-sm ${p.is_active ? 'btn-ghost' : 'btn-ok'}" data-active="${p.id}">${icon(p.is_active ? 'pause' : 'play')}${p.is_active ? 'Pause' : 'Activate'}</button>` : ''}</div>
@@ -196,7 +213,7 @@ function personHTML(p) {
 function renderList() {
   const q = query.trim().toLowerCase();
   const list = people.filter((p) =>
-    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active)) &&
+    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active) || (filter === 'renew' && renewDue(p))) &&
     (!q || `${p.full_name} ${p.email} ${p.phone || ''}`.toLowerCase().includes(q)));
   const c = counts();
   $$('[data-filter]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.filter === filter)); b.querySelector('.c').textContent = c[b.dataset.filter]; });
@@ -218,7 +235,7 @@ async function renderMembers() {
     <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
   <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
   <div class="tools">
-    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['paused', 'Paused']].map(([v, l]) =>
+    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['renew', 'Renewals due'], ['paused', 'Paused']].map(([v, l]) =>
       `<button class="chip" data-filter="${v}" aria-pressed="false">${l}<span class="c"></span></button>`).join('')}</div>
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Search name, email or phone" aria-label="Search members"></label>
   </div>
@@ -250,6 +267,8 @@ async function renderMembers() {
       });
       return;
     }
+    const ms = e.target.closest('[data-mship]');
+    if (ms) { membershipDialog(people.find((x) => x.id === ms.dataset.mship)); return; }
     const tk = e.target.closest('[data-trk]');
     if (tk) { trackersDialog(people.find((x) => x.id === tk.dataset.trk)); return; }
     const t = e.target.closest('[data-active]');
@@ -316,6 +335,25 @@ const fieldErr = (form, sel, msg) => {
   const input = form.querySelector(sel); const f = input.closest('.field');
   f.classList.toggle('invalid', !!msg); f.querySelector('.err').textContent = msg || ''; if (msg) input.focus(); return !msg;
 };
+
+// ---------------- MEMBERSHIP DATES ----------------
+function membershipDialog(p) {
+  formDialog({
+    title: `Membership · ${p.full_name || p.email}`,
+    body: 'You get a notification 7 days before, 1 day before and on the renewal day.',
+    fields: `<div class="field"><label for="ms-s">Joined on</label><input id="ms-s" type="date" value="${esc(p.member_since || '')}"><span class="err"></span></div>
+      <div class="field"><label for="ms-r">Renews on</label><input id="ms-r" type="date" value="${esc(p.renews_on || '')}"><span class="err"></span></div>`,
+    submitLabel: 'Save',
+    onSubmit: async (form) => {
+      const since = form.querySelector('#ms-s').value || null, renews = form.querySelector('#ms-r').value || null;
+      if (since && renews && renews < since) return fieldErr(form, '#ms-r', 'Renewal must be after the joining date.');
+      const { error } = await supabase.rpc('admin_set_membership', { p_member: p.id, p_since: since, p_renews: renews });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      Object.assign(p, { member_since: since, renews_on: renews }); renderList(); toast('Membership dates saved');
+      return true;
+    }
+  });
+}
 
 // ---------------- NOTIFICATION FROM THE COACH ----------------
 function noticeDialog(p) {

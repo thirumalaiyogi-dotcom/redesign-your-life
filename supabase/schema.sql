@@ -425,3 +425,9 @@ create index if not exists doubts_category_idx on public.doubts(category_id) whe
 alter table public.todos add column if not exists repeat text check (repeat in ('daily','weekdays','weekly','monthly'));
 alter table public.todos add column if not exists repeat_of uuid references public.todos(id) on delete set null;
 create index if not exists todos_repeat_of_idx on public.todos(repeat_of) where repeat_of is not null;
+
+-- Membership dates: when a member joined the paid membership and when it renews (coach-only).
+alter table public.profiles add column if not exists member_since date;
+alter table public.profiles add column if not exists renews_on date;
+alter table public.profiles drop constraint if exists profiles_renews_after_join;
+alter table public.profiles add constraint profiles_renews_after_join check (renews_on is null or member_since is null or renews_on >= member_since);

@@ -106,3 +106,8 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - `demo@deepak10xlifecoach.com` — a member account with every tracker open, for group demos. Password is with the owner (not in the repo).
 - `app_settings.demo_account` holds its user id; trigger `on_auth_demo_guard` blocks changing its email or password.
 - Demo mode (js/supabase.js): the app never saves for this login. Ticks are answered on the phone (each person sees only their own, gone on reload); every other save shows "nothing is saved". A gold DEMO bar shows on every page. One-tap link: demo.html. Delete the account (or set `is_active = false`) after the demo.
+
+## Membership dates (Nov 2026)
+- `profiles.member_since`, `profiles.renews_on` — coach-only (members cannot update them; no column grant).
+- Coach: Members → "Membership" button to set/change; "Renewals due" filter shows renewals within 30 days or overdue.
+- `_queue_renewal_reminders()` (cron `ryl-renewal-reminder`, 9:10 am IST) notifies every active coach 7 days before, 1 day before and on the renewal day.
