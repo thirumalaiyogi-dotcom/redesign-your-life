@@ -2402,7 +2402,8 @@ on conflict (code) do update set name = excluded.name, description = excluded.de
 insert into public.tracker_categories(slug, name, tagline, color, icon, sort_order, audience) values
   ('couple', 'Conscious Couple', 'Husband & Wife Relationship Tracker', '#d9465f', 'heart-handshake', 5, 'assigned'),
   ('mugilan', 'Mugilan''s Habits', 'Get 1% Better Everyday', '#7a5cd6', 'rocket', 6, 'assigned'),
-  ('nithilla', 'Nithilla''s Habits', 'Get 1% Better Everyday', '#d6559a', 'flower-2', 7, 'assigned')
+  ('nithilla', 'Nithilla''s Habits', 'Get 1% Better Everyday', '#d6559a', 'flower-2', 7, 'assigned'),
+  ('secret', 'The Secret - 16 Basics', 'Deepak''s Science & Psychology of 10X', '#9b4dca', 'sparkles', 8, 'assigned')
 on conflict (slug) do nothing;
 
 insert into public.activities(category_id, number, default_name, description, icon, image_path, points)
@@ -2449,7 +2450,23 @@ from (values
   ('nithilla', 11, 'Eat Healthy - Early Dinner', null, 'apple'),
   ('nithilla', 12, 'Tofu Walking / Play', null, 'leaf'),
   ('nithilla', 13, 'Ready for Tomorrow', 'Homework, assignments, uniform ironing', 'book-open'),
-  ('nithilla', 14, 'Early to Bed - Read Books', null, 'moon')
+  ('nithilla', 14, 'Early to Bed - Read Books', null, 'moon'),
+  ('secret', 1, 'Experience is the Only Source of Knowledge', null, 'mountain'),
+  ('secret', 2, 'Learning Pyramid', null, 'book-open'),
+  ('secret', 3, 'Repetition - Mother of Skill', 'Bruce Lee - 10,000 times', 'repeat'),
+  ('secret', 4, 'Success - 95% Mindset, 5% Strategy', null, 'brain'),
+  ('secret', 5, 'Financial Freedom - Time / Location Freedom', null, 'coins'),
+  ('secret', 6, 'The Secret - Law of Attraction', null, 'sparkles'),
+  ('secret', 7, 'Thoughts are Magnetic', null, 'zap'),
+  ('secret', 8, 'Source of Thoughts?', null, 'lightbulb'),
+  ('secret', 9, 'Perception = Reality (Mirror)', null, 'eye'),
+  ('secret', 10, 'Dino / Mammal / Human Brain', 'Survival / Emotional / Creative', 'activity'),
+  ('secret', 11, 'Thought Energy / Mental Diarrhea', null, 'cloud-lightning'),
+  ('secret', 12, 'Negative Self Talk', null, 'message-square'),
+  ('secret', 13, 'Worrying ≠ Thinking', null, 'hourglass'),
+  ('secret', 14, 'Amygdala Hijack / Excuses', null, 'alert-triangle'),
+  ('secret', 15, 'Car Accelerator / Brake', null, 'trending-up'),
+  ('secret', 16, 'Captain Cool', null, 'crown')
 ) as v(slug, number, default_name, description, icon)
 join public.tracker_categories c on c.slug = v.slug
 on conflict (category_id, number) do nothing;
@@ -2457,7 +2474,7 @@ on conflict (category_id, number) do nothing;
 -- Redesign 2.2: every tracker is opened per member by the coach (Members → Trackers, or "Open for all").
 -- (The live migration gave the 4 main trackers to everyone who had already joined, so nothing changed for them.)
 update public.tracker_categories set audience = 'assigned' where slug in ('wealth','conscious','karma','champion') and audience <> 'assigned';
-update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan','nithilla') and not show_locked;
+update public.tracker_categories set show_locked = true where slug in ('wealth','conscious','karma','champion','couple','mugilan','nithilla','secret') and not show_locked;
 
 -- ---------- Redesign 2.4 ----------
 -- open_signup: true = anyone can make an account on the Join page; false = only accounts the coach creates
