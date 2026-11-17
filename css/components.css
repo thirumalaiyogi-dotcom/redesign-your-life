@@ -27,7 +27,10 @@
 .dash-top .brand { flex: 1 1 auto; min-width: 0; }
 .dash-top .brand span:last-child { min-width: 0; overflow: hidden; }
 .dash-top .brand b, .dash-top .brand small { overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 400px) { .dash-top .brand span:last-child { display: none; } }
+@media (max-width: 400px) {
+  .dash-top .brand small { display: none; }   /* phones: the app name stays, the tagline goes */
+  .dash-top .brand b { font-size: 14px; white-space: normal; line-height: 1.12; }
+}
 
 /* ---------- done / not done / to-mark counts ---------- */
 .counts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--c-muted); }
