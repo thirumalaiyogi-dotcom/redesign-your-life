@@ -126,6 +126,7 @@ export function activityImageUrl(path) {
 // Demo login: a small bar on every page so people know nothing is saved
 safe(() => {
   if (storedSession()?.user?.email !== DEMO_EMAIL) return;
+  if (!/\/(member|admin)\//.test(location.pathname)) return;   // only inside the app, never on the login page
   const show = () => {
     if (document.querySelector('.demo-bar')) return;
     const bar = document.createElement('div');
