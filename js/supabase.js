@@ -130,7 +130,10 @@ safe(() => {
     if (document.querySelector('.demo-bar')) return;
     const bar = document.createElement('div');
     bar.className = 'demo-bar';
-    bar.textContent = 'DEMO · try everything, nothing is saved';
+    bar.textContent = 'DEMO · nothing is saved · ';
+    const out = document.createElement('a');
+    out.href = app('login.html'); out.textContent = 'Exit demo';   // the login page leaves the demo
+    bar.append(out);
     document.body.prepend(bar);
   };
   if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);

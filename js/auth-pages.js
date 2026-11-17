@@ -1,6 +1,6 @@
 // Login, register, forgot-password and reset-password screens.
-import { supabase, app, setRemember, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
-import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError } from './auth.js';
+import { supabase, app, setRemember, SUPABASE_URL, SUPABASE_ANON_KEY, DEMO_EMAIL, clearOfflineData } from './supabase.js';
+import { signIn, signUp, sendPasswordReset, updatePassword, getSession, fetchProfile, homeFor, safeNext, friendlyError, clearProfileCache } from './auth.js';
 import { $, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, EMAIL_RE, PHONE_RE, validatePassword } from './ui.js';
 import { currentTheme } from './theme.js';
 import { COACH, TESTIMONIALS } from './site-content.js';
@@ -57,6 +57,12 @@ function checkEmail(input) {
 async function redirectIfSignedIn() {
   const session = await getSession().catch(() => null);
   if (!session) return false;
+  // The demo login never sticks: opening the normal login page leaves the demo and shows the login form.
+  if (String(session.user?.email).toLowerCase() === DEMO_EMAIL) {
+    clearProfileCache(); clearOfflineData();
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    return false;
+  }
   const profile = await fetchProfile(session.user.id).catch(() => null);
   if (profile?.is_active && profile.must_change && page !== 'reset') { location.replace(app('reset.html?first=1')); return true; }
   if (profile?.is_active) { location.replace(safeNext(params.get('next')) || homeFor(profile.role)); return true; }
@@ -315,11 +321,11 @@ window.addEventListener('unhandledrejection', (e) => { toast(friendlyError(e.rea
 // This login is meant to be public; the database stops anyone changing its email or password.
 async function openDemo() {
   const s = await getSession().catch(() => null);
-  if (s) { redirectIfSignedIn(); return; }          // already logged in: just open the app
+  if (s && String(s.user?.email).toLowerCase() !== DEMO_EMAIL) { redirectIfSignedIn(); return; }   // own account: open it
   showNotice('info', 'Opening the demo…');
   try {
-    const { profile } = await signIn('demo@deepak10xlifecoach.com', '10Xlife2026', true);
-    location.replace(homeFor(profile));
+    const { profile } = await signIn(DEMO_EMAIL, '10Xlife2026', false);   // not remembered: closing the browser ends the demo
+    location.replace(homeFor(profile.role));
   } catch (err) {
     showNotice('bad', /paused|invalid login/i.test(err?.message || '') ? 'The demo has ended. Please log in with your own account.' : friendlyError(err));
   }
