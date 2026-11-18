@@ -237,30 +237,6 @@ if (page === 'register') {
   });
 }
 
-// ---------------- JOIN FORM (public: name, city, phone, email → coach approves) ----------------
-if (page === 'join') {
-  const form = $('#join-form');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = $('#full_name'), city = $('#city'), phone = $('#phone'), email = $('#email');
-    const digits = phone.value.replace(/[^0-9]/g, '');
-    const ok = [
-      setFieldError(name, name.value.trim().length < 2 ? 'Enter your name.' : ''),
-      setFieldError(city, city.value.trim() ? '' : 'Enter your city.'),
-      setFieldError(phone, digits.length < 10 || digits.length > 13 ? 'Enter your 10-digit mobile number.' : ''),
-      checkEmail(email)
-    ];
-    if (!ok.every(Boolean)) { $('.field.invalid input')?.focus(); return; }
-    await withBusy($('#join-btn'), 'Sending…', async () => {
-      const { error } = await supabase.rpc('submit_join_request', { p_name: name.value, p_city: city.value, p_phone: phone.value, p_email: email.value });
-      if (error) { showNotice('bad', friendlyError(error)); return; }
-      form.hidden = true;
-      $('#done-email').textContent = email.value.trim().toLowerCase();
-      $('#done').hidden = false; $('#done h1')?.focus();
-    });
-  });
-}
-
 // ---------------- FORGOT ----------------
 if (page === 'forgot') {
   $('#forgot-form').addEventListener('submit', async (e) => {
