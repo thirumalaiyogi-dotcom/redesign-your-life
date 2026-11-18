@@ -1463,3 +1463,70 @@ begin
   return n;
 end $$;
 revoke all on function public._queue_renewal_reminders() from public, anon, authenticated;
+
+-- Join form (migration ryl_29_join_form)
+-- PUBLIC: anyone with the link can send their details (no account is made here)
+create or replace function public.submit_join_request(p_name text, p_city text, p_phone text, p_email text)
+returns text language plpgsql security definer set search_path = '' as $$
+declare v_name text := left(regexp_replace(trim(coalesce(p_name, '')), '\s+', ' ', 'g'), 80);
+        v_city text := nullif(left(trim(coalesce(p_city, '')), 60), '');
+        v_phone text := regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g');
+        v_email text := lower(trim(coalesce(p_email, '')));
+        v_new boolean;
+begin
+  if char_length(v_name) < 2 then raise exception 'Please enter your name.' using errcode = '22023'; end if;
+  if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or char_length(v_email) > 254 then raise exception 'Please enter a valid email.' using errcode = '22023'; end if;
+  if v_phone ~ '^[0-9]{10}$' then v_phone := '+91' || v_phone; end if;
+  if v_phone !~ '^\+?[0-9]{7,15}$' then raise exception 'Please enter a valid phone number.' using errcode = '22023'; end if;
+  if (select count(*) from public.join_requests where status = 'pending') >= 1000 then
+    raise exception 'Too many requests right now. Please try again later.' using errcode = '53400';
+  end if;
+  insert into public.join_requests(full_name, city, phone, email) values (v_name, v_city, v_phone, v_email)
+  on conflict (lower(email)) where status = 'pending'
+  do update set full_name = excluded.full_name, city = excluded.city, phone = excluded.phone, created_at = now()
+  returning (xmax = 0) into v_new;
+  if v_new then
+    insert into public.notifications(member_id, kind, title, body)
+    select a.id, 'info', left('New join request: ' || v_name, 120), coalesce(v_city || ' · ', '') || v_phone
+      from public.profiles a where a.role in ('admin', 'super_admin') and a.is_active;
+  end if;
+  return 'received';
+end $$;
+revoke all on function public.submit_join_request(text, text, text, text) from public;
+grant execute on function public.submit_join_request(text, text, text, text) to anon, authenticated;
+
+-- COACH: approve → account (or existing member) + batch + chosen trackers; returns the login details
+create or replace function public.admin_approve_join(p_request uuid, p_batch uuid, p_trackers uuid[])
+returns table(full_name text, email text, phone text, temp_password text, status text, member_id uuid)
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare r public.join_requests; a record;
+begin
+  if not public.is_admin() then raise exception 'Only coaches can approve.' using errcode = '42501'; end if;
+  select * into r from public.join_requests j where j.id = p_request and j.status = 'pending' for update;
+  if not found then raise exception 'This request was already handled.' using errcode = 'P0002'; end if;
+  select * into a from public.admin_batch_add_people(p_batch, jsonb_build_array(jsonb_build_object('name', r.full_name, 'email', r.email, 'phone', r.phone)));
+  if a.status not in ('created', 'existing') then
+    raise exception '%', case a.status when 'not_member' then 'This email belongs to a coach.' else 'The email is not valid.' end using errcode = '22023';
+  end if;
+  update public.profiles pr set city = coalesce(r.city, pr.city) where pr.id = a.member_id;
+  insert into public.tracker_assignments(category_id, member_id, assigned_by)
+  select c.id, a.member_id, auth.uid() from public.tracker_categories c where c.id = any(coalesce(p_trackers, '{}'))
+  on conflict do nothing;
+  update public.join_requests j set status = 'approved', member_id = a.member_id, decided_at = now(), decided_by = auth.uid() where j.id = r.id;
+  perform public._audit('join.approve', 'join_requests', r.id::text, jsonb_build_object('member', a.member_id, 'batch', p_batch));
+  full_name := a.full_name; email := a.email; phone := a.phone; temp_password := a.temp_password; status := a.status; member_id := a.member_id;
+  return next;
+end $$;
+revoke all on function public.admin_approve_join(uuid, uuid, uuid[]) from public, anon;
+grant execute on function public.admin_approve_join(uuid, uuid, uuid[]) to authenticated;
+
+create or replace function public.admin_dismiss_join(p_request uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can do this.' using errcode = '42501'; end if;
+  update public.join_requests set status = 'dismissed', decided_at = now(), decided_by = auth.uid() where id = p_request and status = 'pending';
+  perform public._audit('join.dismiss', 'join_requests', p_request::text, '{}'::jsonb);
+end $$;
+revoke all on function public.admin_dismiss_join(uuid) from public, anon;
+grant execute on function public.admin_dismiss_join(uuid) to authenticated;

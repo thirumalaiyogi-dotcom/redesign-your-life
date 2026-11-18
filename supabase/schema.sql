@@ -431,3 +431,22 @@ alter table public.profiles add column if not exists member_since date;
 alter table public.profiles add column if not exists renews_on date;
 alter table public.profiles drop constraint if exists profiles_renews_after_join;
 alter table public.profiles add constraint profiles_renews_after_join check (renews_on is null or member_since is null or renews_on >= member_since);
+
+-- Join form: people send their details from a public link; a coach approves them (account + batch + trackers).
+alter table public.profiles add column if not exists city text;
+alter table public.profiles drop constraint if exists profiles_city_len;
+alter table public.profiles add constraint profiles_city_len check (city is null or char_length(city) <= 60);
+
+create table if not exists public.join_requests (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null check (char_length(full_name) between 2 and 80),
+  city text check (city is null or char_length(city) <= 60),
+  phone text check (phone is null or phone ~ '^\+?[0-9]{7,15}$'),
+  email text not null check (char_length(email) <= 254),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'dismissed')),
+  member_id uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by uuid references public.profiles(id) on delete set null
+);
+create unique index if not exists join_requests_pending_email on public.join_requests (lower(email)) where status = 'pending';

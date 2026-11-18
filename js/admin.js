@@ -2,7 +2,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
-import { renderBatches } from './batches.js';
+import { renderBatches, loginMessage, waLink } from './batches.js';
 import { pushState, enablePush, syncPush, pushSheet } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
@@ -224,12 +224,14 @@ function renderList() {
 
 async function renderMembers() {
   const main = $('#main');
-  const joinUrl = app('register.html');
+  const joinUrl = app('join.html');
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${me.profile.role === 'super_admin' ? 'You can change roles and pause anyone' : 'You can pause or activate members'}</span><h1>Members</h1></div></div>
   <section class="panel panel-pad stack" style="gap:10px">
-    <b>Add members</b><p class="muted" style="font-size:14px">Send this link. Each person creates their own account and joins as a Member.${me.profile.role === 'super_admin' ? ' You can then make someone a Coach here.' : ''}</p>
-    <div class="invite"><code id="join-url">${esc(joinUrl)}</code><button class="btn btn-ghost btn-sm" id="copy-join">${icon('copy')}Copy link</button></div>
+    <b>Join form</b><p class="muted" style="font-size:14px">Send this link on WhatsApp. People fill their name, city, phone and email. They show up here; tap Approve to open the app for them.</p>
+    <div class="invite"><code id="join-url">${esc(joinUrl)}</code><button class="btn btn-ghost btn-sm" id="copy-join">${icon('copy')}Copy link</button>
+      <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`*DEEPAK'S 10X LIFE*\nApp login details 👇\nPlease fill your Name, City, Contact number and Email ID here:\n${joinUrl}`)}">${icon('phone')}Share on WhatsApp</a></div>
+    <div id="jr-list" class="stack" style="gap:8px"></div>
   </section>
   <section class="panel panel-pad notice-bar"><span class="si">${icon('bell')}</span><span><b>Send a notification</b><small>Reaches the app and the phone of everyone who turned notifications on</small></span>
     <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
@@ -246,7 +248,18 @@ async function renderMembers() {
     catch { const r = document.createRange(); r.selectNodeContents($('#join-url')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('Link selected. Long-press to copy.', 'info'); }
   });
   $('#q').addEventListener('input', (e) => { query = e.target.value; renderList(); });
+  loadJoinRequests();
   main.addEventListener('click', async (e) => {
+    const ja = e.target.closest('[data-jr-ok]');
+    if (ja) { approveJoinDialog(joinReqs.find((r) => r.id === ja.dataset.jrOk)); return; }
+    const jd = e.target.closest('[data-jr-no]');
+    if (jd) {
+      const r = joinReqs.find((x) => x.id === jd.dataset.jrNo);
+      if (!(await confirmDialog({ title: `Remove ${r.full_name}'s request?`, body: 'No account is made. They can fill the form again.', confirmLabel: 'Remove', danger: true }))) return;
+      const { error } = await supabase.rpc('admin_dismiss_join', { p_request: r.id });
+      if (error) return toast(friendlyError(error), 'bad');
+      toast('Request removed'); loadJoinRequests(); return;
+    }
     const f = e.target.closest('[data-filter]');
     if (f) { filter = f.dataset.filter; renderList(); return; }
     const bz = e.target.closest('[data-bonus]');
@@ -335,6 +348,62 @@ const fieldErr = (form, sel, msg) => {
   const input = form.querySelector(sel); const f = input.closest('.field');
   f.classList.toggle('invalid', !!msg); f.querySelector('.err').textContent = msg || ''; if (msg) input.focus(); return !msg;
 };
+
+// ---------------- JOIN REQUESTS (from join.html) ----------------
+let joinReqs = [];
+async function loadJoinRequests() {
+  const box = $('#jr-list'); if (!box) return;
+  const { data, error } = await supabase.from('join_requests').select('id, full_name, city, phone, email, created_at').eq('status', 'pending').order('created_at', { ascending: false });
+  if (error) { box.innerHTML = `<p class="muted">${esc(friendlyError(error))}</p>`; return; }
+  joinReqs = data || [];
+  box.innerHTML = joinReqs.length ? `<b style="margin-top:6px">Waiting for approval (${joinReqs.length})</b>` + joinReqs.map((r) => `
+    <div class="jr" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--c-border);border-radius:14px">
+      <div style="min-width:0"><b>${esc(r.full_name)}</b><div class="muted" style="font-size:13px;word-break:break-all">${esc([r.city, r.phone, r.email].filter(Boolean).join(' · '))}</div>
+        ${people.some((p) => (p.email || '').toLowerCase() === r.email) ? '<small style="color:var(--c-warning-ink,#8a5a00)">Already has an account. Approve adds them to the batch.</small>' : ''}</div>
+      <div class="row" style="gap:6px"><button class="btn btn-gold btn-sm" data-jr-ok="${r.id}">${icon('check')}Approve</button>
+        <button class="btn btn-ghost btn-sm" data-jr-no="${r.id}" aria-label="Remove request">${icon('x')}</button></div>
+    </div>`).join('') : '<p class="muted" style="font-size:13px">No requests waiting.</p>';
+}
+
+async function approveJoinDialog(r) {
+  const [bt, ct] = await Promise.all([
+    supabase.from('batches').select('id, name').eq('is_active', true).order('created_at', { ascending: false }),
+    supabase.from('tracker_categories').select('id, name, slug').eq('is_active', true).order('sort_order')
+  ]);
+  const batches = bt.data || [], trackers = ct.data || [];
+  if (!batches.length) return toast('Create a batch first (Batches page), then approve.', 'info');
+  const CORE = ['wealth', 'conscious', 'karma', 'champion'];
+  formDialog({
+    title: `Approve ${r.full_name}`,
+    body: esc([r.city, r.phone, r.email].filter(Boolean).join(' · ')),
+    fields: `<div class="field"><label for="jr-b">Batch</label><select id="jr-b">${batches.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select><span class="err"></span></div>
+      <fieldset class="field" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:6px">Open these trackers</legend>
+      ${trackers.map((t) => `<label class="check"><input type="checkbox" name="jr-t" value="${t.id}" ${CORE.includes(t.slug) ? 'checked' : ''}>${esc(t.name)}</label>`).join('')}</fieldset>`,
+    submitLabel: 'Approve',
+    onSubmit: async (form) => {
+      const ids = [...form.querySelectorAll('[name=jr-t]:checked')].map((i) => i.value);
+      const { data, error } = await supabase.rpc('admin_approve_join', { p_request: r.id, p_batch: form.querySelector('#jr-b').value, p_trackers: ids });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      const a = (data || [])[0] || {};
+      loadJoinRequests(); loadPeople().then(renderList).catch(() => {});
+      sentDialog(a);
+      return true;
+    }
+  });
+}
+function sentDialog(a) {
+  const msg = a.temp_password ? loginMessage(a.full_name, a.email, a.temp_password)
+    : `Hi ${String(a.full_name || '').split(/\s+/)[0]},\n\nDeepak's 10X Life app-la ungalukku pudhu trackers open pannirukom.\n\nLink: ${app('login.html')}\nUnga pazhaya login (Google / email) vechu ulla ponga.`;
+  const link = a.phone ? waLink(a.phone, msg) : '';
+  formDialog({
+    title: `${a.full_name} can log in now`,
+    body: a.status === 'existing' ? 'They already had an account; they are now in the batch with the trackers you picked.' : 'Send the login on WhatsApp. With a Gmail they can also just tap Continue with Google.',
+    fields: `${link ? `<a class="btn btn-gold btn-block" target="_blank" rel="noopener" href="${esc(link)}">${icon('phone')}Send login on WhatsApp</a>` : '<p class="muted">No phone number. Copy the message below and send it.</p>'}
+      <textarea readonly rows="6" style="width:100%">${esc(msg)}</textarea>`,
+    submitLabel: 'Done',
+    onSubmit: async () => true
+  });
+}
 
 // ---------------- MEMBERSHIP DATES ----------------
 function membershipDialog(p) {

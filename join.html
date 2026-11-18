@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F7F8F5">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gcbizlnpryihrrmjwbdv.supabase.co https://i.ytimg.com; media-src 'self' blob: https://gcbizlnpryihrrmjwbdv.supabase.co; connect-src 'self' https://gcbizlnpryihrrmjwbdv.supabase.co wss://gcbizlnpryihrrmjwbdv.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Join · Deepak's 10X Life</title>
+<meta name="description" content="Send your details to join Deepak's 10X Life.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Deepak's 10X Life">
+<script src="js/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Plus+Jakarta+Sans:wght@500..800&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="join">
+<main class="auth">
+  <div class="auth-art" aria-hidden="true">
+    <canvas id="art-canvas"></canvas>
+    <div class="quote"><span class="eyebrow" style="color:var(--gold)">Small habits | Big transformation</span><h2>Get <span class="gold-text">1% better</span><br>every day.</h2></div>
+  </div>
+  <div class="auth-form">
+    <div class="auth-card">
+      <a class="brand" href="./"><span class="crest" data-icon="tenx"></span><span><b>Deepak's 10X Life</b><small>Get 1% better every day</small></span></a>
+      <form class="form" id="join-form" novalidate>
+        <div><h1>App login details</h1><p class="sub">Fill this once. Your coach will open the app for you.</p></div>
+        <div id="notice" hidden></div>
+        <div class="field">
+          <label for="full_name">Name</label>
+          <input id="full_name" name="full_name" autocomplete="name" maxlength="80" placeholder="e.g. Priya Raman" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="city">City</label>
+          <input id="city" name="city" autocomplete="address-level2" maxlength="60" placeholder="e.g. Chennai" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="phone">Contact number (WhatsApp)</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="16" placeholder="98765 43210" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <div class="field">
+          <label for="email">Email ID (Gmail is best)</label>
+          <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@gmail.com" required>
+          <span class="err" aria-live="polite"></span>
+        </div>
+        <button class="btn btn-gold btn-block" type="submit" id="join-btn">Send my details</button>
+        <p class="muted" style="text-align:center;font-size:14px">Already got your login? <a class="link" href="login.html">Log in</a></p>
+      </form>
+      <section id="done" class="stack" hidden style="gap:14px">
+        <h1 tabindex="-1">Thank you! 🙏</h1>
+        <p>Your details reached your coach. Once they open the app for you (usually the same day), log in like this:</p>
+        <ol class="stack" style="gap:6px;padding-left:20px;margin:0">
+          <li>Open <b>deepak10xlifecoach.vercel.app</b></li>
+          <li>Tap <b>Continue with Google</b> and choose <b id="done-email"></b></li>
+          <li>Not a Gmail? Tap <b>Get a login code by email</b> instead.</li>
+        </ol>
+        <a class="btn btn-gold btn-block" href="login.html">Go to login</a>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="js/vendor/supabase.js"></script>
+<script type="module" src="js/auth-pages.js"></script>
+</body>
+</html>

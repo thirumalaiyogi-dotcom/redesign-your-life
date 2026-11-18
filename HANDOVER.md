@@ -111,3 +111,8 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - `profiles.member_since`, `profiles.renews_on` — coach-only (members cannot update them; no column grant).
 - Coach: Members → "Membership" button to set/change; "Renewals due" filter shows renewals within 30 days or overdue.
 - `_queue_renewal_reminders()` (cron `ryl-renewal-reminder`, 9:10 am IST) notifies every active coach 7 days before, 1 day before and on the renewal day.
+
+## Join form (Nov 2026)
+- Public page `join.html`: Name, City, Contact number, Email → `submit_join_request()` (anon allowed; validates; one pending request per email; coaches get a notification). No account is made here.
+- Coach: Members page → "Join form" panel lists waiting requests. Approve = pick batch + trackers (main 4 ticked by default) → `admin_approve_join()` makes the account (or adds an existing member), saves city, opens trackers, then shows a ready WhatsApp login message. ✕ = `admin_dismiss_join()`.
+- Table `join_requests` (coach-read only), `profiles.city`. Migration `ryl_29_join_form`. Tests J1–J6 in the SQL suite.

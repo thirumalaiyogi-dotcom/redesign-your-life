@@ -391,3 +391,10 @@ grant insert (category_id) on public.doubts to authenticated;
 
 -- to-do repeat (2.4)
 grant insert (repeat), update (repeat) on public.todos to authenticated;
+
+-- Join form (coach-only reads; writes only through the functions)
+alter table public.join_requests enable row level security;
+drop policy if exists join_requests_coach_read on public.join_requests;
+create policy join_requests_coach_read on public.join_requests for select to authenticated using (public.is_admin());
+revoke all on public.join_requests from anon, authenticated;
+grant select on public.join_requests to authenticated;
