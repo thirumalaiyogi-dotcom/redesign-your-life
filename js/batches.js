@@ -368,7 +368,7 @@ async function onClick(e) {
 
 // ---------- Excel / CSV upload → the same text box (coach checks it before adding) ----------
 let xlsxLoading = null;
-function loadXlsx() {
+export function loadXlsx() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
   xlsxLoading ||= new Promise((res, rej) => {
     const sc = document.createElement('script'); sc.src = app('js/vendor/xlsx.mini.min.js');

@@ -2,7 +2,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
-import { renderBatches, loginMessage, waLink } from './batches.js';
+import { renderBatches, loginMessage, waLink, loadXlsx } from './batches.js';
 import { pushState, enablePush, syncPush, pushSheet } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
@@ -230,7 +230,8 @@ async function renderMembers() {
   <section class="panel panel-pad stack" style="gap:10px">
     <b>Join form</b><p class="muted" style="font-size:14px">Send this link on WhatsApp. People fill their name, city, phone and email. They show up here; tap Approve to open the app for them.</p>
     <div class="invite"><code id="join-url">${esc(joinUrl)}</code><button class="btn btn-ghost btn-sm" id="copy-join">${icon('copy')}Copy link</button>
-      <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`*DEEPAK'S 10X LIFE*\nApp login details 👇\nPlease fill your Name, City, Contact number and Email ID here:\n${joinUrl}`)}">${icon('phone')}Share on WhatsApp</a></div>
+      <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`*DEEPAK'S 10X LIFE*\nApp login details 👇\nPlease fill your Name, City, Contact number and Email ID here:\n${joinUrl}`)}">${icon('phone')}Share on WhatsApp</a>
+      <button class="btn btn-ghost btn-sm" id="jr-xlsx">${icon('file-chart-column')}Download Excel</button></div>
     <div id="jr-list" class="stack" style="gap:8px"></div>
   </section>
   <section class="panel panel-pad notice-bar"><span class="si">${icon('bell')}</span><span><b>Send a notification</b><small>Reaches the app and the phone of everyone who turned notifications on</small></span>
@@ -249,6 +250,7 @@ async function renderMembers() {
   });
   $('#q').addEventListener('input', (e) => { query = e.target.value; renderList(); });
   loadJoinRequests();
+  $('#jr-xlsx').addEventListener('click', (e) => withBusy(e.currentTarget, 'Preparing…', downloadJoinExcel));
   main.addEventListener('click', async (e) => {
     const ja = e.target.closest('[data-jr-ok]');
     if (ja) { approveJoinDialog(joinReqs.find((r) => r.id === ja.dataset.jrOk)); return; }
@@ -363,6 +365,23 @@ async function loadJoinRequests() {
       <div class="row" style="gap:6px"><button class="btn btn-gold btn-sm" data-jr-ok="${r.id}">${icon('check')}Approve</button>
         <button class="btn btn-ghost btn-sm" data-jr-no="${r.id}" aria-label="Remove request">${icon('x')}</button></div>
     </div>`).join('') : '<p class="muted" style="font-size:13px">No requests waiting.</p>';
+}
+
+// everyone who filled the join form (waiting, approved and removed) as an Excel file
+async function downloadJoinExcel() {
+  const { data, error } = await supabase.from('join_requests').select('full_name, city, phone, email, status, created_at, decided_at').order('created_at', { ascending: true });
+  if (error) return toast(friendlyError(error), 'bad');
+  if (!data?.length) return toast('No one has filled the form yet.', 'info');
+  let XLSX; try { XLSX = await loadXlsx(); } catch (err) { return toast(err.message, 'bad'); }
+  const when = (iso) => iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const label = { pending: 'Waiting', approved: 'Approved', dismissed: 'Removed' };
+  const rows = data.map((r, i) => ({ 'No': i + 1, 'Name': r.full_name, 'City': r.city || '', 'Contact Number': r.phone || '', 'Email ID': r.email,
+    'Status': label[r.status] || r.status, 'Filled on': when(r.created_at), 'Approved / removed on': when(r.decided_at) }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 5 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 30 }, { wch: 10 }, { wch: 20 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Join form');
+  XLSX.writeFile(wb, `10X-Life-join-form-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast(`Excel downloaded (${rows.length} people)`);
 }
 
 async function approveJoinDialog(r) {
