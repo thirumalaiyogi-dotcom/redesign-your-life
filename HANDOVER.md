@@ -143,3 +143,4 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Member: Home → "This week" card shows "Time in the app · Today … · This week …" (`my_app_time()`).
 - Coach: Members list shows "⏱ … today · … this week" per member and a "Not opened 3+ days" filter (`admin_app_time()`); a member's page shows a 14-day minutes chart (reads `app_usage`, coach RLS).
 - Table `app_usage(member_id, day, seconds, opens, last_at)`; migration `ryl_33_app_time`; tests T1–T2. Time before this update is not known (starts from 0).
+- Home posters are movie-poster style (2:3, ~164px wide): the tracker name is printed on the picture in Anton (bundled `assets/fonts/anton-latin-400.woff2`, SIL OFL licence in `assets/fonts/OFL-Anton.txt`); text after " - " shows as a small gold line (e.g. 16 BASICS). Size picks itself from the longest word.

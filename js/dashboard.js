@@ -128,6 +128,14 @@ function trackersHTML() {
       <a href="${app('member/trackers.html')}">All trackers${icon('chevron-right')}</a></div>
     <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
+// Movie-poster title printed on the picture: "Law of Attraction - 16 Basics" → big LAW OF ATTRACTION + small 16 BASICS
+function posterTitle(name) {
+  const [main, ...rest] = String(name).split(/\s+-\s+/);
+  const word = Math.max(...main.split(/\s+/).map((w) => w.length)), n = main.length;   // the longest word must fit on one line
+  const size = n <= 12 && word <= 7 ? 'xl' : word <= 9 && n <= 22 ? 'l' : word <= 11 ? 'm' : 's';
+  return `<span class="tp-title t-${size}" aria-hidden="true"><b>${esc(main)}</b>${rest.length ? `<small>${esc(rest.join(' - '))}</small>` : ''}</span>`;
+}
+
 // One poster per tracker (scrolls sideways like movie posters); tap opens the tracker.
 function trackerCard(c) {
   const t = trackerStats(c);
@@ -138,8 +146,8 @@ function trackerCard(c) {
   const pic = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`
     : `<span class="tp-fb" aria-hidden="true">${icon(TRACKER_ICON[c.slug] || c.icon || 'list-checks')}</span>`;
   return `<a class="tk tk-poster" role="listitem" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${esc(tc)}">
-    <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span></span>
-    <h3>${esc(c.name)}</h3>
+    <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span>${posterTitle(c.name)}</span>
+    <h3 class="visually-hidden">${esc(c.name)}</h3>
     <div class="pbar"><i data-w="${pct}%"></i></div>
     <div class="meta"><span><b>${t.done}</b>/${t.total} done</span></div></a>`;
 }
