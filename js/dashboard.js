@@ -128,6 +128,25 @@ function trackersHTML() {
       <a href="${app('member/trackers.html')}">All trackers${icon('chevron-right')}</a></div>
     <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
+// Posters move along by themselves (one every 3.5 s, back to the start at the end).
+// A finger on the row stops it; it carries on 8 s after they let go. Off when the phone asks for less motion.
+let railTimer = 0;
+function autoRail(rail) {
+  clearInterval(railTimer);
+  if (!rail || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let hold = 0;
+  const stop = () => { hold = Date.now() + 8000; };
+  ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach((ev) => rail.addEventListener(ev, stop, { passive: true }));
+  railTimer = setInterval(() => {
+    if (!rail.isConnected) return clearInterval(railTimer);
+    if (document.hidden || Date.now() < hold || rail.scrollWidth <= rail.clientWidth + 4) return;
+    const r = rail.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;   // only while on screen
+    const step = (rail.firstElementChild?.getBoundingClientRect().width || 160) + 12;
+    const end = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
+    rail.scrollTo({ left: end ? 0 : rail.scrollLeft + step, behavior: 'smooth' });
+  }, 3500);
+}
+
 // Movie-poster title printed on the picture: "Law of Attraction - 16 Basics" → big LAW OF ATTRACTION + small 16 BASICS
 function posterTitle(name) {
   const [main, ...rest] = String(name).split(/\s+-\s+/);
@@ -391,6 +410,7 @@ async function renderLive() {
     return errorPanel(act, err, renderLive, "Couldn't load today's activities");
   }
   tk.innerHTML = trackersHTML();
+  autoRail($('#tk-grid'));
   act.innerHTML = activitiesHTML();
   wk.innerHTML = weekHTML();
   renderActivities();
