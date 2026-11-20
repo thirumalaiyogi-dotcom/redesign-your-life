@@ -499,3 +499,12 @@ create table if not exists public.app_usage (
   last_at    timestamptz not null default now(),
   primary key (member_id, day)
 );
+
+-- Home poster for a tracker (tall movie-style picture with the title already printed on it).
+-- Separate from the cover picture inside the tracker. Empty = the built-in poster (assets/posters) or the cover.
+alter table public.tracker_categories add column if not exists poster_path text;
+alter table public.tracker_categories drop constraint if exists tracker_categories_poster_path;
+alter table public.tracker_categories add constraint tracker_categories_poster_path check (poster_path is null
+  or poster_path ~ '^[a-z0-9-]{1,60}\.webp$'
+  or poster_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$');
+

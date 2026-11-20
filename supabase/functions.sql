@@ -1815,3 +1815,15 @@ begin
 end $$;
 revoke all on function public.admin_app_time() from public, anon;
 grant execute on function public.admin_app_time() to authenticated;
+
+-- Tracker Home poster (migration ryl_34_tracker_poster)
+create or replace function public.admin_set_tracker_poster(p_category uuid, p_path text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  update public.tracker_categories set poster_path = nullif(trim(coalesce(p_path, '')), '') where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  perform public._audit('tracker.poster', 'tracker_categories', p_category::text, jsonb_build_object('poster', p_path));
+end $$;
+revoke all on function public.admin_set_tracker_poster(uuid, text) from public, anon;
+grant execute on function public.admin_set_tracker_poster(uuid, text) to authenticated;

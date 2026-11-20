@@ -7,7 +7,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
-import { coverSrc } from './covers.js';
+import { coverSrc, posterSrc } from './covers.js';
 import { quotesHTML, startQuotes } from './quotes.js';
 import { fmtTime } from './usage.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
@@ -142,11 +142,12 @@ function trackerCard(c) {
   const pct = t.total ? Math.round(100 * t.done / t.total) : 0;
   const state = t.total && t.done === t.total ? ['s-done', 'Complete'] : t.done || t.miss ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
   const tc = TRACKER_COLOR[c.slug] || c.color || 'var(--c-primary)';
-  const src = coverSrc(c);
+  // a real poster (title already on it) wins; otherwise the cover with the name printed by the app
+  const poster = posterSrc(c), src = poster || coverSrc(c);
   const pic = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`
     : `<span class="tp-fb" aria-hidden="true">${icon(TRACKER_ICON[c.slug] || c.icon || 'list-checks')}</span>`;
-  return `<a class="tk tk-poster" role="listitem" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${esc(tc)}">
-    <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span>${posterTitle(c.name)}</span>
+  return `<a class="tk tk-poster${poster ? ' has-poster' : ''}" role="listitem" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${esc(tc)}">
+    <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span>${poster ? '' : posterTitle(c.name)}</span>
     <h3 class="visually-hidden">${esc(c.name)}</h3>
     <div class="pbar"><i data-w="${pct}%"></i></div>
     <div class="meta"><span><b>${t.done}</b>/${t.total} done</span></div></a>`;
@@ -311,7 +312,7 @@ async function loadSummary() {
 async function loadActivities() {
   const mon = mondayOf(S.today), from = addDays(mon, -7);
   const [cats, acts, rows, week] = await Promise.all([
-    supabase.from('tracker_categories').select('id, slug, name, color, icon, cover_path, sort_order').eq('is_active', true).order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, color, icon, cover_path, poster_path, sort_order').eq('is_active', true).order('sort_order'),
     supabase.from('activities').select('id, category_id, number, default_name, description, image_path, icon, points').eq('is_active', true).order('number'),
     supabase.from('daily_checkins').select('activity_id, status, voided_at, void_reason').eq('member_id', S.user.id).eq('checkin_date', S.today),
     supabase.from('daily_checkins').select('activity_id, checkin_date').eq('member_id', S.user.id).eq('status', 'done').is('voided_at', null)
