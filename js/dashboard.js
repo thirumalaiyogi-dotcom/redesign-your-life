@@ -129,11 +129,13 @@ function trackersHTML() {
     <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
 // Posters move along by themselves (one every 3.5 s, back to the start at the end).
-// A finger on the row stops it; it carries on 8 s after they let go. Off when the phone asks for less motion.
+// A finger on the row stops it; it carries on 8 s after they let go.
 let railTimer = 0;
 function autoRail(rail) {
   clearInterval(railTimer);
-  if (!rail || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!rail) return;
+  // phones with "remove animations" (or some battery savers) still move along, but jump instead of gliding
+  const glide = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
   let hold = 0;
   const stop = () => { hold = Date.now() + 8000; };
   ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach((ev) => rail.addEventListener(ev, stop, { passive: true }));
@@ -143,7 +145,7 @@ function autoRail(rail) {
     const r = rail.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;   // only while on screen
     const step = (rail.firstElementChild?.getBoundingClientRect().width || 160) + 12;
     const end = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
-    rail.scrollTo({ left: end ? 0 : rail.scrollLeft + step, behavior: 'smooth' });
+    rail.scrollTo({ left: end ? 0 : rail.scrollLeft + step, behavior: glide });
   }, 3500);
 }
 

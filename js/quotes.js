@@ -39,7 +39,7 @@ export function startQuotes(root) {
   let shown = -1;
   const schedule = (k, delay) => {
     clearTimeout(timer);
-    if (reduce || !track.isConnected) { dots.forEach((d, i) => d.classList.toggle('on', i === k)); return; }
+    if (!track.isConnected) return;
     const ms = delay ?? readMs(slides[k].querySelector('blockquote').textContent);
     dots.forEach((d, i) => { d.classList.toggle('on', i === k); d.style.setProperty('--qt', i === k ? `${ms}ms` : '0ms'); d.classList.remove('run'); });
     void dots[k]?.offsetWidth; dots[k]?.classList.add('run');
@@ -47,7 +47,7 @@ export function startQuotes(root) {
       if (!track.isConnected) return;
       if (document.hidden) return schedule(k, 2000);
       const next = (k + 1) % n;
-      track.scrollTo({ left: next * track.clientWidth, behavior: next ? 'smooth' : 'auto' });
+      track.scrollTo({ left: next * track.clientWidth, behavior: next && !reduce ? 'smooth' : 'auto' });
     }, ms);
   };
   let settle = 0;
