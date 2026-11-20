@@ -450,3 +450,26 @@ create table if not exists public.join_requests (
   decided_by uuid references public.profiles(id) on delete set null
 );
 create unique index if not exists join_requests_pending_email on public.join_requests (lower(email)) where status = 'pending';
+
+-- Family link: a coach makes a family and sends ONE link. Each person opens it, types their name once
+-- (an account is made for them with the family's trackers), and next time just taps their name.
+-- Inside, everyone in the family sees the family's progress; nobody sees other families.
+-- Journals and tick notes stay private (family views show only ticks and points).
+create table if not exists public.families (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null check (char_length(name) between 2 and 60),
+  token       text not null unique check (token ~ '^[A-Za-z0-9_-]{24,64}$'),
+  trackers    uuid[] not null default '{}',          -- trackers opened for everyone who joins
+  max_people  smallint not null default 12 check (max_people between 1 and 30),
+  is_active   boolean not null default true,
+  created_by  uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.family_members (
+  member_id   uuid primary key references public.profiles(id) on delete cascade,   -- one family per person
+  family_id   uuid not null references public.families(id) on delete cascade,
+  via_link    boolean not null default true,         -- account was made by the link (only these can be opened by tapping a name)
+  added_at    timestamptz not null default now()
+);
+create index if not exists family_members_family_idx on public.family_members(family_id);
+create index if not exists families_created_by_idx on public.families(created_by) where created_by is not null;

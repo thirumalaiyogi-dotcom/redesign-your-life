@@ -267,6 +267,17 @@ function quickHTML() {
       `<a class="qa" href="${app(href)}"><span class="ic">${icon(ic)}</span><span>${label}</span></a>`).join('')}</nav></section>`;
 }
 
+// in a family (family link) → a card that opens the family page
+async function familyTile() {
+  let data = null;
+  try { ({ data } = await supabase.rpc('my_family')); } catch { return; }
+  const tk = $('#tk-wrap'); if (!data || !tk || $('[data-fam]')) return;
+  tk.insertAdjacentHTML('beforebegin', `<a class="card ws-card" data-fam href="${app('member/family.html')}">
+    <span class="fam-ic" aria-hidden="true">${icon('users')}</span>
+    <span class="ws-txt"><small>My family · ${Number(data.people) || 1}</small><b>${esc(data.name)}</b><span>See everyone's habits and points today</span></span>
+    <span class="ws-go" aria-hidden="true">${icon('chevron-right')}</span></a>`);
+}
+
 // ---------- data ----------
 async function loadSummary() {
   const [dash, streaks] = await Promise.all([supabase.rpc('get_my_dashboard'), supabase.rpc('get_my_streaks')]);
@@ -328,6 +339,7 @@ async function renderDashboard() {
       <div class="dash-col dash-side" id="col-side"><div id="streak-wrap">${streakHTML()}</div><div id="week-wrap"></div>${quickHTML()}</div>
     </div>`;
   animateRings(main);
+  familyTile();
   await renderLive();
   loadUnread();
   document.dispatchEvent(new Event('ryl:slots'));

@@ -1530,3 +1530,203 @@ begin
 end $$;
 revoke all on function public.admin_dismiss_join(uuid) from public, anon;
 grant execute on function public.admin_dismiss_join(uuid) to authenticated;
+
+-- Family link (migration ryl_30_family_link)
+create or replace function public._family_token()
+returns text language sql volatile security definer set search_path = '' as $$
+  select translate(encode(extensions.gen_random_bytes(24), 'base64'), '+/=', '-_');
+$$;
+revoke all on function public._family_token() from public, anon, authenticated;
+
+create or replace function public._family_password()
+returns text language sql volatile security definer set search_path = '' as $$
+  select 'F' || translate(encode(extensions.gen_random_bytes(24), 'base64'), '+/=', '-_');
+$$;
+revoke all on function public._family_password() from public, anon, authenticated;
+
+-- PUBLIC (link): family name and who is in it, so a person can tap their name
+create or replace function public.family_info(p_token text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare f public.families;
+begin
+  select * into f from public.families where token = p_token and is_active;
+  if not found then raise exception 'This family link is not working. Ask your coach for a new one.' using errcode = 'P0002'; end if;
+  return jsonb_build_object('name', f.name, 'full', (select count(*) from public.family_members m where m.family_id = f.id) >= f.max_people,
+    'people', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.full_name, 'avatar', p.avatar_url) order by m.added_at)
+       from public.family_members m join public.profiles p on p.id = m.member_id
+      where m.family_id = f.id and m.via_link and p.is_active and p.role = 'member'), '[]'::jsonb));
+end $$;
+revoke all on function public.family_info(text) from public;
+grant execute on function public.family_info(text) to anon, authenticated;
+
+-- PUBLIC (link): first time — type your name → an account in this family with the family's trackers
+create or replace function public.family_join(p_token text, p_name text)
+returns table(member_id uuid, email text, password text)
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare f public.families; v_name text := left(regexp_replace(trim(coalesce(p_name, '')), '\s+', ' ', 'g'), 80);
+        v_id uuid := gen_random_uuid(); v_email text; v_pw text := public._family_password();
+begin
+  select * into f from public.families fa where fa.token = p_token and fa.is_active for update;
+  if not found then raise exception 'This family link is not working. Ask your coach for a new one.' using errcode = 'P0002'; end if;
+  if char_length(v_name) < 2 then raise exception 'Please type your name.' using errcode = '22023'; end if;
+  if (select count(*) from public.family_members m where m.family_id = f.id) >= f.max_people then
+    raise exception 'This family is full. Ask your coach to add more people.' using errcode = '53400';
+  end if;
+  if exists (select 1 from public.family_members m join public.profiles p on p.id = m.member_id
+              where m.family_id = f.id and lower(p.full_name) = lower(v_name)) then
+    raise exception 'This name is already in the family. Tap it in the list.' using errcode = '23505';
+  end if;
+  v_email := 'f-' || replace(v_id::text, '-', '') || '@family.invalid';
+  perform set_config('ryl.coach_create', 'on', true);
+  insert into auth.users(instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                         raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                         confirmation_token, recovery_token, email_change_token_new, email_change)
+  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', v_email,
+          extensions.crypt(v_pw, extensions.gen_salt('bf')), now(),
+          '{"provider":"email","providers":["email"]}'::jsonb, jsonb_build_object('full_name', v_name), now(), now(), '', '', '', '');
+  insert into auth.identities(user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+  values (v_id, v_id::text, 'email', jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true), null, now(), now());
+  insert into public.family_members(member_id, family_id, via_link) values (v_id, f.id, true);
+  insert into public.tracker_assignments(category_id, member_id, assigned_by)
+  select c.id, v_id, f.created_by from public.tracker_categories c where c.id = any(f.trackers) on conflict do nothing;
+  insert into public.notifications(member_id, kind, title, body)
+  select a.id, 'info', left(v_name || ' joined ' || f.name, 120), 'Family link'
+    from public.profiles a where a.role in ('admin', 'super_admin') and a.is_active;
+  member_id := v_id; email := v_email; password := v_pw;
+  return next;
+end $$;
+revoke all on function public.family_join(text, text) from public;
+grant execute on function public.family_join(text, text) to anon, authenticated;
+
+-- PUBLIC (link): next time — tap your name → a fresh login for that person (only link-made accounts of this family)
+create or replace function public.family_enter(p_token text, p_member uuid)
+returns table(email text, password text)
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare v_pw text := public._family_password(); v_email text;
+begin
+  select u.email into v_email
+    from public.families f join public.family_members m on m.family_id = f.id and m.via_link
+    join public.profiles p on p.id = m.member_id and p.role = 'member' and p.is_active
+    join auth.users u on u.id = m.member_id
+   where f.token = p_token and f.is_active and m.member_id = p_member;
+  if v_email is null then raise exception 'This name is not in the family any more. Ask your coach.' using errcode = 'P0002'; end if;
+  update auth.users set encrypted_password = extensions.crypt(v_pw, extensions.gen_salt('bf')), updated_at = now() where id = p_member;
+  email := v_email; password := v_pw;
+  return next;
+end $$;
+revoke all on function public.family_enter(text, uuid) from public;
+grant execute on function public.family_enter(text, uuid) to anon, authenticated;
+
+-- MEMBER: my family (null if none)
+create or replace function public.my_family()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('id', f.id, 'name', f.name, 'token', case when f.is_active then f.token end,   -- so the family can invite more people
+                            'people', (select count(*) from public.family_members x where x.family_id = f.id))
+  from public.family_members m join public.families f on f.id = m.family_id
+  where m.member_id = auth.uid();
+$$;
+revoke all on function public.my_family() from public, anon;
+grant execute on function public.my_family() to authenticated;
+
+-- MEMBER: everyone in my family — today's ticks, points this week / in total, streak
+create or replace function public.family_overview()
+returns table(member_id uuid, full_name text, avatar_url text, done_today int, total_today int,
+              points_today bigint, points_week bigint, points_total bigint, streak int, is_me boolean)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare v_fam uuid; d date := public.app_today();
+begin
+  select m.family_id into v_fam from public.family_members m where m.member_id = auth.uid();
+  if v_fam is null then raise exception 'You are not in a family.' using errcode = '42501'; end if;
+  return query
+  select p.id, p.full_name, p.avatar_url, public._done_on(p.id, d), public._total_for(p.id),
+         coalesce((select sum(s.points) from public.score_history s where s.member_id = p.id and s.score_date = d), 0)::bigint,
+         coalesce((select sum(s.points) from public.score_history s where s.member_id = p.id and s.score_date between date_trunc('week', d)::date and d), 0)::bigint,
+         coalesce((select sum(s.points) from public.score_history s where s.member_id = p.id), 0)::bigint,
+         public._display_streak(p.id, d), p.id = auth.uid()
+  from public.family_members m join public.profiles p on p.id = m.member_id
+  where m.family_id = v_fam and p.is_active
+  order by 8 desc, p.full_name;
+end $$;
+revoke all on function public.family_overview() from public, anon;
+grant execute on function public.family_overview() to authenticated;
+
+-- MEMBER: one family member's habits on one day (last 31 days). Ticks only — no notes.
+create or replace function public.family_member_day(p_member uuid, p_day date default null)
+returns table(category text, slug text, color text, sort_order smallint, number smallint, activity text, status text)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := coalesce(p_day, public.app_today());
+begin
+  if not exists (select 1 from public.family_members a join public.family_members b on b.family_id = a.family_id
+                  where a.member_id = auth.uid() and b.member_id = p_member) then
+    raise exception 'You can only see people in your family.' using errcode = '42501';
+  end if;
+  if d > public.app_today() or d < public.app_today() - 31 then raise exception 'Choose a day in the last month.' using errcode = '22023'; end if;
+  return query
+  select c.name, c.slug, c.color, c.sort_order, a.number, a.default_name,
+         (select k.status from public.daily_checkins k where k.member_id = p_member and k.activity_id = a.id and k.checkin_date = d and k.voided_at is null)
+  from public.activities a join public.tracker_categories c on c.id = a.category_id
+  where a.is_active and c.is_active and public._sees(p_member, c.id)
+    and exists (select 1 from public.profiles pp where pp.id = p_member and pp.role = 'member')
+  order by c.sort_order, a.number;
+end $$;
+revoke all on function public.family_member_day(uuid, date) from public, anon;
+grant execute on function public.family_member_day(uuid, date) to authenticated;
+
+-- COACH: make a family (returns its id; the link token is read from the families table)
+create or replace function public.admin_create_family(p_name text, p_trackers uuid[], p_max int default 12)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare v_id uuid; v_name text := left(regexp_replace(trim(coalesce(p_name, '')), '\s+', ' ', 'g'), 60);
+begin
+  if not public.is_admin() then raise exception 'Only coaches can make families.' using errcode = '42501'; end if;
+  if char_length(v_name) < 2 then raise exception 'Type a family name.' using errcode = '22023'; end if;
+  insert into public.families(name, token, trackers, max_people, created_by)
+  values (v_name, public._family_token(),
+          coalesce((select array_agg(c.id) from public.tracker_categories c where c.id = any(coalesce(p_trackers, '{}'))), '{}'),
+          least(greatest(coalesce(p_max, 12), 1), 30), auth.uid())
+  returning id into v_id;
+  perform public._audit('family.create', 'families', v_id::text, jsonb_build_object('name', v_name));
+  return v_id;
+end $$;
+revoke all on function public.admin_create_family(text, uuid[], int) from public, anon;
+grant execute on function public.admin_create_family(text, uuid[], int) to authenticated;
+
+-- COACH: rename / change trackers (for new joiners; with p_apply also opens them for people already in) / size / pause / new link
+create or replace function public.admin_update_family(p_family uuid, p_name text, p_trackers uuid[], p_max int, p_active boolean,
+                                                      p_new_link boolean default false, p_apply boolean default false)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_name text := left(regexp_replace(trim(coalesce(p_name, '')), '\s+', ' ', 'g'), 60);
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change families.' using errcode = '42501'; end if;
+  if char_length(v_name) < 2 then raise exception 'Type a family name.' using errcode = '22023'; end if;
+  update public.families set name = v_name,
+         trackers = coalesce((select array_agg(c.id) from public.tracker_categories c where c.id = any(coalesce(p_trackers, '{}'))), '{}'),
+         max_people = least(greatest(coalesce(p_max, max_people), 1), 30), is_active = coalesce(p_active, is_active),
+         token = case when p_new_link then public._family_token() else token end
+   where id = p_family;
+  if not found then raise exception 'Family not found.' using errcode = 'P0002'; end if;
+  if p_apply then
+    insert into public.tracker_assignments(category_id, member_id, assigned_by)
+    select c, m.member_id, auth.uid() from public.family_members m, unnest(coalesce(p_trackers, '{}')) c
+     where m.family_id = p_family and exists (select 1 from public.tracker_categories t where t.id = c)
+    on conflict do nothing;
+  end if;
+  perform public._audit('family.update', 'families', p_family::text, jsonb_build_object('new_link', p_new_link, 'active', p_active));
+end $$;
+revoke all on function public.admin_update_family(uuid, text, uuid[], int, boolean, boolean, boolean) from public, anon;
+grant execute on function public.admin_update_family(uuid, text, uuid[], int, boolean, boolean, boolean) to authenticated;
+
+-- COACH: take a person out of a family (their account, ticks and points stay; the family link no longer opens it)
+create or replace function public.admin_family_remove(p_member uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change families.' using errcode = '42501'; end if;
+  delete from public.family_members where member_id = p_member;
+  if not found then raise exception 'This person is not in a family.' using errcode = 'P0002'; end if;
+  perform public._audit('family.remove', 'family_members', p_member::text, '{}'::jsonb);
+end $$;
+revoke all on function public.admin_family_remove(uuid) from public, anon;
+grant execute on function public.admin_family_remove(uuid) to authenticated;

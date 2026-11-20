@@ -1,0 +1,41 @@
+/* Family link (family.html) and the family page (member/family.html) */
+.fam-people { display: grid; gap: 10px; }
+.fam-person { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--c-border); background: var(--c-surface); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, transform .15s; }
+.fam-person:hover, .fam-person:focus-visible { border-color: var(--c-accent); }
+.fam-person:active { transform: scale(.99); }
+.fam-person .avatar { width: 46px; height: 46px; font-size: 16px; }
+.fam-person .nm { flex: 1; min-width: 0; display: grid; }
+.fam-person .nm b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fam-person .nm small { color: var(--c-text-3, #6b736d); font-size: 12.5px; }
+.fam-person .go { font-size: 26px; line-height: 1; color: var(--c-text-3, #6b736d); }
+.fam-person.busy { opacity: .6; pointer-events: none; }
+
+/* member/family.html */
+.fam-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.fam-head h1 { margin: 2px 0 0; }
+.fam-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.fam-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fam-sum .stat { padding: 12px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); display: grid; gap: 2px; }
+.fam-sum .stat small { color: var(--c-text-3, #6b736d); font-size: 12px; }
+.fam-sum .stat b { font-size: 22px; font-family: var(--f-display); }
+.fam-list { display: grid; gap: 10px; }
+.fam-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--c-surface); border: 1px solid var(--c-border); color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.fam-card.me { border-color: var(--c-accent); }
+.fam-card .rk { width: 26px; text-align: center; font-weight: 800; color: var(--c-text-3, #6b736d); }
+.fam-card .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fam-card .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fam-card .who small { color: var(--c-text-3, #6b736d); font-size: 12.5px; }
+.fam-card .bar { height: 6px; border-radius: 99px; background: var(--c-sunken, #eef1ee); overflow: hidden; margin-top: 6px; }
+.fam-card .bar i { display: block; height: 100%; width: 0; background: var(--c-accent); border-radius: inherit; transition: width .6s ease; }
+.fam-card .pts { text-align: right; font-weight: 800; font-size: 17px; }
+.fam-card .pts small { display: block; font-weight: 500; font-size: 11.5px; color: var(--c-text-3, #6b736d); }
+.fam-day { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.fam-trk { margin-bottom: 14px; }
+.fam-trk h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0 0 6px; }
+.fam-trk h3 i { width: 10px; height: 10px; border-radius: 50%; }
+.fam-trk h3 span { margin-left: auto; font-size: 13px; color: var(--c-text-3, #6b736d); font-weight: 600; }
+.fam-habit { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--c-border); font-size: 14.5px; }
+.fam-habit .st { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; background: var(--c-sunken, #eef1ee); color: var(--c-text-3, #6b736d); }
+.fam-habit .st.done { background: #1f7a4d; color: #fff; }
+.fam-habit .st.not_done { background: #f3d6d6; color: #9b2c2c; }
+@media (max-width: 380px) { .fam-sum .stat b { font-size: 18px; } }

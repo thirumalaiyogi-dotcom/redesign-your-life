@@ -196,3 +196,4 @@
 .push-ask b { display: block; font-size: 15px; } .push-ask span { font-size: 13px; color: var(--c-text-2); }
 .push-ask .pa-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
 @media (min-width: 600px) { .push-ask { grid-template-columns: auto minmax(0, 1fr) auto; } .push-ask .pa-acts { grid-column: auto; } }
+.ws-card .fam-ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--c-primary-light); color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 3.5px var(--c-accent); }

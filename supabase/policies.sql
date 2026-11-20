@@ -398,3 +398,14 @@ drop policy if exists join_requests_coach_read on public.join_requests;
 create policy join_requests_coach_read on public.join_requests for select to authenticated using (public.is_admin());
 revoke all on public.join_requests from anon, authenticated;
 grant select on public.join_requests to authenticated;
+
+-- Family link (coach-only reads; members use the family_* functions)
+alter table public.families enable row level security;
+alter table public.family_members enable row level security;
+drop policy if exists families_coach_read on public.families;
+create policy families_coach_read on public.families for select to authenticated using (public.is_admin());
+drop policy if exists family_members_coach_read on public.family_members;
+create policy family_members_coach_read on public.family_members for select to authenticated using (public.is_admin());
+revoke all on public.families, public.family_members from anon, authenticated;
+grant select on public.families, public.family_members to authenticated;
+

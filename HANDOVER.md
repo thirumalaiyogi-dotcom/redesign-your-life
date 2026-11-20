@@ -116,3 +116,11 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Public page `join.html`: Name, City, Contact number, Email → `submit_join_request()` (anon allowed; validates; one pending request per email; coaches get a notification). No account is made here.
 - Coach: Members page → "Join form" panel lists waiting requests. Approve = pick batch + trackers (main 4 ticked by default) → `admin_approve_join()` makes the account (or adds an existing member), saves city, opens trackers, then shows a ready WhatsApp login message. ✕ = `admin_dismiss_join()`.
 - Table `join_requests` (coach-read only), `profiles.city`. Migration `ryl_29_join_form`. Tests J1–J6 in the SQL suite.
+
+## Family link (Nov 2026)
+- Coach: Members page → "Family links" → New family (name, how many people, trackers — all ticked by default). Send the link on WhatsApp.
+- `family.html#<key>`: first time a person types their name → `family_join()` makes a normal member account (hidden email `f-…@family.invalid`, no password to remember) with the family's trackers. Next time they tap their name → `family_enter()` gives a fresh login. The key is only in the `#` part, never sent to a server.
+- Inside, Home shows a "My family" card → `member/family.html`: everyone's ticks today, points (today/week/total) and streak (`family_overview()`), and each person's habits for any of the last 31 days (`family_member_day()`). Journals and tick notes are never shown. Other families are never visible.
+- Points still come only from `mark_activity()`; family people are normal members (they also appear in the main leaderboard).
+- Anyone who has the family link can open any name in that family. If the link leaks: Edit → "Make a new link" (old one stops), or untick "Link is working" to pause. Taking a person out keeps their account and points.
+- Tables `families`, `family_members` (coach-read only; members use the functions). Migration `ryl_30_family_link`. Tests: `test_family.sql` F1–F8.

@@ -197,7 +197,7 @@ function personHTML(p) {
   return `<article class="person ${p.is_active ? '' : 'paused'}">
     <span class="avatar" aria-hidden="true">${esc(initials(p.full_name, p.email))}</span>
     <div class="who"><b>${esc(p.full_name || '(no name yet)')}${isMe ? ' <span class="muted" style="font-weight:600">(you)</span>' : ''}</b>
-      <div class="meta"><span>${esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
+      <div class="meta"><span>${/@family\.invalid$/.test(p.email || '') ? 'Family link' : esc(p.email)}</span>${p.phone ? `<span>${esc(p.phone)}</span>` : ''}<span>Joined ${esc(formatDate(p.joined_on))}</span>
       ${renewHTML(p)}<span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
       ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
@@ -234,6 +234,12 @@ async function renderMembers() {
       <button class="btn btn-ghost btn-sm" id="jr-xlsx">${icon('file-chart-column')}Download Excel</button></div>
     <div id="jr-list" class="stack" style="gap:8px"></div>
   </section>
+  <section class="panel panel-pad stack" style="gap:10px" id="fam-panel" aria-labelledby="fam-h">
+    <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><b id="fam-h">Family links</b>
+      <button class="btn btn-gold btn-sm" id="fam-new">${icon('user-plus')}New family</button></div>
+    <p class="muted" style="font-size:14px">One link for a whole family. Each person opens it and types their name once; next time they just tap their name. Everyone in the family sees each other's habits and points, never other families.</p>
+    <div id="fam-list" class="stack" style="gap:8px"></div>
+  </section>
   <section class="panel panel-pad notice-bar"><span class="si">${icon('bell')}</span><span><b>Send a notification</b><small>Reaches the app and the phone of everyone who turned notifications on</small></span>
     <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
   <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
@@ -250,8 +256,27 @@ async function renderMembers() {
   });
   $('#q').addEventListener('input', (e) => { query = e.target.value; renderList(); });
   loadJoinRequests();
+  loadFamilies();
+  $('#fam-new').addEventListener('click', () => familyDialog(null));
   $('#jr-xlsx').addEventListener('click', (e) => withBusy(e.currentTarget, 'Preparing…', downloadJoinExcel));
   main.addEventListener('click', async (e) => {
+    const fe = e.target.closest('[data-fam-edit]');
+    if (fe) { familyDialog(families.find((f) => f.id === fe.dataset.famEdit)); return; }
+    const fc = e.target.closest('[data-fam-copy]');
+    if (fc) {
+      const f = families.find((x) => x.id === fc.dataset.famCopy);
+      try { await navigator.clipboard.writeText(familyLink(f)); toast('Family link copied'); } catch { toast(familyLink(f), 'info'); }
+      return;
+    }
+    const fr = e.target.closest('[data-fam-rm]');
+    if (fr) {
+      const [fid, mid] = fr.dataset.famRm.split('|'); const f = families.find((x) => x.id === fid);
+      const m = f.family_members.find((x) => x.member_id === mid);
+      if (!(await confirmDialog({ title: `Take ${m.profiles?.full_name || 'this person'} out of ${f.name}?`, body: 'Their account, ticks and points stay. The family link will no longer open it, and they stop seeing the family.', confirmLabel: 'Take out', danger: true }))) return;
+      const { error } = await supabase.rpc('admin_family_remove', { p_member: mid });
+      if (error) return toast(friendlyError(error), 'bad');
+      toast('Taken out of the family'); loadFamilies(); return;
+    }
     const ja = e.target.closest('[data-jr-ok]');
     if (ja) { approveJoinDialog(joinReqs.find((r) => r.id === ja.dataset.jrOk)); return; }
     const jd = e.target.closest('[data-jr-no]');
@@ -421,6 +446,62 @@ function sentDialog(a) {
       <textarea readonly rows="6" style="width:100%">${esc(msg)}</textarea>`,
     submitLabel: 'Done',
     onSubmit: async () => true
+  });
+}
+
+// ---------------- FAMILY LINKS (family.html) ----------------
+let families = [];
+const familyLink = (f) => app(`family.html#${f.token}`);
+const familyText = (f) => `*${f.name}* · Deepak's 10X Life 🙏\n\nIndha link-a open panni unga peyar type pannunga (first time mattum). Adutha thadava unga peyar mela tap panna podhum, app open aagidum.\n${familyLink(f)}\n\nPhone la "Add to Home screen" pannina app maari use pannalam.`;
+async function loadFamilies() {
+  const box = $('#fam-list'); if (!box) return;
+  const { data, error } = await supabase.from('families')
+    .select('id, name, token, trackers, max_people, is_active, created_at, family_members(member_id, via_link, added_at, profiles(full_name, is_active))')
+    .order('created_at', { ascending: false });
+  if (error) { box.innerHTML = `<p class="muted">${esc(friendlyError(error))}</p>`; return; }
+  families = data || [];
+  box.innerHTML = families.length ? families.map((f) => {
+    const ms = [...(f.family_members || [])].sort((a, b) => String(a.added_at).localeCompare(String(b.added_at)));
+    return `<div style="padding:10px 12px;border:1px solid var(--c-border);border-radius:14px" class="stack ${f.is_active ? '' : 'paused'}">
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${esc(f.name)}</b>
+        <span class="muted" style="font-size:13px"> · ${ms.length}/${f.max_people} people · ${(f.trackers || []).length} trackers</span>${f.is_active ? '' : ' <span class="pill bad">Paused</span>'}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">${f.is_active ? `<a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(familyText(f))}">${icon('phone')}WhatsApp</a>
+          <button class="btn btn-ghost btn-sm" data-fam-copy="${f.id}">${icon('copy')}Copy link</button>` : ''}
+          <button class="btn btn-ghost btn-sm" data-fam-edit="${f.id}">Edit</button></div></div>
+      ${ms.length ? `<div class="row" style="gap:6px;flex-wrap:wrap">${ms.map((m) => `<span class="pill ${m.profiles?.is_active === false ? 'bad' : 'trk'}">${esc(m.profiles?.full_name || '?')}
+        <button type="button" data-fam-rm="${f.id}|${m.member_id}" aria-label="Take ${esc(m.profiles?.full_name || '')} out" style="border:0;background:none;padding:0 0 0 4px;cursor:pointer;color:inherit">×</button></span>`).join('')}</div>`
+        : '<small class="muted">No one has opened the link yet.</small>'}</div>`;
+  }).join('') : '<p class="muted" style="font-size:13px">No families yet.</p>';
+}
+
+async function familyDialog(f) {
+  const { data: trackers } = await supabase.from('tracker_categories').select('id, name, slug').eq('is_active', true).order('sort_order');
+  const on = new Set(f ? f.trackers || [] : (trackers || []).map((t) => t.id));   // a new family gets every tracker
+  formDialog({
+    title: f ? `Edit ${f.name}` : 'New family',
+    body: f ? 'Changes to trackers apply to people who join from now on. Tick the box below to open them for everyone already in.' : 'You get a link to send on WhatsApp.',
+    fields: `<div class="field"><label for="fm-n">Family name</label><input id="fm-n" maxlength="60" value="${esc(f?.name || '')}" placeholder="e.g. Raman family"><span class="err"></span></div>
+      <div class="field"><label for="fm-m">Most people in this family</label><input id="fm-m" type="number" min="1" max="30" value="${f?.max_people || 12}"><span class="err"></span></div>
+      <fieldset class="field" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:6px">Trackers for everyone</legend>
+      ${(trackers || []).map((t) => `<label class="check"><input type="checkbox" name="fm-t" value="${t.id}" ${on.has(t.id) ? 'checked' : ''}>${esc(t.name)}</label>`).join('')}</fieldset>
+      ${f ? `<label class="check"><input type="checkbox" id="fm-apply">Also open these trackers for people already in the family</label>
+      <label class="check"><input type="checkbox" id="fm-active" ${f.is_active ? 'checked' : ''}>Link is working (untick to pause it)</label>
+      <label class="check"><input type="checkbox" id="fm-newlink">Make a new link (the old link stops working)</label>` : ''}`,
+    submitLabel: f ? 'Save' : 'Make family',
+    onSubmit: async (form) => {
+      const name = form.querySelector('#fm-n').value.trim();
+      if (name.length < 2) return fieldErr(form, '#fm-n', 'Type a family name.');
+      const max = Number(form.querySelector('#fm-m').value) || 12;
+      const ids = [...form.querySelectorAll('[name=fm-t]:checked')].map((i) => i.value);
+      const { error } = f
+        ? await supabase.rpc('admin_update_family', { p_family: f.id, p_name: name, p_trackers: ids, p_max: max,
+            p_active: form.querySelector('#fm-active').checked, p_new_link: form.querySelector('#fm-newlink').checked, p_apply: form.querySelector('#fm-apply').checked })
+        : await supabase.rpc('admin_create_family', { p_name: name, p_trackers: ids, p_max: max });
+      if (error) { toast(friendlyError(error), 'bad'); return false; }
+      await loadFamilies();
+      toast(f ? 'Family saved' : 'Family made. Send the link on WhatsApp.');
+      return true;
+    }
   });
 }
 
