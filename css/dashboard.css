@@ -197,3 +197,18 @@
 .push-ask .pa-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
 @media (min-width: 600px) { .push-ask { grid-template-columns: auto minmax(0, 1fr) auto; } .push-ask .pa-acts { grid-column: auto; } }
 .ws-card .fam-ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--c-primary-light); color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 3.5px var(--c-accent); }
+
+/* Home: sliding words for today (js/quotes.js) */
+.qband { position: relative; border-radius: 22px; overflow: hidden; margin: 2px 0 6px; color: #fff;
+  background: linear-gradient(125deg, #5a3510 0%, #9a6420 45%, #c8963e 80%, #e2b864 100%); box-shadow: 0 10px 26px rgba(122, 75, 18, .28); }
+.qband::before { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 120% at 100% 0%, rgba(255, 236, 190, .35), transparent 65%), radial-gradient(40% 60% at 0% 100%, rgba(0, 0, 0, .25), transparent 70%); pointer-events: none; }
+.qb-track { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; outline: none; }
+.qb-track::-webkit-scrollbar { display: none; }
+.qb-slide { flex: 0 0 100%; scroll-snap-align: start; margin: 0; padding: 18px 20px 30px 54px; position: relative; display: flex; flex-direction: column; justify-content: center; min-height: 112px; }
+.qb-mark { position: absolute; left: 14px; top: 2px; font: 800 64px/1 Georgia, serif; color: #fff3d6; opacity: .85; }
+.qb-slide blockquote { margin: 0; text-shadow: 0 1px 2px rgba(0, 0, 0, .25); font-family: var(--f-display); font-weight: 800; font-size: 18px; line-height: 1.35; letter-spacing: -.01em; }
+.qb-slide figcaption { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: #fff3d6; letter-spacing: .02em; }
+.qb-dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+.qb-dots i { width: 6px; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .35); transition: width .25s, background .25s; }
+.qb-dots i.on { width: 18px; background: #fff; }
+@media (min-width: 720px) { .qb-slide blockquote { font-size: 20px; } }

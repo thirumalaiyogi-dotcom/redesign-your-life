@@ -8,6 +8,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
 import { coverSrc } from './covers.js';
+import { quotesHTML, startQuotes } from './quotes.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
@@ -360,12 +361,14 @@ async function renderDashboard() {
     <div class="hello"><span class="date">${esc(formatToday())}</span>
       <h1>${esc(greeting())}, ${esc(firstName(S.profile.full_name, S.user.email))}</h1>
       <p>${esc(greetingLine())}</p></div>
+    ${quotesHTML()}
     <div id="push-ask"></div>
     <div class="dash">
       <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}<div id="tk-wrap"></div><div id="act-wrap"></div></div>
       <div class="dash-col dash-side" id="col-side"><div id="streak-wrap">${streakHTML()}</div><div id="week-wrap"></div>${quickHTML()}</div>
     </div>`;
   animateRings(main);
+  startQuotes($('.qband', main));
   familyTile();
   await renderLive();
   loadUnread();
