@@ -11,7 +11,7 @@ export function coverSrc(cat) {
 }
 
 // Home poster (tall, title already printed on it). Coach upload (poster_path) → built-in poster → none (Home then uses the cover + printed name).
-export const POSTER = { wealth: 'wealth.webp', conscious: 'conscious.webp', karma: 'karma.webp', couple: 'couple.webp', mugilan: 'mugilan.webp', nithilla: 'nithilla.webp', secret: 'secret.webp', money: 'money.webp', attraction: 'attraction.webp' };
+export const POSTER = { wealth: 'wealth.webp', conscious: 'conscious.webp', karma: 'karma.webp', couple: 'couple.webp', mugilan: 'mugilan.webp', nithilla: 'nithilla.webp', secret: 'secret.webp', money: 'money.webp', attraction: 'attraction.webp', champion: 'champion.webp' };
 export function posterSrc(cat) {
   if (!cat) return null;
   if (cat.poster_path) return /^https?:/.test(cat.poster_path) ? cat.poster_path : app('assets/posters/' + encodeURIComponent(cat.poster_path));
