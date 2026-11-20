@@ -107,17 +107,22 @@ let people = [], filter = 'all', query = '';
 // trackers only some members get (Conscious Couple, a family member's own tracker) and who has them
 let extraCats = [], extraOf = new Map();
 
-let setupKnown = false;
+let setupKnown = false, timeKnown = false;
+// minutes like "12 min" / "1 h 05"
+const mins = (sec) => { const m = Math.floor((sec || 0) / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
+// a member who has not used the app for 3 days or more (or never)
+const idleDue = (p) => timeKnown && p.role === 'member' && p.is_active && (!p.time?.last_at || Date.now() - new Date(p.time.last_at) > 3 * 864e5);
 // app installed + notifications on? (only for members; coach calls the ones still to do)
 const setupDue = (p) => setupKnown && p.role === 'member' && p.is_active && (!p.app_installed || !p.phones);
 const setupText = (p) => `Hi ${String(p.full_name || '').split(' ')[0]}, Deepak's 10X Life app la ${!p.app_installed ? 'app install' : ''}${!p.app_installed && !p.phones ? ' um ' : ''}${!p.phones ? 'notifications on' : ''} pannala nu kaatudhu. Indha guide la padam oda step by step irukku:\n${app('guide.html#install')}\n\nApp open panna Home la "Finish setting up" card varum, adhula Install, Allow tap pannunga. Doubt na call pannunga 🙏`;
 async function loadPeople() {
-  const [ppl, cats, asg, mem, setup] = await Promise.all([
+  const [ppl, cats, asg, mem, setup, tm] = await Promise.all([
     supabase.rpc('admin_list_people'),
     supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),   // all trackers are opened per member
     supabase.from('tracker_assignments').select('category_id, member_id'),
     supabase.from('profiles').select('id, member_since, renews_on').or('member_since.not.is.null,renews_on.not.is.null'),
-    supabase.rpc('admin_setup_status')
+    supabase.rpc('admin_setup_status'),
+    supabase.rpc('admin_app_time')
   ]);
   if (ppl.error) throw ppl.error;
   people = ppl.data || [];
@@ -126,6 +131,9 @@ async function loadPeople() {
   const su = new Map((setup.error ? [] : setup.data || []).map((x) => [x.member_id, x]));
   setupKnown = !setup.error;
   for (const p of people) Object.assign(p, { app_installed: !!su.get(p.id)?.app_installed_at, phones: su.get(p.id)?.phones || 0 });
+  const tmOf = new Map((tm.error ? [] : tm.data || []).map((x) => [x.member_id, x]));
+  timeKnown = !tm.error;
+  for (const p of people) p.time = tmOf.get(p.id) || null;
   extraCats = cats.error ? [] : cats.data || [];
   extraOf = new Map();
   for (const a of asg.error ? [] : asg.data || []) {
@@ -179,6 +187,7 @@ function counts() {
     coach: people.filter((p) => p.role !== 'member').length,
     paused: people.filter((p) => !p.is_active).length,
     setup: people.filter(setupDue).length,
+    idle: people.filter(idleDue).length,
     renew: people.filter(renewDue).length
   };
 }
@@ -211,6 +220,7 @@ function personHTML(p) {
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
       ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
       ${setupKnown && p.role === 'member' ? `<span class="pill ${p.app_installed ? 'trk' : 'bad'}" title="${p.app_installed ? 'Opens the installed app' : 'Has not opened the installed app yet'}">${p.app_installed ? 'App ✓' : 'No app'}</span><span class="pill ${p.phones ? 'trk' : 'bad'}" title="Phones getting notifications: ${p.phones}">${p.phones ? 'Alerts ✓' : 'No alerts'}</span>` : ''}
+      ${timeKnown && p.role === 'member' ? `<span class="pill ${p.time?.today ? 'trk' : 'none'}" title="Time in the app (only while open and in use). Average a day over the last 7 days: ${mins(p.time?.avg7)}; used on ${p.time?.days7 || 0} of the last 7 days">⏱ ${mins(p.time?.today)} today · ${mins(p.time?.week)} this week</span>${idleDue(p) ? `<span class="pill bad">${p.time?.last_at ? `Last used ${esc(timeAgo(p.time.last_at))}` : 'Never used the app'}</span>` : ''}` : ''}
       ${setupDue(p) && p.phone ? `<a class="btn btn-sm btn-wa" target="_blank" rel="noopener" href="${waLink(p.phone, setupText(p))}">${icon('message-square')}Setup help</a>` : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
@@ -224,7 +234,7 @@ function personHTML(p) {
 function renderList() {
   const q = query.trim().toLowerCase();
   const list = people.filter((p) =>
-    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active) || (filter === 'renew' && renewDue(p)) || (filter === 'setup' && setupDue(p))) &&
+    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active) || (filter === 'renew' && renewDue(p)) || (filter === 'setup' && setupDue(p)) || (filter === 'idle' && idleDue(p))) &&
     (!q || `${p.full_name} ${p.email} ${p.phone || ''}`.toLowerCase().includes(q)));
   const c = counts();
   $$('[data-filter]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.filter === filter)); b.querySelector('.c').textContent = c[b.dataset.filter]; });
@@ -255,7 +265,7 @@ async function renderMembers() {
     <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
   <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
   <div class="tools">
-    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['renew', 'Renewals due'], ['setup', 'App not set up'], ['paused', 'Paused']].map(([v, l]) =>
+    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['renew', 'Renewals due'], ['setup', 'App not set up'], ['idle', 'Not opened 3+ days'], ['paused', 'Paused']].map(([v, l]) =>
       `<button class="chip" data-filter="${v}" aria-pressed="false">${l}<span class="c"></span></button>`).join('')}</div>
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Search name, email or phone" aria-label="Search members"></label>
   </div>
@@ -752,9 +762,11 @@ async function renderMember() {
       <button class="iconbtn" id="mp-next" aria-label="Next day">${icon('chevron-right')}</button>
       <button class="btn btn-sm btn-ghost" id="mp-today">Today</button></div>
     <section class="card card-pad" aria-label="Last 14 days"><div class="card-h"><h3>Last 14 days</h3><span class="sub-r muted" style="font-size:12.5px">Tap a day to open it</span></div><div class="mp-strip" id="mp-strip"></div></section>
+    <section class="card card-pad" id="mp-time" aria-label="Time in the app" hidden></section>
     <div id="mp-day"></div>
     <div id="mp-extra" class="stack" style="gap:14px"></div>`;
   memberExtras($('#mp-extra'), mp.id).catch(() => { $('#mp-extra').innerHTML = ''; });
+  memberTime(mp.id, today).catch(() => {});
   $('#mp-date').addEventListener('change', (e) => goDay(e.target.value));
   $('#mp-prev').addEventListener('click', () => goDay(addDaysIso(mp.date, -1)));
   $('#mp-next').addEventListener('click', () => goDay(addDaysIso(mp.date, 1)));
@@ -767,6 +779,25 @@ async function renderMember() {
       if (r && a) voidDialog({ ...r, member_name: p.full_name, activity_name: a.default_name }, loadMemberDays); }
   });
   await loadMemberDays();
+}
+
+// Time in the app, last 14 days (counted only while the app is open and in use)
+async function memberTime(id, today) {
+  const box = $('#mp-time'); if (!box) return;
+  const from = addDaysIso(today, -13);
+  const { data, error } = await supabase.from('app_usage').select('day, seconds, opens').eq('member_id', id).gte('day', from).order('day');
+  if (error) return;
+  const by = new Map((data || []).map((r) => [r.day, r]));
+  const days = Array.from({ length: 14 }, (_, i) => addDaysIso(from, i));
+  const max = Math.max(60, ...days.map((d) => by.get(d)?.seconds || 0));
+  const total = days.reduce((a, d) => a + (by.get(d)?.seconds || 0), 0);
+  const used = days.filter((d) => (by.get(d)?.seconds || 0) >= 30).length;
+  box.hidden = false;
+  box.innerHTML = `<div class="card-h"><h3>Time in the app</h3><span class="sub-r muted" style="font-size:12.5px">Last 14 days · used on ${used} days · ${mins(Math.round(total / 14))} a day on average</span></div>
+    <div class="mp-time">${days.map((d) => { const r = by.get(d), sec = r?.seconds || 0;
+      return `<div class="mt-d ${d === today ? 'today' : ''}" title="${esc(formatDate(d))}: ${mins(sec)}${r?.opens ? `, opened ${r.opens} time${r.opens > 1 ? 's' : ''}` : ''}">
+        <span class="v">${sec >= 60 ? Math.floor(sec / 60) : ''}</span><div class="col"><i style="height:${Math.round(100 * sec / max)}%"></i></div><small>${Number(d.slice(8))}</small></div>`; }).join('')}</div>
+    <p class="muted" style="font-size:12px;margin-top:6px">Numbers are minutes. Counted only while the app is on the screen and being used.</p>`;
 }
 
 function goDay(d) {

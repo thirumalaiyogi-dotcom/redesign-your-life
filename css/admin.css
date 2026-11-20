@@ -338,3 +338,10 @@ details.j-entry { border-top: 1px solid var(--c-border); }
 .bt-cover b { display: block; } .bt-cover small { display: block; color: var(--c-muted); font-size: 12.5px; margin: 2px 0 8px; }
 .bt-cover .bt-row { flex-wrap: wrap; align-items: center; }
 .is-busy { opacity: .6; pointer-events: none; }
+.mp-time { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; align-items: end; height: 120px; margin-top: 8px; }
+.mt-d { display: grid; grid-template-rows: 16px 1fr 16px; height: 100%; text-align: center; }
+.mt-d .v { font-size: 10.5px; font-weight: 700; color: var(--c-text-2); }
+.mt-d .col { position: relative; background: var(--c-sunken); border-radius: 6px; overflow: hidden; }
+.mt-d .col i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--c-accent); border-radius: 6px; min-height: 2px; }
+.mt-d.today .col i { background: var(--c-primary); }
+.mt-d small { font-size: 10.5px; color: var(--c-muted); }

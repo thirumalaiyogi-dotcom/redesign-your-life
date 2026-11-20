@@ -409,3 +409,11 @@ create policy family_members_coach_read on public.family_members for select to a
 revoke all on public.families, public.family_members from anon, authenticated;
 grant select on public.families, public.family_members to authenticated;
 
+
+-- App time (migration ryl_33_app_time)
+alter table public.app_usage enable row level security;
+drop policy if exists app_usage_read on public.app_usage;
+create policy app_usage_read on public.app_usage for select to authenticated using (member_id = (select auth.uid()) or (select public.is_admin()));
+revoke all on public.app_usage from anon, authenticated;
+grant select on public.app_usage to authenticated;
+

@@ -129,6 +129,7 @@ export function memberNav(current) {
     [app('member/profile.html'), 'user-round', 'Profile', 'Profile', 'profile']
   ];
   setTimeout(todoBadge, 0);
+  import('./usage.js').then((m) => m.startUsage()).catch(() => { /* time counting is optional */ });
   // only on Home: on Track it would sit over the tick buttons
   const fab = current !== 'dashboard' || !/member\/dashboard\.html/.test(location.pathname) ? '' : `<a class="todo-fab" href="${app('member/todo.html#add')}" aria-label="To-do list"><span class="tf-ic">${icon('list-checks')}</span><span class="tf-l">To-do</span><i class="tf-badge" id="tf-badge" hidden></i></a>`;
   return fab + `<nav class="bottomnav" aria-label="Member menu"><div class="inner">${items.map(([href, ic, label, short, key]) =>

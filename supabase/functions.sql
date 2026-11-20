@@ -1763,3 +1763,55 @@ begin
 end $$;
 revoke all on function public.admin_set_tracker_cover(uuid, text) from public, anon;
 grant execute on function public.admin_set_tracker_cover(uuid, text) to authenticated;
+
+-- App time (migration ryl_33_app_time)
+-- MEMBER: report time in the app. p_open = this report starts a new visit.
+create or replace function public.log_app_time(p_seconds int, p_open boolean default false)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v_uid uuid := auth.uid(); d date := public.app_today(); v_last timestamptz; v_add int; v_total int;
+begin
+  if v_uid is null then raise exception 'Please log in.' using errcode = '42501'; end if;
+  select max(last_at) into v_last from public.app_usage where member_id = v_uid;
+  v_add := least(greatest(coalesce(p_seconds, 0), 0), 300,
+                 case when v_last is null then 60 else greatest(0, ceil(extract(epoch from now() - v_last))::int + 5) end);
+  insert into public.app_usage as u (member_id, day, seconds, opens, last_at)
+  values (v_uid, d, v_add, case when p_open then 1 else 0 end, now())
+  on conflict (member_id, day) do update
+     set seconds = least(86400, u.seconds + excluded.seconds), opens = u.opens + excluded.opens, last_at = now()
+  returning seconds into v_total;
+  return v_total;
+end $$;
+revoke all on function public.log_app_time(int, boolean) from public, anon;
+grant execute on function public.log_app_time(int, boolean) to authenticated;
+
+-- MEMBER: my time today / this week (Mon–Sun) / last 7 days by day
+create or replace function public.my_app_time()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  with d as (select public.app_today() t)
+  select jsonb_build_object(
+    'today', coalesce((select seconds from public.app_usage, d where member_id = auth.uid() and day = d.t), 0),
+    'week',  coalesce((select sum(seconds) from public.app_usage, d where member_id = auth.uid() and day between date_trunc('week', d.t)::date and d.t), 0),
+    'days',  coalesce((select jsonb_object_agg(day, seconds) from public.app_usage, d where member_id = auth.uid() and day > d.t - 7), '{}'::jsonb));
+$$;
+revoke all on function public.my_app_time() from public, anon;
+grant execute on function public.my_app_time() to authenticated;
+
+-- COACH: everyone's time today, this week, average per day (last 7 days) and when they last used the app
+create or replace function public.admin_app_time()
+returns table(member_id uuid, today int, week int, avg7 int, days7 int, last_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare t date := public.app_today();
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query
+  select p.id,
+         coalesce((select u.seconds from public.app_usage u where u.member_id = p.id and u.day = t), 0),
+         coalesce((select sum(u.seconds)::int from public.app_usage u where u.member_id = p.id and u.day between date_trunc('week', t)::date and t), 0),
+         coalesce((select (sum(u.seconds) / 7)::int from public.app_usage u where u.member_id = p.id and u.day > t - 7), 0),
+         (select count(*)::int from public.app_usage u where u.member_id = p.id and u.day > t - 7 and u.seconds >= 30),
+         (select max(u.last_at) from public.app_usage u where u.member_id = p.id)
+  from public.profiles p where p.role = 'member';
+end $$;
+revoke all on function public.admin_app_time() from public, anon;
+grant execute on function public.admin_app_time() to authenticated;

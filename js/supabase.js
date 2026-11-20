@@ -56,7 +56,7 @@ export function clearOfflineData() { safe(() => localStorage.removeItem(OFFLINE_
 // (so each person trying the demo sees only their own ticks); any other save shows a friendly "demo" message.
 export const DEMO_EMAIL = 'demo@deepak10xlifecoach.com';
 const claimsOf = (auth) => { try { return JSON.parse(atob(String(auth).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { return {}; } };
-const READ_RPC = /\/rpc\/(app_today|get_my_dashboard|get_my_streaks|get_leaderboard|get_batch_leaderboard|get_recognitions|my_batches|signup_open|my_family|family_overview|family_member_day|family_info|mark_app_installed|admin_setup_status)$/;
+const READ_RPC = /\/rpc\/(app_today|get_my_dashboard|get_my_streaks|get_leaderboard|get_batch_leaderboard|get_recognitions|my_batches|signup_open|my_family|family_overview|family_member_day|family_info|mark_app_installed|admin_setup_status|my_app_time|admin_app_time)$/;
 const demoDay = () => new Date(Date.now() + 5.5 * 36e5).toISOString().slice(0, 10);   // India date
 function demoTicks() { return safe(() => JSON.parse(sessionStorage.getItem('ryl.demo') || '{}'), {}) || {}; }
 function demoReply(url, init) {

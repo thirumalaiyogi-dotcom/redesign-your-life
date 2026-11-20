@@ -488,6 +488,18 @@ alter table public.tracker_categories add constraint tracker_categories_cover_pa
   or cover_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$');
 
 
+-- Time spent in the app: the phone sends the seconds the app was open and in use (screen on, touched in
+-- the last 2 minutes). The server never adds more than the real time since the last report, at most
+-- 5 minutes per report and 24 h per day, so the number cannot be pumped up from the phone.
+create table if not exists public.app_usage (
+  member_id  uuid not null references public.profiles(id) on delete cascade,
+  day        date not null,
+  seconds    int  not null default 0 check (seconds between 0 and 86400),
+  opens      int  not null default 0 check (opens >= 0),
+  last_at    timestamptz not null default now(),
+  primary key (member_id, day)
+);
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -2254,6 +2266,58 @@ end $$;
 revoke all on function public.admin_set_tracker_cover(uuid, text) from public, anon;
 grant execute on function public.admin_set_tracker_cover(uuid, text) to authenticated;
 
+-- App time (migration ryl_33_app_time)
+-- MEMBER: report time in the app. p_open = this report starts a new visit.
+create or replace function public.log_app_time(p_seconds int, p_open boolean default false)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v_uid uuid := auth.uid(); d date := public.app_today(); v_last timestamptz; v_add int; v_total int;
+begin
+  if v_uid is null then raise exception 'Please log in.' using errcode = '42501'; end if;
+  select max(last_at) into v_last from public.app_usage where member_id = v_uid;
+  v_add := least(greatest(coalesce(p_seconds, 0), 0), 300,
+                 case when v_last is null then 60 else greatest(0, ceil(extract(epoch from now() - v_last))::int + 5) end);
+  insert into public.app_usage as u (member_id, day, seconds, opens, last_at)
+  values (v_uid, d, v_add, case when p_open then 1 else 0 end, now())
+  on conflict (member_id, day) do update
+     set seconds = least(86400, u.seconds + excluded.seconds), opens = u.opens + excluded.opens, last_at = now()
+  returning seconds into v_total;
+  return v_total;
+end $$;
+revoke all on function public.log_app_time(int, boolean) from public, anon;
+grant execute on function public.log_app_time(int, boolean) to authenticated;
+
+-- MEMBER: my time today / this week (Mon–Sun) / last 7 days by day
+create or replace function public.my_app_time()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  with d as (select public.app_today() t)
+  select jsonb_build_object(
+    'today', coalesce((select seconds from public.app_usage, d where member_id = auth.uid() and day = d.t), 0),
+    'week',  coalesce((select sum(seconds) from public.app_usage, d where member_id = auth.uid() and day between date_trunc('week', d.t)::date and d.t), 0),
+    'days',  coalesce((select jsonb_object_agg(day, seconds) from public.app_usage, d where member_id = auth.uid() and day > d.t - 7), '{}'::jsonb));
+$$;
+revoke all on function public.my_app_time() from public, anon;
+grant execute on function public.my_app_time() to authenticated;
+
+-- COACH: everyone's time today, this week, average per day (last 7 days) and when they last used the app
+create or replace function public.admin_app_time()
+returns table(member_id uuid, today int, week int, avg7 int, days7 int, last_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare t date := public.app_today();
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query
+  select p.id,
+         coalesce((select u.seconds from public.app_usage u where u.member_id = p.id and u.day = t), 0),
+         coalesce((select sum(u.seconds)::int from public.app_usage u where u.member_id = p.id and u.day between date_trunc('week', t)::date and t), 0),
+         coalesce((select (sum(u.seconds) / 7)::int from public.app_usage u where u.member_id = p.id and u.day > t - 7), 0),
+         (select count(*)::int from public.app_usage u where u.member_id = p.id and u.day > t - 7 and u.seconds >= 30),
+         (select max(u.last_at) from public.app_usage u where u.member_id = p.id)
+  from public.profiles p where p.role = 'member';
+end $$;
+revoke all on function public.admin_app_time() from public, anon;
+grant execute on function public.admin_app_time() to authenticated;
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
 -- Row Level Security on every table + column-level grants.
@@ -2664,6 +2728,14 @@ drop policy if exists family_members_coach_read on public.family_members;
 create policy family_members_coach_read on public.family_members for select to authenticated using (public.is_admin());
 revoke all on public.families, public.family_members from anon, authenticated;
 grant select on public.families, public.family_members to authenticated;
+
+
+-- App time (migration ryl_33_app_time)
+alter table public.app_usage enable row level security;
+drop policy if exists app_usage_read on public.app_usage;
+create policy app_usage_read on public.app_usage for select to authenticated using (member_id = (select auth.uid()) or (select public.is_admin()));
+revoke all on public.app_usage from anon, authenticated;
+grant select on public.app_usage to authenticated;
 
 
 -- =====================================================================

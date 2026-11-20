@@ -487,3 +487,15 @@ alter table public.tracker_categories add constraint tracker_categories_cover_pa
   or cover_path ~ '^[a-z0-9-]{1,60}\.webp$'
   or cover_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$');
 
+
+-- Time spent in the app: the phone sends the seconds the app was open and in use (screen on, touched in
+-- the last 2 minutes). The server never adds more than the real time since the last report, at most
+-- 5 minutes per report and 24 h per day, so the number cannot be pumped up from the phone.
+create table if not exists public.app_usage (
+  member_id  uuid not null references public.profiles(id) on delete cascade,
+  day        date not null,
+  seconds    int  not null default 0 check (seconds between 0 and 86400),
+  opens      int  not null default 0 check (opens >= 0),
+  last_at    timestamptz not null default now(),
+  primary key (member_id, day)
+);

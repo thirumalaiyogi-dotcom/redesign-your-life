@@ -9,6 +9,7 @@ import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearP
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
 import { coverSrc } from './covers.js';
 import { quotesHTML, startQuotes } from './quotes.js';
+import { fmtTime } from './usage.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
@@ -249,7 +250,13 @@ function weekHTML() {
     <div class="week-h"><div><b class="big">${S.d.weekly_pct}%</b><small>weekly completion · ${formatNumber(S.d.missed_week)} missed so far</small></div></div>
     <div class="wbars" role="img" aria-label="Daily completion, Monday to Sunday">${bars}</div>
     ${thisAvg && !lastAvg ? `<p class="week-note">A trend appears after your first full week.</p>` : ''}
+    <p class="apptime" id="app-time">${appTimeText()}</p>
   </section>`;
+}
+// time spent in the app (counted only while it is open and being used)
+const appTimeText = () => S.time ? `${icon('clock')}<span>Time in the app · Today <b>${esc(fmtTime(S.time.today))}</b> · This week <b>${esc(fmtTime(S.time.week))}</b></span>` : '';
+async function loadAppTime() {
+  try { const { data, error } = await supabase.rpc('my_app_time'); if (error || !data) return; S.time = data; const el = $('#app-time'); if (el) el.innerHTML = appTimeText(); } catch { /* optional */ }
 }
 
 // Coach's next workshop (from js/site-content.js); hidden automatically once it has ended.
@@ -348,6 +355,7 @@ async function renderDashboard() {
     </div>`;
   animateRings(main);
   startQuotes($('.qband', main));
+  loadAppTime();
   familyTile();
   await renderLive();
   loadUnread();
