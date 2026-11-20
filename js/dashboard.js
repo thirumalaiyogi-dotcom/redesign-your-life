@@ -127,27 +127,6 @@ function trackersHTML() {
       <a href="${app('member/trackers.html')}">All trackers${icon('chevron-right')}</a></div>
     <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
-// Posters scale with their distance from the middle: the centre one is big, the side ones smaller.
-function coverflow(rail) {
-  if (!rail) return;
-  let raf = 0;
-  const draw = () => {
-    raf = 0;
-    const r = rail.getBoundingClientRect(), mid = r.left + r.width / 2;
-    for (const el of rail.children) {
-      const b = el.getBoundingClientRect();
-      const d = Math.min(1, Math.abs(b.left + b.width / 2 - mid) / (b.width * 1.1));
-      el.style.setProperty('--cf', (1 - d * 0.2).toFixed(3));
-      el.style.setProperty('--cfo', (1 - d * 0.35).toFixed(3));
-      el.classList.toggle('cf-mid', d < 0.35);
-    }
-  };
-  const ask = () => { if (!raf) raf = requestAnimationFrame(draw); };
-  rail.addEventListener('scroll', ask, { passive: true });
-  addEventListener('resize', ask);
-  draw();
-}
-
 // One poster per tracker (scrolls sideways like movie posters); tap opens the tracker.
 function trackerCard(c) {
   const t = trackerStats(c);
@@ -395,7 +374,6 @@ async function renderLive() {
     return errorPanel(act, err, renderLive, "Couldn't load today's activities");
   }
   tk.innerHTML = trackersHTML();
-  coverflow($('#tk-grid'));
   act.innerHTML = activitiesHTML();
   wk.innerHTML = weekHTML();
   renderActivities();
