@@ -7,6 +7,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
+import { COVER } from './covers.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
@@ -76,7 +77,7 @@ function skeleton() {
     <div class="hello"><span class="date">${esc(formatToday())}</span><h1>${esc(greeting())}, ${esc(firstName(S.profile.full_name, S.user.email))}</h1></div>
     <div class="dash" aria-busy="true"><div class="dash-col">
       <div class="skeleton" style="height:236px;border-radius:var(--r-xl)"></div>
-      <div class="tk-grid">${'<div class="skeleton" style="height:132px"></div>'.repeat(4)}</div>
+      <div class="tk-rail">${'<div class="skeleton" style="height:250px;flex:0 0 150px"></div>'.repeat(3)}</div>
       <div class="skeleton" style="height:320px"></div></div>
       <div class="dash-col dash-side"><div class="skeleton" style="height:260px"></div><div class="skeleton" style="height:200px"></div></div></div>`;
 }
@@ -123,17 +124,21 @@ function heroHTML() {
 function trackersHTML() {
   return `<section aria-labelledby="tk-h"><div class="sec-h"><h2 id="tk-h">Habit trackers</h2>
       <a href="${app('member/trackers.html')}">All trackers${icon('chevron-right')}</a></div>
-    <div class="tk-grid" id="tk-grid">${S.cats.map(trackerCard).join('')}</div></section>`;
+    <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
+// One poster per tracker (scrolls sideways like movie posters); tap opens the tracker.
 function trackerCard(c) {
   const t = trackerStats(c);
   const pct = t.total ? Math.round(100 * t.done / t.total) : 0;
   const state = t.total && t.done === t.total ? ['s-done', 'Complete'] : t.done || t.miss ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
-  return `<a class="tk" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${TRACKER_COLOR[c.slug] || 'var(--c-primary)'}">
-    <div class="top"><span class="ic">${icon(TRACKER_ICON[c.slug] || 'list-checks')}</span>${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}</div>
+  const tc = TRACKER_COLOR[c.slug] || c.color || 'var(--c-primary)';
+  const pic = COVER[c.slug] ? `<img src="${app('assets/images/' + COVER[c.slug])}" alt="" loading="lazy" decoding="async">`
+    : `<span class="tp-fb" aria-hidden="true">${icon(TRACKER_ICON[c.slug] || c.icon || 'list-checks')}</span>`;
+  return `<a class="tk tk-poster" role="listitem" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${esc(tc)}">
+    <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span></span>
     <h3>${esc(c.name)}</h3>
     <div class="pbar"><i data-w="${pct}%"></i></div>
-    <div class="meta"><span><b>${t.done}</b>/${t.total} done</span><span class="state ${state[0]}">${state[1]}</span></div></a>`;
+    <div class="meta"><span><b>${t.done}</b>/${t.total} done</span></div></a>`;
 }
 
 function activitiesHTML() {
@@ -289,7 +294,7 @@ async function loadSummary() {
 async function loadActivities() {
   const mon = mondayOf(S.today), from = addDays(mon, -7);
   const [cats, acts, rows, week] = await Promise.all([
-    supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('is_active', true).order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, color, icon, sort_order').eq('is_active', true).order('sort_order'),
     supabase.from('activities').select('id, category_id, number, default_name, description, image_path, icon, points').eq('is_active', true).order('number'),
     supabase.from('daily_checkins').select('activity_id, status, voided_at, void_reason').eq('member_id', S.user.id).eq('checkin_date', S.today),
     supabase.from('daily_checkins').select('activity_id, checkin_date').eq('member_id', S.user.id).eq('status', 'done').is('voided_at', null)
@@ -357,7 +362,7 @@ async function askPush() {
 
 async function renderLive() {
   const tk = $('#tk-wrap'), act = $('#act-wrap'), wk = $('#week-wrap');
-  tk.innerHTML = `<div class="tk-grid">${'<div class="skeleton" style="height:132px"></div>'.repeat(4)}</div>`;
+  tk.innerHTML = `<div class="tk-rail">${'<div class="skeleton" style="height:250px;flex:0 0 150px"></div>'.repeat(3)}</div>`;
   act.innerHTML = `<div class="skeleton" style="height:300px"></div>`;
   wk.innerHTML = `<div class="skeleton" style="height:200px"></div>`;
   try { await loadActivities(); } catch (err) {
@@ -397,13 +402,13 @@ function updateLiveBits() {
   for (const c of S.cats) {
     const card = $(`.tk[data-slug="${CSS.escape(c.slug)}"]`); if (!card) continue;
     const t = trackerStats(c), p = t.total ? Math.round(100 * t.done / t.total) : 0;
+    // update the poster in place (keeps the picture, so nothing flickers)
     const tmp = document.createElement('div'); tmp.innerHTML = trackerCard(c);
     const fresh = tmp.firstElementChild;
-    fresh.querySelector('.pbar i').style.width = card.querySelector('.pbar i').style.width || '0%';
-    const oldFg = card.querySelector('.fg');
-    if (oldFg) fresh.querySelector('.fg').style.strokeDashoffset = oldFg.style.strokeDashoffset;
-    card.replaceWith(fresh);
-    requestAnimationFrame(() => requestAnimationFrame(() => { fresh.querySelector('.pbar i').style.width = p + '%'; setRing(fresh.querySelector('.pring'), p); }));
+    card.querySelector('.meta').replaceWith(fresh.querySelector('.meta'));
+    card.querySelector('.state').replaceWith(fresh.querySelector('.state'));
+    const mid = card.querySelector('.pring .mid'); if (mid) mid.textContent = `${p}%`;
+    requestAnimationFrame(() => { card.querySelector('.pbar i').style.width = p + '%'; setRing(card.querySelector('.pring'), p); });
   }
   // weekly bar for today
   S.week.set(S.today, S.acts.filter((a) => todayState(a) === 'done').length);

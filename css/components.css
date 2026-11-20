@@ -236,3 +236,26 @@
 .su-warn .icon { width: 20px; height: 20px; }
 :root[data-theme="dark"] .su-warn { background: #2c2716; border-color: #4a3f1e; color: #f0dfae; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .su-warn { background: #2c2716; border-color: #4a3f1e; color: #f0dfae; } }
+
+/* Home: tracker posters that scroll sideways (like movie posters) */
+.tk-rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 2px; padding: 2px 2px 10px; margin: 0 -2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.tk-rail::-webkit-scrollbar { display: none; }
+.tk.tk-poster { flex: 0 0 148px; scroll-snap-align: start; padding: 0; gap: 6px; background: none; border: 0; box-shadow: none; overflow: visible; }
+.tk.tk-poster::after { display: none; }
+.tk.tk-poster:hover { transform: translateY(-2px); box-shadow: none; }
+.tk-poster .tp-img { position: relative; display: block; aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden; background: color-mix(in srgb, var(--tc) 22%, var(--c-surface)); box-shadow: 0 6px 18px rgba(0, 0, 0, .14); }
+.tk-poster .tp-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s var(--ease); }
+.tk-poster:hover .tp-img img { transform: scale(1.04); }
+.tk-poster .tp-img::after { content: ""; position: absolute; inset: 50% 0 0; background: linear-gradient(transparent, rgba(0, 0, 0, .55)); pointer-events: none; }
+.tk-poster .tp-fb { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--tc) 55%, #fff), var(--tc) 70%); color: #fff; }
+.tk-poster .tp-fb .icon { width: 56px; height: 56px; opacity: .95; }
+.tk-poster .pring { position: absolute; top: 8px; right: 8px; z-index: 1; --size: 40px; --ring-fg: #fff; background: rgba(0, 0, 0, .45); border-radius: 50%; backdrop-filter: blur(4px); }
+.tk-poster .pring .mid { font-size: 10.5px; color: #fff; font-weight: 700; }
+.tk-poster .pring .bg { stroke: rgba(255, 255, 255, .25); }
+.tk-poster .state { position: absolute; left: 8px; bottom: 8px; z-index: 1; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #1b2b24; }
+.tk-poster .state.s-done { background: var(--c-success); color: #fff; }
+.tk-poster .state.s-prog { background: #f6c453; color: #2a1d05; }
+.tk-poster h3 { font-size: 14.5px; line-height: 1.3; margin: 4px 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
+.tk-poster .pbar { margin: 0 2px; }
+.tk-poster .meta { margin: 0 2px; font-size: 12.5px; color: var(--c-text-2); }
+@media (min-width: 720px) { .tk.tk-poster { flex-basis: 168px; } }

@@ -130,3 +130,6 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Each step has a one-tap button when the browser allows it, otherwise "How?" / "Fix" opens steps for that phone: Chrome, Samsung Internet, iPhone Safari, a link opened inside WhatsApp/Instagram/Facebook (open in Chrome first), and notifications blocked earlier (site settings / App info, then "Check again").
 - Opening the installed app calls `mark_app_installed()` once per phone (profiles.app_installed_at). Coaches: Members → filter "App not set up", chips No app / No alerts, and a "Setup help" WhatsApp button (`admin_setup_status()`). Migration `ryl_31_app_setup`, test S1.
 - "No app" only turns ✓ after the person opens the installed icon once (installs from before this update show as "No app" until then).
+
+## Home tracker posters (Nov 2026)
+- Home "Habit trackers" is a sideways-scrolling row of picture posters (like movie posters); tap opens the tracker. Picture from `js/covers.js` (shared with the tracker page); trackers without a picture get a coloured poster with their icon. Ring, "In progress" label, bar and "x/16 done" update live after a tick.
