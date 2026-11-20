@@ -133,3 +133,4 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 
 ## Home tracker posters (Nov 2026)
 - Home "Habit trackers" is a sideways-scrolling row of picture posters (like movie posters); tap opens the tracker. Picture from `js/covers.js` (shared with the tracker page); trackers without a picture get a coloured poster with their icon. Ring, "In progress" label, bar and "x/16 done" update live after a tick.
+- Coach-added trackers tidied (Nov 2026): slugs `attraction` (Law of Attraction - 16 Basics) and `money` (Psychology of Money - 16 Techniques), tagline, icons, habit names spaced like the others; covers `attraction-cover.webp`, `money-cover.webp`. Their habit pictures stay in Supabase Storage (`activity-images`). Habit names are normally locked by `activities_guard`; it was switched off only inside that one update and switched back on.
