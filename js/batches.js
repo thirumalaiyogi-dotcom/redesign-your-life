@@ -4,6 +4,7 @@
 import { supabase, app } from './supabase.js';
 import { friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, formatDate, formatNumber } from './ui.js';
+import { coverSrc } from './covers.js';
 
 const KIND = { online: 'Online program', membership: 'Membership', workshop: 'Physical workshop' };
 const COLORS = ['#5b8cf0', '#22aa66', '#e7b54a', '#e0605a', '#f08a3c', '#9b6bd6', '#d0629b', '#2bb3b1'];
@@ -68,7 +69,7 @@ async function loadAll() {
     supabase.from('step_trackers').select('step_id, category_id'),
     supabase.from('batches').select('id, program_id, name, starts_on, is_active, created_at').order('starts_on', { ascending: false }).order('created_at', { ascending: false }),
     supabase.from('batch_steps_done').select('batch_id, step_id, done_at'),
-    supabase.from('tracker_categories').select('id, slug, name, tagline, color, audience, show_locked, is_active, sort_order').order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, tagline, color, audience, show_locked, is_active, sort_order, cover_path').order('sort_order'),
     supabase.from('activities').select('id, category_id, number, default_name, description, points, is_active').order('number'),
     supabase.from('batch_members').select('batch_id'),
     supabase.from('app_settings').select('value').eq('key', 'open_signup').maybeSingle()
@@ -248,7 +249,11 @@ function trackersHTML() {
         <div class="field"><label for="et-tag">Tagline</label><input id="et-tag" maxlength="160" value="${esc(t.tagline || '')}"></div>
         <div class="field"><label for="et-color">Colour</label><input id="et-color" type="color" value="${esc(t.color)}"></div></div>
         <label class="check"><input type="checkbox" id="et-locked" ${t.show_locked ? 'checked' : ''}>Show it to everyone as locked until it is opened</label>
-        <button class="btn btn-ghost btn-sm" type="submit">Save tracker</button></form>
+        <button class="btn btn-ghost btn-sm" type="submit">Save tracker</button>
+        <div class="bt-cover"><span class="bt-cover-img">${coverSrc(t) ? `<img src="${esc(coverSrc(t))}" alt="">` : `<i style="background:${esc(t.color)}"></i>`}</span>
+          <div><b>Cover picture</b><small>Shown on Home as a poster and at the top of the tracker. Keep the person or main thing in the middle.</small>
+          <div class="bt-row"><label class="btn btn-gold btn-sm" style="cursor:pointer">${icon('image')}Change picture<input id="et-cover" type="file" accept="image/jpeg,image/png,image/webp" class="visually-hidden"></label>
+          ${t.cover_path ? `<button class="btn btn-ghost btn-sm" type="button" id="et-cover-reset">Use the original</button>` : ''}</div></div></div></form>
       <section class="panel"><div class="panel-h"><h3>Habits (${hs.length})</h3><a class="link" style="font-size:13px" href="${app('admin/activities.html')}">Add explanations →</a></div>
         <div class="bt-habits">${hs.map((h) => `<div class="bt-habit ${h.is_active ? '' : 'off'}"><span class="bt-no">${String(h.number).padStart(2, '0')}</span><div><b>${esc(h.default_name)}</b>${h.description ? `<small>${esc(h.description)}</small>` : ''}</div><span class="pts-chip">+${h.points}</span></div>`).join('') || '<p class="muted" style="padding:14px 16px">No habits yet. Add the first one below.</p>'}</div>
         <form class="form bt-habit-new" id="new-habit" novalidate>
@@ -505,3 +510,40 @@ async function onSubmit(e) {
 }
 
 export const _test = { parsePeople, waLink, loginMessage, rowsToLines };
+
+// ---------- tracker cover picture (coach) ----------
+// 640×480 WebP, middle part kept (Home shows the centre as a tall poster).
+async function coverBlob(file) {
+  if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) throw new Error('Choose a JPG, PNG or WebP picture.');
+  if (file.size > 15 * 1024 * 1024) throw new Error('That picture is over 15 MB. Choose a smaller one.');
+  const bmp = await createImageBitmap(file);
+  const W = 640, H = 480, k = Math.max(W / bmp.width, H / bmp.height), sw = W / k, sh = H / k;
+  const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  cv.getContext('2d').drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, W, H);
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/webp', 0.8));
+  if (!blob || blob.type !== 'image/webp') throw new Error('This browser cannot prepare the picture. Try Chrome.');
+  return blob;
+}
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'et-cover') return;
+  const f = e.target.files[0]; if (!f || !B.trk) return;
+  const t = B.trackers.find((x) => x.id === B.trk); if (!t) return;
+  const lbl = e.target.closest('label'); lbl.classList.add('is-busy');
+  try {
+    const blob = await coverBlob(f);
+    const path = `cover-${t.slug}-${Date.now()}.webp`;
+    const up = await supabase.storage.from('activity-images').upload(path, blob, { contentType: 'image/webp', cacheControl: '31536000', upsert: false });
+    if (up.error) throw up.error;
+    const url = supabase.storage.from('activity-images').getPublicUrl(path).data.publicUrl;
+    const { error } = await supabase.rpc('admin_set_tracker_cover', { p_category: t.id, p_path: url });
+    if (error) throw error;
+    toast('Cover picture changed'); await reload();
+  } catch (err) { toast(friendlyError(err), 'bad'); }
+  finally { lbl.classList.remove('is-busy'); e.target.value = ''; }
+});
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#et-cover-reset') || !B.trk) return;
+  const { error } = await supabase.rpc('admin_set_tracker_cover', { p_category: B.trk, p_path: null });
+  if (error) return toast(friendlyError(error), 'bad');
+  toast('Original picture back'); await reload();
+});

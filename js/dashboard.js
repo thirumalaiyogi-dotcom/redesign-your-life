@@ -7,7 +7,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
-import { COVER } from './covers.js';
+import { coverSrc } from './covers.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
@@ -126,13 +126,35 @@ function trackersHTML() {
       <a href="${app('member/trackers.html')}">All trackers${icon('chevron-right')}</a></div>
     <div class="tk-rail" id="tk-grid" role="list">${S.cats.map(trackerCard).join('')}</div></section>`;
 }
+// Posters scale with their distance from the middle: the centre one is big, the side ones smaller.
+function coverflow(rail) {
+  if (!rail) return;
+  let raf = 0;
+  const draw = () => {
+    raf = 0;
+    const r = rail.getBoundingClientRect(), mid = r.left + r.width / 2;
+    for (const el of rail.children) {
+      const b = el.getBoundingClientRect();
+      const d = Math.min(1, Math.abs(b.left + b.width / 2 - mid) / (b.width * 1.1));
+      el.style.setProperty('--cf', (1 - d * 0.2).toFixed(3));
+      el.style.setProperty('--cfo', (1 - d * 0.35).toFixed(3));
+      el.classList.toggle('cf-mid', d < 0.35);
+    }
+  };
+  const ask = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  rail.addEventListener('scroll', ask, { passive: true });
+  addEventListener('resize', ask);
+  draw();
+}
+
 // One poster per tracker (scrolls sideways like movie posters); tap opens the tracker.
 function trackerCard(c) {
   const t = trackerStats(c);
   const pct = t.total ? Math.round(100 * t.done / t.total) : 0;
   const state = t.total && t.done === t.total ? ['s-done', 'Complete'] : t.done || t.miss ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
   const tc = TRACKER_COLOR[c.slug] || c.color || 'var(--c-primary)';
-  const pic = COVER[c.slug] ? `<img src="${app('assets/images/' + COVER[c.slug])}" alt="" loading="lazy" decoding="async">`
+  const src = coverSrc(c);
+  const pic = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`
     : `<span class="tp-fb" aria-hidden="true">${icon(TRACKER_ICON[c.slug] || c.icon || 'list-checks')}</span>`;
   return `<a class="tk tk-poster" role="listitem" data-slug="${esc(c.slug)}" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${esc(tc)}">
     <span class="tp-img">${pic}${ringHTML(pct, { size: 40, stroke: 5, mid: `${pct}%` })}<span class="state ${state[0]}">${state[1]}</span></span>
@@ -294,7 +316,7 @@ async function loadSummary() {
 async function loadActivities() {
   const mon = mondayOf(S.today), from = addDays(mon, -7);
   const [cats, acts, rows, week] = await Promise.all([
-    supabase.from('tracker_categories').select('id, slug, name, color, icon, sort_order').eq('is_active', true).order('sort_order'),
+    supabase.from('tracker_categories').select('id, slug, name, color, icon, cover_path, sort_order').eq('is_active', true).order('sort_order'),
     supabase.from('activities').select('id, category_id, number, default_name, description, image_path, icon, points').eq('is_active', true).order('number'),
     supabase.from('daily_checkins').select('activity_id, status, voided_at, void_reason').eq('member_id', S.user.id).eq('checkin_date', S.today),
     supabase.from('daily_checkins').select('activity_id, checkin_date').eq('member_id', S.user.id).eq('status', 'done').is('voided_at', null)
@@ -370,6 +392,7 @@ async function renderLive() {
     return errorPanel(act, err, renderLive, "Couldn't load today's activities");
   }
   tk.innerHTML = trackersHTML();
+  coverflow($('#tk-grid'));
   act.innerHTML = activitiesHTML();
   wk.innerHTML = weekHTML();
   renderActivities();

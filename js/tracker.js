@@ -5,7 +5,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 import { openTrackerSheet } from './point.js';
-import { COVER } from './covers.js';
+import { coverSrc } from './covers.js';
 import { tickFx } from './fx.js';
 import { signedUrls, mediaHTML } from './media.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
@@ -19,7 +19,7 @@ const ICON = { wealth: 'gem', conscious: 'brain', karma: 'hand-heart', champion:
 const catOf = (slug) => cats.find((c) => c.slug === slug) || {};
 const tColor = (slug) => COLOR[slug] || catOf(slug).color || 'var(--c-primary)';
 const tIcon = (slug) => ICON[slug] || catOf(slug).icon || 'list-checks';
-const coverImg = (slug, cls = '') => COVER[slug] ? `<img ${cls ? `class="${cls}" ` : ''}src="${app('assets/images/' + COVER[slug])}" alt="" loading="lazy">` : `<span class="cover-fb ${cls}" aria-hidden="true"></span>`;
+const coverImg = (slug, cls = '') => { const src = coverSrc({ slug, ...catOf(slug) }); return src ? `<img ${cls ? `class="${cls}" ` : ''}src="${esc(src)}" alt="" loading="lazy">` : `<span class="cover-fb ${cls}" aria-hidden="true"></span>`; };
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ---- date helpers (ISO yyyy-mm-dd, IST day comes from the server) ----
@@ -54,7 +54,7 @@ async function loadToday() {
 }
 
 async function loadCats() {
-  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order, show_locked').eq('is_active', true).order('sort_order');
+  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order, show_locked, cover_path').eq('is_active', true).order('sort_order');
   if (error) throw error;
   cats = data || [];
 }

@@ -478,3 +478,12 @@ create index if not exists families_created_by_idx on public.families(created_by
 -- needs help installing it or turning notifications on (and call them).
 alter table public.profiles add column if not exists app_installed_at timestamptz;
 
+
+-- Tracker cover picture chosen by the coach (Home poster + top of the tracker page).
+-- Empty = the built-in picture for that tracker (js/covers.js) or a coloured poster.
+alter table public.tracker_categories add column if not exists cover_path text;
+alter table public.tracker_categories drop constraint if exists tracker_categories_cover_path;
+alter table public.tracker_categories add constraint tracker_categories_cover_path check (cover_path is null
+  or cover_path ~ '^[a-z0-9-]{1,60}\.webp$'
+  or cover_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$');
+

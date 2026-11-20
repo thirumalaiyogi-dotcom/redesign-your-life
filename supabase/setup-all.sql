@@ -479,6 +479,15 @@ create index if not exists families_created_by_idx on public.families(created_by
 alter table public.profiles add column if not exists app_installed_at timestamptz;
 
 
+-- Tracker cover picture chosen by the coach (Home poster + top of the tracker page).
+-- Empty = the built-in picture for that tracker (js/covers.js) or a coloured poster.
+alter table public.tracker_categories add column if not exists cover_path text;
+alter table public.tracker_categories drop constraint if exists tracker_categories_cover_path;
+alter table public.tracker_categories add constraint tracker_categories_cover_path check (cover_path is null
+  or cover_path ~ '^[a-z0-9-]{1,60}\.webp$'
+  or cover_path ~ '^https://gcbizlnpryihrrmjwbdv\.supabase\.co/storage/v1/object/public/activity-images/[A-Za-z0-9._-]{1,120}$');
+
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -2232,6 +2241,18 @@ begin
 end $$;
 revoke all on function public.admin_setup_status() from public, anon;
 grant execute on function public.admin_setup_status() to authenticated;
+
+-- Tracker cover (migration ryl_32_tracker_cover)
+create or replace function public.admin_set_tracker_cover(p_category uuid, p_path text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Only coaches can change trackers.' using errcode = '42501'; end if;
+  update public.tracker_categories set cover_path = nullif(trim(coalesce(p_path, '')), '') where id = p_category;
+  if not found then raise exception 'Tracker not found.' using errcode = 'P0002'; end if;
+  perform public._audit('tracker.cover', 'tracker_categories', p_category::text, jsonb_build_object('cover', p_path));
+end $$;
+revoke all on function public.admin_set_tracker_cover(uuid, text) from public, anon;
+grant execute on function public.admin_set_tracker_cover(uuid, text) to authenticated;
 
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
