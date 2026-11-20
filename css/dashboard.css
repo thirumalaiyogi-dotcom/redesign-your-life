@@ -210,5 +210,10 @@
 .qb-slide figcaption { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: #fff3d6; letter-spacing: .02em; }
 .qb-dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
 .qb-dots i { width: 6px; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .35); transition: width .25s, background .25s; }
-.qb-dots i.on { width: 18px; background: #fff; }
+.qb-dots i { position: relative; overflow: hidden; }
+.qb-dots i.on { width: 22px; background: rgba(255, 255, 255, .35); }
+.qb-dots i.on::after { content: ""; position: absolute; inset: 0; background: #fff; border-radius: inherit; transform-origin: left; transform: scaleX(0); }
+.qb-dots i.on.run::after { animation: qb-fill var(--qt, 5000ms) linear forwards; }
+@keyframes qb-fill { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .qb-dots i.on::after { transform: none; } }
 @media (min-width: 720px) { .qb-slide blockquote { font-size: 20px; } }

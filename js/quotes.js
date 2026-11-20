@@ -13,7 +13,7 @@ const QUOTES = [
   { t: 'Idea + Action = Success.', s: 'Act on one idea today' }
 ];
 
-let timer = 0;
+let timer = 0;   // one band on the page at a time
 
 export function quotesHTML() {
   // start from a different line each day
@@ -25,22 +25,40 @@ export function quotesHTML() {
     <div class="qb-dots" aria-hidden="true">${list.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div></section>`;
 }
 
+// Each line stays long enough to read (longer lines stay longer), then moves on by itself.
+// The gold dot fills up while the line is shown, so people see the next one is coming.
+const readMs = (text) => Math.min(11000, Math.max(4500, 2500 + String(text).length * 70));
+
 export function startQuotes(root) {
-  clearInterval(timer);
+  clearTimeout(timer);
   const track = root?.querySelector('.qb-track'); if (!track) return;
   const dots = [...root.querySelectorAll('.qb-dots i')];
-  const n = track.children.length;
+  const slides = [...track.children], n = slides.length;
   const idx = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-  let paused = false, rest = 0;
-  track.addEventListener('scroll', () => { const k = idx(); dots.forEach((d, i) => d.classList.toggle('on', i === k)); }, { passive: true });
-  const hold = () => { paused = true; clearTimeout(rest); rest = setTimeout(() => { paused = false; }, 8000); };
-  ['pointerdown', 'touchstart', 'focusin'].forEach((ev) => track.addEventListener(ev, hold, { passive: true }));
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  timer = setInterval(() => {
-    if (paused || document.hidden || !track.isConnected) { if (!track.isConnected) clearInterval(timer); return; }
-    const next = (idx() + 1) % n;
-    track.scrollTo({ left: next * track.clientWidth, behavior: next ? 'smooth' : 'auto' });
-  }, 5000);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let shown = -1;
+  const schedule = (k, delay) => {
+    clearTimeout(timer);
+    if (reduce || !track.isConnected) { dots.forEach((d, i) => d.classList.toggle('on', i === k)); return; }
+    const ms = delay ?? readMs(slides[k].querySelector('blockquote').textContent);
+    dots.forEach((d, i) => { d.classList.toggle('on', i === k); d.style.setProperty('--qt', i === k ? `${ms}ms` : '0ms'); d.classList.remove('run'); });
+    void dots[k]?.offsetWidth; dots[k]?.classList.add('run');
+    timer = setTimeout(() => {
+      if (!track.isConnected) return;
+      if (document.hidden) return schedule(k, 2000);
+      const next = (k + 1) % n;
+      track.scrollTo({ left: next * track.clientWidth, behavior: next ? 'smooth' : 'auto' });
+    }, ms);
+  };
+  let settle = 0;
+  track.addEventListener('scroll', () => {
+    clearTimeout(settle);
+    settle = setTimeout(() => { const k = idx(); if (k !== shown) { shown = k; schedule(k); } }, 120);
+  }, { passive: true });
+  // a finger on the line: stop and let them read; carry on 6 s after they let go
+  track.addEventListener('pointerdown', () => { clearTimeout(timer); dots.forEach((d) => d.classList.remove('run')); }, { passive: true });
+  ['pointerup', 'pointercancel'].forEach((ev) => track.addEventListener(ev, () => schedule(idx(), 6000), { passive: true }));
+  shown = 0; schedule(0);
 }
 
 function esc(v) { return String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
