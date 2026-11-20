@@ -16,8 +16,8 @@ const standalone = () => matchMedia('(display-mode: standalone)').matches || nav
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
 const dismissed = () => { try { return Number(localStorage.getItem('ryl.install.dismissed') || 0) > Date.now() - 7 * 864e5; } catch { return false; } };
 
-addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; render(); });
-addEventListener('appinstalled', () => { deferred = null; document.querySelectorAll('[data-install]').forEach((el) => el.remove()); });
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; render(); document.dispatchEvent(new Event('ryl:installable')); });
+addEventListener('appinstalled', () => { deferred = null; document.querySelectorAll('[data-install]').forEach((el) => el.remove()); document.dispatchEvent(new Event('ryl:installed')); });
 
 function render() {
   if (standalone() || dismissed()) return;
@@ -53,3 +53,12 @@ document.addEventListener('click', async (e) => {
 addEventListener('load', () => { render(); setTimeout(render, 1500); setTimeout(render, 4000); });
 document.addEventListener('ryl:slots', render);   // a page re-rendered and has a new slot
 export { render as renderInstall };
+// For the Home "set up" card: one-tap install when the browser offers it.
+export const canInstall = () => !!deferred;
+export async function promptInstall() {
+  if (!deferred) return 'unavailable';
+  const d = deferred; d.prompt();
+  const { outcome } = await d.userChoice.catch(() => ({ outcome: 'dismissed' }));
+  if (outcome === 'accepted') { deferred = null; document.querySelectorAll('[data-install]').forEach((el) => el.remove()); }
+  return outcome;
+}

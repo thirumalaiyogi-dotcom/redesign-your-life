@@ -107,17 +107,25 @@ let people = [], filter = 'all', query = '';
 // trackers only some members get (Conscious Couple, a family member's own tracker) and who has them
 let extraCats = [], extraOf = new Map();
 
+let setupKnown = false;
+// app installed + notifications on? (only for members; coach calls the ones still to do)
+const setupDue = (p) => setupKnown && p.role === 'member' && p.is_active && (!p.app_installed || !p.phones);
+const setupText = (p) => `Hi ${String(p.full_name || '').split(' ')[0]}, Deepak's 10X Life app la ${!p.app_installed ? 'app install' : ''}${!p.app_installed && !p.phones ? ' um ' : ''}${!p.phones ? 'notifications on' : ''} pannala nu kaatudhu. Indha guide la padam oda step by step irukku:\n${app('guide.html#install')}\n\nApp open panna Home la "Finish setting up" card varum, adhula Install, Allow tap pannunga. Doubt na call pannunga 🙏`;
 async function loadPeople() {
-  const [ppl, cats, asg, mem] = await Promise.all([
+  const [ppl, cats, asg, mem, setup] = await Promise.all([
     supabase.rpc('admin_list_people'),
     supabase.from('tracker_categories').select('id, slug, name, sort_order').eq('audience', 'assigned').eq('is_active', true).order('sort_order'),   // all trackers are opened per member
     supabase.from('tracker_assignments').select('category_id, member_id'),
-    supabase.from('profiles').select('id, member_since, renews_on').or('member_since.not.is.null,renews_on.not.is.null')
+    supabase.from('profiles').select('id, member_since, renews_on').or('member_since.not.is.null,renews_on.not.is.null'),
+    supabase.rpc('admin_setup_status')
   ]);
   if (ppl.error) throw ppl.error;
   people = ppl.data || [];
   const dates = new Map((mem.error ? [] : mem.data || []).map((m) => [m.id, m]));
   for (const p of people) Object.assign(p, { member_since: dates.get(p.id)?.member_since || null, renews_on: dates.get(p.id)?.renews_on || null });
+  const su = new Map((setup.error ? [] : setup.data || []).map((x) => [x.member_id, x]));
+  setupKnown = !setup.error;
+  for (const p of people) Object.assign(p, { app_installed: !!su.get(p.id)?.app_installed_at, phones: su.get(p.id)?.phones || 0 });
   extraCats = cats.error ? [] : cats.data || [];
   extraOf = new Map();
   for (const a of asg.error ? [] : asg.data || []) {
@@ -170,6 +178,7 @@ function counts() {
     member: people.filter((p) => p.role === 'member').length,
     coach: people.filter((p) => p.role !== 'member').length,
     paused: people.filter((p) => !p.is_active).length,
+    setup: people.filter(setupDue).length,
     renew: people.filter(renewDue).length
   };
 }
@@ -201,6 +210,8 @@ function personHTML(p) {
       ${renewHTML(p)}<span>Last login ${esc(timeAgo(p.last_sign_in_at))}</span>${p.email_confirmed ? '' : '<span style="color:var(--c-warning-ink);font-weight:600">Email not confirmed</span>'}</div></div>
     <div class="acts">${p.is_active ? '' : '<span class="pill bad">Paused</span>'}${roleCtl}
       ${p.role === 'member' && extraCats.length ? (() => { const n = extraOf.get(p.id)?.size || 0; return `<span class="pill ${n ? 'trk' : 'bad'}" title="${esc(extraCats.filter((c) => extraOf.get(p.id)?.has(c.id)).map((c) => c.name).join(', '))}">${n ? `${n} tracker${n > 1 ? 's' : ''}` : 'No trackers yet'}</span>`; })() : ''}
+      ${setupKnown && p.role === 'member' ? `<span class="pill ${p.app_installed ? 'trk' : 'bad'}" title="${p.app_installed ? 'Opens the installed app' : 'Has not opened the installed app yet'}">${p.app_installed ? 'App ✓' : 'No app'}</span><span class="pill ${p.phones ? 'trk' : 'bad'}" title="Phones getting notifications: ${p.phones}">${p.phones ? 'Alerts ✓' : 'No alerts'}</span>` : ''}
+      ${setupDue(p) && p.phone ? `<a class="btn btn-sm btn-wa" target="_blank" rel="noopener" href="${waLink(p.phone, setupText(p))}">${icon('message-square')}Setup help</a>` : ''}
       ${p.role === 'member' ? `<a class="btn btn-sm btn-soft" href="${app('admin/member.html?id=' + p.id)}">${icon('trending-up')}Progress</a>` : ''}
       ${p.role === 'member' && extraCats.length ? `<button class="btn btn-sm btn-ghost" data-trk="${p.id}">${icon('list-checks')}Trackers</button>` : ''}
       ${p.role === 'member' ? `<button class="btn btn-sm btn-ghost" data-mship="${p.id}">${icon('calendar')}Membership</button>` : ''}
@@ -213,7 +224,7 @@ function personHTML(p) {
 function renderList() {
   const q = query.trim().toLowerCase();
   const list = people.filter((p) =>
-    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active) || (filter === 'renew' && renewDue(p))) &&
+    (filter === 'all' || (filter === 'member' && p.role === 'member') || (filter === 'coach' && p.role !== 'member') || (filter === 'paused' && !p.is_active) || (filter === 'renew' && renewDue(p)) || (filter === 'setup' && setupDue(p))) &&
     (!q || `${p.full_name} ${p.email} ${p.phone || ''}`.toLowerCase().includes(q)));
   const c = counts();
   $$('[data-filter]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.filter === filter)); b.querySelector('.c').textContent = c[b.dataset.filter]; });
@@ -244,7 +255,7 @@ async function renderMembers() {
     <button class="btn btn-gold btn-sm" data-notice="all">${icon('bell')}To all members</button></section>
   <section class="panel panel-pad stack" style="gap:10px" id="trk-access" aria-labelledby="ta-h"></section>
   <div class="tools">
-    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['renew', 'Renewals due'], ['paused', 'Paused']].map(([v, l]) =>
+    <div class="chips" role="group" aria-label="Filter">${[['all', 'All'], ['member', 'Members'], ['coach', 'Coaches'], ['renew', 'Renewals due'], ['setup', 'App not set up'], ['paused', 'Paused']].map(([v, l]) =>
       `<button class="chip" data-filter="${v}" aria-pressed="false">${l}<span class="c"></span></button>`).join('')}</div>
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Search name, email or phone" aria-label="Search members"></label>
   </div>

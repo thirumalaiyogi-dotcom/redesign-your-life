@@ -7,6 +7,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
+import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
          firstName, formatDate, formatToday, formatNumber, PHONE_RE, validatePassword,
          ringHTML, animateIn as animateRings, setRing, avatarHTML, memberTopbar } from './ui.js';
@@ -332,7 +333,6 @@ async function renderDashboard() {
     <div class="hello"><span class="date">${esc(formatToday())}</span>
       <h1>${esc(greeting())}, ${esc(firstName(S.profile.full_name, S.user.email))}</h1>
       <p>${esc(greetingLine())}</p></div>
-    <div data-install-slot></div>
     <div id="push-ask"></div>
     <div class="dash">
       <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}<div id="tk-wrap"></div><div id="act-wrap"></div></div>
@@ -348,24 +348,11 @@ async function renderDashboard() {
 
 // Browsers only show the "Allow notifications?" box after a tap, so Home offers a one-tap card
 // (until the member turns them on, or says "Later" — then it waits 3 days).
-const PUSH_LATER = 'ryl.push.later';
 async function askPush() {
   const box = $('#push-ask'); if (!box) return;
-  if (await syncPush()) return;                                   // already allowed: just keep the server up to date
-  if (await pushSheet({ onToast: toast })) return;                // clear Allow / Later sheet once a day
-
-  let later = 0; try { later = Number(localStorage.getItem(PUSH_LATER) || 0); } catch { /* ignore */ }
-  if (later > Date.now() - 3 * 864e5) return;
-  const st = await pushState().catch(() => 'unsupported');
-  if (st !== 'off' && st !== 'ios-install') return;
-  box.innerHTML = `<section class="card push-ask" aria-labelledby="pa-h"><span class="si">${icon('bell')}</span>
-    <div><b id="pa-h">Turn on notifications</b><span>${st === 'ios-install' ? 'On iPhone: Share → Add to Home Screen, open the app from there, then turn notifications on.' : 'Get your evening reminder, your coach\'s answers and class updates on this phone.'}</span></div>
-    <div class="pa-acts">${st === 'off' ? `<button class="btn btn-primary btn-sm" id="pa-on">Allow</button>` : ''}<button class="btn btn-ghost btn-sm" id="pa-later">Later</button></div></section>`;
-  $('#pa-later').addEventListener('click', () => { try { localStorage.setItem(PUSH_LATER, String(Date.now())); } catch { /* ignore */ } box.innerHTML = ''; });
-  $('#pa-on')?.addEventListener('click', (e) => withBusy(e.currentTarget, 'Please wait…', async () => {
-    try { await enablePush(); box.innerHTML = ''; toast('Notifications turned on'); }
-    catch (err) { toast(friendlyError(err), 'bad'); if (Notification.permission === 'denied') box.innerHTML = ''; }
-  }));
+  if (await syncPush()) { wireSetup(box); return; }              // already allowed: keep the server up to date
+  await pushSheet({ onToast: toast });                            // clear Allow / Later question once a day
+  wireSetup(box);                                                 // install + notifications card until both are done
 }
 
 async function renderLive() {
@@ -694,7 +681,7 @@ function renderProfile() {
   const PN = {
     on: ['On for this phone. You get reminders, answers from your coach and new sessions.', 'Turn off'],
     off: ['Get an evening reminder to tick your habits, to-dos due today, new sessions and your coach\'s answers.', 'Turn on'],
-    blocked: ['Notifications are blocked for this site. Allow them in your browser\'s site settings, then come back.', ''],
+    blocked: ['Notifications are blocked on this phone. Tap "How to fix" to see the steps.', 'How to fix'],
     'ios-install': ['On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from there and turn notifications on.', ''],
     unsupported: ['This browser cannot show notifications. Try Chrome on Android, or the installed app.', '']
   };
@@ -708,6 +695,7 @@ function renderProfile() {
   drawPush();
   $('#pn-btn').addEventListener('click', async (e) => {
     const b = e.currentTarget, wasOn = b.dataset.state === 'on';
+    if (b.dataset.state === 'blocked') { notifyHelp('blocked'); return; }
     await withBusy(b, 'Please wait…', async () => {
       try {
         if (wasOn) { await disablePush(); toast('Notifications turned off'); }

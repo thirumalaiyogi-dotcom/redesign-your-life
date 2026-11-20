@@ -124,3 +124,9 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Points still come only from `mark_activity()`; family people are normal members (they also appear in the main leaderboard).
 - Anyone who has the family link can open any name in that family. If the link leaks: Edit → "Make a new link" (old one stops), or untick "Link is working" to pause. Taking a person out keeps their account and points.
 - Tables `families`, `family_members` (coach-read only; members use the functions). Migration `ryl_30_family_link`. Tests: `test_family.sql` F1–F8.
+
+## App setup help (Nov 2026)
+- Home shows "Finish setting up" (js/setup.js) until the app is installed AND notifications are on. "Later" hides it for one day only.
+- Each step has a one-tap button when the browser allows it, otherwise "How?" / "Fix" opens steps for that phone: Chrome, Samsung Internet, iPhone Safari, a link opened inside WhatsApp/Instagram/Facebook (open in Chrome first), and notifications blocked earlier (site settings / App info, then "Check again").
+- Opening the installed app calls `mark_app_installed()` once per phone (profiles.app_installed_at). Coaches: Members → filter "App not set up", chips No app / No alerts, and a "Setup help" WhatsApp button (`admin_setup_status()`). Migration `ryl_31_app_setup`, test S1.
+- "No app" only turns ✓ after the person opens the installed icon once (installs from before this update show as "No app" until then).

@@ -474,6 +474,11 @@ create table if not exists public.family_members (
 create index if not exists family_members_family_idx on public.family_members(family_id);
 create index if not exists families_created_by_idx on public.families(created_by) where created_by is not null;
 
+-- App setup: remember when a member first opened the installed app, so coaches can see who still
+-- needs help installing it or turning notifications on (and call them).
+alter table public.profiles add column if not exists app_installed_at timestamptz;
+
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — functions.sql  (run after schema.sql)
 -- Every SECURITY DEFINER function pins search_path = '' and qualifies
@@ -2206,6 +2211,27 @@ begin
 end $$;
 revoke all on function public.admin_family_remove(uuid) from public, anon;
 grant execute on function public.admin_family_remove(uuid) to authenticated;
+
+-- App setup (migration ryl_31_app_setup)
+create or replace function public.mark_app_installed()
+returns void language sql volatile security definer set search_path = '' as $$
+  update public.profiles set app_installed_at = now() where id = auth.uid() and app_installed_at is null;
+$$;
+revoke all on function public.mark_app_installed() from public, anon;
+grant execute on function public.mark_app_installed() to authenticated;
+
+-- COACH: per member — app installed? how many phones get notifications?
+create or replace function public.admin_setup_status()
+returns table(member_id uuid, app_installed_at timestamptz, phones int)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query select p.id, p.app_installed_at, (select count(*)::int from public.push_subscriptions s where s.member_id = p.id)
+    from public.profiles p where p.role = 'member';
+end $$;
+revoke all on function public.admin_setup_status() from public, anon;
+grant execute on function public.admin_setup_status() to authenticated;
 
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)

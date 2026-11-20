@@ -329,3 +329,5 @@ details.j-entry { border-top: 1px solid var(--c-border); }
 .admin-nav a { position: relative; }
 .nav-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #e5484d; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--c-bg); }
 @media (max-width: 560px) { .coach-push { grid-template-columns: auto minmax(0, 1fr); } .coach-push .btn { grid-column: 2; justify-self: start; } }
+.btn-wa { background: #25D366; color: #06290F; }
+.btn-wa:hover { background: #2EE074; }

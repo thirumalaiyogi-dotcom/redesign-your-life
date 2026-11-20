@@ -76,9 +76,12 @@ M = [
      'Code வரலைன்னா Spam / Promotions folder பாருங்க. ஒரு நிமிஷம் கழிச்சு <b>Send again</b> தட்டலாம்.'),
     ('install', 'App மாதிரி phone-ல வைங்க', 'Play Store தேவையில்ல. ஒரு தடவை இப்படி பண்ணினா home screen-ல <b>10X</b> icon வரும், தட்டினா நேரா app திறக்கும்.', [], [
         ('★', '<b>Android (Chrome):</b> மேல வலது பக்க ⋮ மூணு புள்ளி → <b>Add to Home screen</b> அல்லது <b>Install app</b> → Install.'),
-        ('★', '<b>iPhone (Safari):</b> கீழ Share பட்டன் (□↑) → <b>Add to Home Screen</b> → Add.')]),
+        ('★', '<b>iPhone (Safari):</b> கீழ Share பட்டன் (□↑) → <b>Add to Home Screen</b> → Add.'),
+        ('★', 'Home-ல <b>Finish setting up</b> card வந்தா அதுல <b>Install</b> / <b>How?</b> தட்டுங்க - உங்க phone-க்கு ஏத்த மாதிரி step சொல்லும்.')],
+     '<b>WhatsApp-ல link தட்டி திறந்தீங்களா?</b> அது WhatsApp உள்ளேயே திறக்கும், அங்க Install வராது. மேல ⋮ → <b>Open in Chrome</b> தட்டுங்க, Chrome-ல login பண்ணிட்டு மேல சொன்ன மாதிரி Install பண்ணுங்க.'),
     ('notify', 'Notifications Allow பண்ணுங்க', 'முதல் தடவை app திறக்கும்போது இது கேட்கும்.', ['m03-push'], [
-        ('1', '<b>Allow</b> தட்டுங்க. Coach பதில், class update, இரவு நினைவூட்டல் எல்லாம் WhatsApp மாதிரி phone-க்கு வரும். <b>Later</b> தட்டினா நாளைக்கு மறுபடி கேட்கும்.')]),
+        ('1', '<b>Allow</b> தட்டுங்க. Coach பதில், class update, இரவு நினைவூட்டல் எல்லாம் WhatsApp மாதிரி phone-க்கு வரும். <b>Later</b> தட்டினா நாளைக்கு மறுபடி கேட்கும்.')],
+     '<b>முன்னாடி Block தட்டிட்டீங்களா?</b> அப்புறம் app கேட்காது. Chrome-ல web address இடது பக்க ⚙ / 🔒 icon → <b>Permissions</b> → <b>Notifications</b> → <b>Allow</b>. Install பண்ண app-ல: 10X icon-ஐ அழுத்தி பிடிங்க → <b>App info</b> → <b>Notifications</b> → On. அப்புறம் app-ல <b>Fix</b> → <b>Check again</b>.'),
     ('home', 'Home - ஒரே பார்வையில இன்றைக்கு', 'App திறந்ததும் வர்ற முதல் screen.', ['m04-home'], [
         ('1', 'இன்றைய progress - இன்னைக்கு எத்தனை habits முடிஞ்சது.'),
         ('2', '<b>Today</b> இன்றைய points · <b>Streak</b> தொடர்ந்து எத்தனை நாள் · <b>Rank</b> உங்க இடம்.'),

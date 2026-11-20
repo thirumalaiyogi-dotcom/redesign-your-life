@@ -473,3 +473,8 @@ create table if not exists public.family_members (
 );
 create index if not exists family_members_family_idx on public.family_members(family_id);
 create index if not exists families_created_by_idx on public.families(created_by) where created_by is not null;
+
+-- App setup: remember when a member first opened the installed app, so coaches can see who still
+-- needs help installing it or turning notifications on (and call them).
+alter table public.profiles add column if not exists app_installed_at timestamptz;
+

@@ -1730,3 +1730,24 @@ begin
 end $$;
 revoke all on function public.admin_family_remove(uuid) from public, anon;
 grant execute on function public.admin_family_remove(uuid) to authenticated;
+
+-- App setup (migration ryl_31_app_setup)
+create or replace function public.mark_app_installed()
+returns void language sql volatile security definer set search_path = '' as $$
+  update public.profiles set app_installed_at = now() where id = auth.uid() and app_installed_at is null;
+$$;
+revoke all on function public.mark_app_installed() from public, anon;
+grant execute on function public.mark_app_installed() to authenticated;
+
+-- COACH: per member — app installed? how many phones get notifications?
+create or replace function public.admin_setup_status()
+returns table(member_id uuid, app_installed_at timestamptz, phones int)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  return query select p.id, p.app_installed_at, (select count(*)::int from public.push_subscriptions s where s.member_id = p.id)
+    from public.profiles p where p.role = 'member';
+end $$;
+revoke all on function public.admin_setup_status() from public, anon;
+grant execute on function public.admin_setup_status() to authenticated;
