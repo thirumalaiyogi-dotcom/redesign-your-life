@@ -23,21 +23,42 @@ function errorPanel(target, err, retry) {
 }
 
 // "Name, email, phone" per line (comma, tab or several spaces). Email can be in any column.
+// One person may also be pasted over several lines (e.g. "Name," / "98943…," / "name@gmail.com" from WhatsApp):
+// lines without an email are joined to the next email line when they end with a comma or that line has no name.
+const EMAIL = /\S+@\S+\.\S+/;
+const PHONE = /^\+?[\d\s-]{7,}$/;
+const split = (line) => line.split(/\t|,|;|\s{2,}|\s+-\s+/).map((x) => x.trim()).filter(Boolean);
+function onePerson(parts) {
+  const ei = parts.findIndex((x) => EMAIL.test(x));
+  const email = parts[ei].replace(/^mailto:/i, '').toLowerCase();
+  const rest = parts.filter((_, i) => i !== ei);
+  const pi = rest.findIndex((x) => PHONE.test(x));
+  const phone = pi >= 0 ? rest[pi].replace(/-/g, ' ').replace(/\s+/g, ' ') : '';
+  const name = rest.filter((_, i) => i !== pi).join(' ').slice(0, 80);
+  return { name, email, phone };
+}
 export function parsePeople(text) {
   const out = [], bad = [];
+  let buf = [];
+  const flushBad = () => { if (buf.length) bad.push(buf.join(' ').replace(/,\s*$/, '')); buf = []; };
   for (const raw of String(text || '').split(/\r?\n/)) {
-    const line = raw.trim(); if (!line) continue;
-    const parts = line.split(/\t|,|;|\s{2,}|\s+-\s+/).map((x) => x.trim()).filter(Boolean);
-    const ei = parts.findIndex((x) => /\S+@\S+\.\S+/.test(x));
-    if (ei < 0) { bad.push(line); continue; }
-    const email = parts[ei].replace(/^mailto:/i, '').toLowerCase();
-    const rest = parts.filter((_, i) => i !== ei);
-    const pi = rest.findIndex((x) => /^\+?[\d\s-]{7,}$/.test(x));
-    const phone = pi >= 0 ? rest[pi].replace(/-/g, ' ').replace(/\s+/g, ' ') : '';
-    const name = rest.filter((_, i) => i !== pi).join(' ').slice(0, 80);
-    if (out.some((p) => p.email === email)) continue;
-    out.push({ name, email, phone });
+    const line = raw.trim(); if (!line) { flushBad(); continue; }
+    const parts = split(line);
+    if (!parts.some((x) => EMAIL.test(x))) {
+      // a lone phone number right after a person who has none: it belongs to them
+      const last = out[out.length - 1];
+      if (!buf.length && last && !last.phone && parts.length === 1 && PHONE.test(parts[0]) && !/,\s*$/.test(line)) { last.phone = parts[0].replace(/-/g, ' ').replace(/\s+/g, ' '); continue; }
+      buf.push(line); continue;
+    }
+    const nameless = parts.every((x) => EMAIL.test(x) || PHONE.test(x));
+    let all = parts;
+    if (buf.length && (nameless || buf.every((b) => /,\s*$/.test(b)))) { all = [...buf.flatMap(split), ...parts]; buf = []; }
+    else flushBad();
+    const person = onePerson(all);
+    if (out.some((p) => p.email === person.email)) continue;
+    out.push(person);
   }
+  flushBad();
   return { people: out, bad };
 }
 
