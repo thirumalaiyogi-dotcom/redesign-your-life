@@ -145,7 +145,7 @@ details.panel.j-entry { border: 1px solid var(--c-border); }
 
 /* ---------- install card ---------- */
 .install { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--c-primary-light); border: 1px solid var(--c-border); }
-.install .crest { width: 40px; height: 40px; border-radius: 11px; background: url("../assets/icons/icon-192.png") center / cover; flex: none; }
+.install .crest { width: 40px; height: 40px; border-radius: 50%; background: url("../assets/icons/icon-192.png") center / cover; flex: none; }
 .install div { flex: 1; min-width: 0; }
 .install b { display: block; font-size: 14px; }
 .install small { display: block; color: var(--c-muted); font-size: 12.5px; }
@@ -243,7 +243,7 @@ html.boot-hold body .boot { opacity: 1; visibility: visible; transition: none; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--c-border); }
 
 /* 10X logo (Deepak's artwork) in the header crest */
-a.brand .crest { background: url("../assets/icons/logo-96.png") center / cover no-repeat; box-shadow: none; border: none; border-radius: 10px; }
+a.brand .crest { width: 42px; height: 42px; background: url("../assets/icons/logo-96.png") center / cover no-repeat; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); border: none; border-radius: 50%; }
 a.brand .crest .icon { visibility: hidden; }
 button.link { background: none; border: 0; padding: 0; font: inherit; font-weight: 650; color: var(--c-primary); cursor: pointer; }
 .otp-row { display: flex; gap: 8px; }
@@ -269,7 +269,7 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
 body:has(.todo-fab) .app { padding-bottom: 72px; }
 
 /* App opening: the 10X logo fades in once, calmly. Between pages there is no logo, the page just appears. */
-.boot .crest { width: 78px; height: 78px; border-radius: 22px; background: url("../assets/icons/icon-192.png") center / cover no-repeat; box-shadow: 0 12px 32px rgba(18, 59, 46, .22); animation: boot-in .5s ease-out both; }
+.boot .crest { width: 88px; height: 88px; border-radius: 50%; background: url("../assets/icons/icon-192.png") center / cover no-repeat; box-shadow: 0 12px 32px rgba(18, 59, 46, .22); animation: boot-in .5s ease-out both; }
 .boot .crest .icon { visibility: hidden; }
 html:not(.boot-first) .boot .crest { display: none; }
 @keyframes boot-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
