@@ -100,7 +100,11 @@ async function load() {
   const box = $('#rep-body'); if (!box) return;
   box.innerHTML = '<div class="skeleton" style="height:160px"></div>';
   const { data, error } = await supabase.rpc('admin_daily_report', { p_date: R.day });
-  if (error) { box.innerHTML = `<p class="muted">${esc(friendlyError(error))}</p>`; return; }
+  if (error) {
+    // the database part is not added yet (older database): hide the card instead of showing an error
+    if (error.code === 'PGRST202' || /could not find the function|404/i.test(error.message || '')) { box.closest('#daily-report')?.replaceChildren(); return; }
+    box.innerHTML = `<p class="muted">${esc(friendlyError(error))}</p>`; return;
+  }
   R.rows = (data || []).map((r) => ({ ...r, app_seconds: r.app_seconds || 0, done: r.done || 0, total: r.total || 0, points: r.points || 0, streak: r.streak || 0 }));
   const batches = [...new Set(R.rows.flatMap((r) => (r.batch || '').split(', ').filter(Boolean)))].sort();
   const sel = $('#rep-batch');
