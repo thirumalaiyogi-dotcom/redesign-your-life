@@ -1,7 +1,7 @@
 // Service worker — Deepak's 10X Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v90';
+const VERSION = 'ryl-v91';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;

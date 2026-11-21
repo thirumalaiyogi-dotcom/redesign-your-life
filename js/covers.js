@@ -17,3 +17,12 @@ export function posterSrc(cat) {
   if (cat.poster_path) return /^https?:/.test(cat.poster_path) ? cat.poster_path : app('assets/posters/' + encodeURIComponent(cat.poster_path));
   return POSTER[cat.slug] ? app('assets/posters/' + POSTER[cat.slug]) : null;
 }
+
+// Movie-poster title printed on the picture: "Law of Attraction - 16 Basics" → big LAW OF ATTRACTION + small 16 BASICS
+export function posterTitle(name) {
+  const [main, ...rest] = String(name).split(/\s+-\s+/);
+  const word = Math.max(...main.split(/\s+/).map((w) => w.length)), n = main.length;   // the longest word must fit on one line
+  const size = n <= 12 && word <= 7 ? 'xl' : word <= 9 && n <= 22 ? 'l' : word <= 11 ? 'm' : 's';
+  return `<span class="tp-title t-${size}" aria-hidden="true"><b>${esc(main)}</b>${rest.length ? `<small>${esc(rest.join(' - '))}</small>` : ''}</span>`;
+}
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

@@ -5,7 +5,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 import { openTrackerSheet } from './point.js';
-import { coverSrc } from './covers.js';
+import { coverSrc, posterSrc, posterTitle } from './covers.js';
 import { tickFx } from './fx.js';
 import { signedUrls, mediaHTML } from './media.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
@@ -54,7 +54,7 @@ async function loadToday() {
 }
 
 async function loadCats() {
-  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order, show_locked, cover_path').eq('is_active', true).order('sort_order');
+  const { data, error } = await supabase.from('tracker_categories').select('id, slug, name, tagline, color, icon, sort_order, show_locked, cover_path, poster_path').eq('is_active', true).order('sort_order');
   if (error) throw error;
   cats = data || [];
 }
@@ -78,25 +78,28 @@ async function renderList() {
       <span class="pts">+${formatNumber(d.today_points)}<small>pts today</small></span>
     </section>${total ? '' : '-->'}
     ${(d.trackers || []).length ? '' : `<div class="panel empty-state"><span class="ic">${icon('list-checks')}</span><b>Your trackers open soon</b><span>Your coach opens each tracker after the class that teaches it. You will get a notification.</span></div>`}
-    <div class="tlist">${(d.trackers || []).map((t) => {
+    <div class="pgrid">${(d.trackers || []).map((t) => {
       const p = t.total ? Math.round(100 * t.done_today / t.total) : 0;
       const nd = t.not_done_today || 0, left = Math.max(0, t.total - t.done_today - nd);
       const state = t.total && t.done_today === t.total ? ['s-done', 'Complete'] : t.done_today || nd ? ['s-prog', 'In progress'] : ['s-none', 'Not started'];
-      return `<a class="tcard" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${tColor(t.slug)}">
-        <div class="art">${coverImg(t.slug)}<span class="ic">${icon(tIcon(t.slug))}</span></div>
-        <div class="body">
-          <div class="row"><div><h3>${esc(t.name)}</h3><span class="state ${state[0]}">${state[1]}</span></div>${ringHTML(p, { size: 48, stroke: 5, mid: `${p}%` })}</div>
-          <div class="pbar"><i data-w="${p}%"></i></div>
-          <div class="counts"><span class="c-ok"><i></i><b>${t.done_today}</b> done</span><span class="c-no"><i></i><b>${nd}</b> not done</span><span class="c-left"><i></i><b>${left}</b> to mark</span></div>
-        </div><span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`; }).join('')}</div>
+      return `<a class="tcard tposter" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(t.slug))}" style="--tc:${tColor(t.slug)}">
+        ${posterArt(t.slug, t.name, `${ringHTML(p, { size: 40, stroke: 5, mid: `${p}%` })}<span class="state ${state[0]}">${state[1]}</span>`)}
+        <h3 class="visually-hidden">${esc(t.name)}</h3>
+        <div class="pbar"><i data-w="${p}%"></i></div>
+        <div class="tp-meta"><span class="c-ok"><i></i><span><b>${t.done_today}</b>/${t.total} done</span></span>${nd ? `<span class="c-no"><i></i><span><b>${nd}</b> not done</span></span>` : `<span class="c-left">${left ? `${left} to mark` : '✓ all marked'}</span>`}</div></a>`; }).join('')}</div>
     ${(() => { const open = new Set((d.trackers || []).map((t) => t.slug)); const locked = cats.filter((c) => c.show_locked && !open.has(c.slug));
-      return locked.length ? `<div class="sec-h" style="margin-top:6px"><h2>Opens after the class</h2></div><div class="tlist">${locked.map((c) => `<a class="tcard is-locked" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${tColor(c.slug)}">
-        <div class="art">${coverImg(c.slug)}<span class="ic">${icon('lock')}</span></div>
-        <div class="body"><div class="row"><div><h3>${esc(c.name)}</h3><span class="state s-none">${icon('lock')}Locked</span></div></div>
-          <p class="lock-txt">Your coach opens this tracker after the class that teaches it.</p></div>
-        <span class="go" aria-hidden="true">${icon('chevron-right')}</span></a>`).join('')}</div>` : ''; })()}
+      return locked.length ? `<div class="sec-h" style="margin-top:6px"><h2>Opens after the class</h2></div><div class="pgrid">${locked.map((c) => `<a class="tcard tposter is-locked" href="${app('member/tracker-detail.html?t=' + encodeURIComponent(c.slug))}" style="--tc:${tColor(c.slug)}">
+        ${posterArt(c.slug, c.name, `<span class="tp-lock">${icon('lock')}</span><span class="state s-none">Locked</span>`)}
+        <h3 class="visually-hidden">${esc(c.name)}</h3>
+        <div class="tp-meta"><span class="lock-txt">Opens after the class</span></div></a>`).join('')}</div>` : ''; })()}
     <p class="hint-line">${icon('info')}<span>Tap a tracker, then ✓ for done or ✗ for not done. Only today can be marked. Unmarked habits count as not done at midnight, with no minus points.</span></p>`;
   animateIn(main);
+}
+
+// Poster for the Track page: the Home poster when there is one, otherwise the cover with the name printed on it.
+function posterArt(slug, name, extra) {
+  const c = { slug, ...catOf(slug) }, poster = posterSrc(c), src = poster || coverSrc(c);
+  return `<span class="tp-img${poster ? ' has-poster' : ''}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">` : `<span class="tp-fb" aria-hidden="true">${icon(tIcon(slug))}</span>`}${poster ? '' : posterTitle(name)}${extra}</span>`;
 }
 
 // ================= TRACKER DETAIL =================

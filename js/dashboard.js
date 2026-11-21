@@ -7,7 +7,7 @@
 import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, updatePassword, friendlyError, ROLE_LABEL, clearProfileCache } from './auth.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
-import { coverSrc, posterSrc } from './covers.js';
+import { coverSrc, posterSrc, posterTitle } from './covers.js';
 import { quotesHTML, startQuotes } from './quotes.js';
 import { fmtTime } from './usage.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
@@ -147,14 +147,6 @@ function autoRail(rail) {
     const end = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
     rail.scrollTo({ left: end ? 0 : rail.scrollLeft + step, behavior: glide });
   }, 3500);
-}
-
-// Movie-poster title printed on the picture: "Law of Attraction - 16 Basics" → big LAW OF ATTRACTION + small 16 BASICS
-function posterTitle(name) {
-  const [main, ...rest] = String(name).split(/\s+-\s+/);
-  const word = Math.max(...main.split(/\s+/).map((w) => w.length)), n = main.length;   // the longest word must fit on one line
-  const size = n <= 12 && word <= 7 ? 'xl' : word <= 9 && n <= 22 ? 'l' : word <= 11 ? 'm' : 's';
-  return `<span class="tp-title t-${size}" aria-hidden="true"><b>${esc(main)}</b>${rest.length ? `<small>${esc(rest.join(' - '))}</small>` : ''}</span>`;
 }
 
 // One poster per tracker (scrolls sideways like movie posters); tap opens the tracker.
