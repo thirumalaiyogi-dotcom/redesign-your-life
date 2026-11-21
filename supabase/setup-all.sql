@@ -2339,6 +2339,34 @@ end $$;
 revoke all on function public.admin_set_tracker_poster(uuid, text) from public, anon;
 grant execute on function public.admin_set_tracker_poster(uuid, text) to authenticated;
 
+-- Daily report (migration ryl_35_daily_report)
+-- COACH: one line per active member for the daily report (login, time in app, ticks, points, streak, batch).
+create or replace function public.admin_daily_report(p_date date default null)
+returns table(member_id uuid, full_name text, phone text, batch text, last_sign_in_at timestamptz, never_logged_in boolean,
+              app_seconds int, app_last_at timestamptz, done int, total int, points int, streak int)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare d date := coalesce(p_date, public.app_today());
+begin
+  if not public.is_admin() then raise exception 'Coaches only.' using errcode = '42501'; end if;
+  if d > public.app_today() or d < public.app_today() - 60 then raise exception 'Choose a day in the last two months.' using errcode = '22023'; end if;
+  return query
+  select p.id, p.full_name, p.phone,
+         (select string_agg(b.name, ', ' order by b.name) from public.batch_members bm join public.batches b on b.id = bm.batch_id where bm.member_id = p.id),
+         u.last_sign_in_at, u.last_sign_in_at is null,
+         coalesce((select a.seconds from public.app_usage a where a.member_id = p.id and a.day = d), 0),
+         (select max(a.last_at) from public.app_usage a where a.member_id = p.id),
+         public._done_on(p.id, d), public._total_for(p.id),
+         coalesce((select sum(s.points)::int from public.score_history s where s.member_id = p.id and s.score_date = d), 0),
+         public._display_streak(p.id, d)
+  from public.profiles p join auth.users u on u.id = p.id
+  where p.role = 'member' and p.is_active
+    and p.id::text is distinct from (select st.value #>> '{}' from public.app_settings st where st.key = 'demo_account')   -- not the shared demo login
+  order by p.full_name;
+end $$;
+revoke all on function public.admin_daily_report(date) from public, anon;
+grant execute on function public.admin_daily_report(date) to authenticated;
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
 -- Row Level Security on every table + column-level grants.

@@ -346,3 +346,9 @@ details.j-entry { border-top: 1px solid var(--c-border); }
 .mt-d.today .col i { background: var(--c-primary); }
 .mt-d small { font-size: 10.5px; color: var(--c-muted); }
 .bt-cover-img.tall { aspect-ratio: 2 / 3; }
+/* Daily report card (js/report.js) */
+.rep-card { margin-bottom: 16px; }
+.rep-card .panel-h h3 { display: inline-flex; align-items: center; gap: 8px; }
+.rep-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 12px; }
+.rep-ctl select { min-height: 38px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font: inherit; font-size: 13.5px; max-width: 100%; }
+.rep-text { white-space: pre-wrap; word-break: break-word; font: 13.5px/1.55 var(--f-body, system-ui), sans-serif; background: var(--c-sunken); border: 1px solid var(--c-border); border-radius: 14px; padding: 14px; margin: 0 0 12px; max-height: 360px; overflow: auto; user-select: text; }

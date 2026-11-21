@@ -3,6 +3,7 @@ import { supabase, app, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { renderBatches, loginMessage, waLink, loadXlsx } from './batches.js';
+import { reportCard } from './report.js';
 import { pushState, enablePush, syncPush, pushSheet } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
@@ -87,6 +88,7 @@ async function renderOverview() {
   </section>
   <div id="q-waiting"></div>
   <div id="coach-push"></div>
+  <div id="daily-report"></div>
   <section class="akpis">${kpis.map(([l, v, s, c, ic]) => `<div class="card akpi ${c || ''}"><span class="ai">${icon(ic)}</span><small>${l}</small><b class="num">${typeof v === 'number' ? formatNumber(v) : esc(v)}</b><span>${esc(s)}</span></div>`).join('')}</section>
   <div class="admin-grid">
     <section class="card"><div class="panel-h"><h3>Latest check-ins</h3><a class="link" href="${app('admin/checkins.html')}" style="font-size:13px">See all →</a></div>
@@ -100,6 +102,7 @@ async function renderOverview() {
     </section>
   </div>`;
   coachPushCard($('#coach-push'));
+  reportCard($('#daily-report')).catch(() => { $('#daily-report').innerHTML = ''; });
 }
 
 // ---------------- MEMBERS & ROLES ----------------
