@@ -252,7 +252,12 @@
 .qt-card.out-r { transform: translateX(120%) rotate(12deg) !important; opacity: 0; }
 .qt-card.out-l { transform: translateX(-120%) rotate(-12deg) !important; opacity: 0; }
 .qt-art { position: relative; flex: 1; min-height: 160px; background: color-mix(in srgb, var(--tc) 14%, var(--c-sunken)); display: grid; place-items: center; color: var(--tc); }
-.qt-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.qt-art { overflow: hidden; }
+/* whole picture always visible (no cut sides); the empty space is filled with a soft blurred copy */
+.qt-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 1; }
+.qt-art.has-img::before { content: ""; position: absolute; inset: -30px; background: var(--qimg) center / cover no-repeat; filter: blur(22px) brightness(.55) saturate(1.2); z-index: 0; }
+.qt-art.has-img > .icon { display: none; }
+.qt-art .no, .qt-art .ptag { z-index: 2; }
 .qt-art > .icon { width: 64px; height: 64px; }
 .qt-art .no { position: absolute; left: 12px; top: 12px; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.92); color: #1b2b24; font-weight: 800; font-size: 14px; }
 .qt-art .ptag { position: absolute; right: 12px; bottom: 12px; padding: 5px 10px; border-radius: 99px; background: var(--c-accent, #e6c98c); color: #2a1d05; font-weight: 800; font-size: 13px; }

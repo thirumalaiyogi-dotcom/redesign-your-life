@@ -194,7 +194,7 @@ function quickTick() {
     scrim.innerHTML = `<div class="qt-top"><button class="iconbtn" data-qt-close aria-label="Close">${icon('x')}</button>
         <div class="qt-prog"><i style="width:${Math.round(100 * marked / acts.length)}%"></i></div><b class="qt-count">${marked}/${acts.length}</b></div>
       <div class="qt-card" id="qt-card" style="--tc:${tColor(cat.slug)}">
-        <div class="qt-art">${icon(a.icon || 'circle-dot')}${img ? `<img src="${esc(img)}" alt="" data-fallback>` : ''}<span class="no">${String(a.number).padStart(2, '0')}</span><span class="ptag">+${a.points} pts</span>
+        <div class="qt-art${img ? ' has-img' : ''}" ${img ? `style="--qimg:url(${esc(JSON.stringify(img))})"` : ''}>${icon(a.icon || 'circle-dot')}${img ? `<img src="${esc(img)}" alt="" data-fallback>` : ''}<span class="no">${String(a.number).padStart(2, '0')}</span><span class="ptag">+${a.points} pts</span>
           <span class="qt-stamp ok">${icon('check')}</span><span class="qt-stamp no">${icon('x')}</span></div>
         <div class="qt-body"><h2>${esc(a.default_name)}</h2>${a.description ? `<p>${esc(a.description)}</p>` : ''}<small>Did you do this today?</small></div>
       </div>
