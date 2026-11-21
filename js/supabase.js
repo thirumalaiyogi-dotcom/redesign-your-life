@@ -10,6 +10,11 @@ export const SUPABASE_ANON_KEY =
 // App root (the folder that holds index.html). Works on Vercel (/) and GitHub Pages (/redesign-your-life/).
 export const APP_ROOT = new URL('../', import.meta.url);
 export const app = (path = '') => new URL(String(path).replace(/^\//, ''), APP_ROOT).href;
+// Links we SEND to people (WhatsApp messages, family/join links, reports) always use the main address,
+// even when a coach is using an old address (deepak10xlife.vercel.app or github.io). Local test servers keep their own.
+export const MAIN_URL = 'https://deepak10xlifecoach.vercel.app/';
+const OLD_HOSTS = /^(deepak10xlife\.vercel\.app|thirumalaiyogi-dotcom\.github\.io)$/;
+export const shareLink = (path = '') => OLD_HOSTS.test(location.hostname) ? new URL(String(path).replace(/^\//, ''), MAIN_URL).href : app(path);
 
 const REMEMBER_KEY = 'ryl.remember';
 

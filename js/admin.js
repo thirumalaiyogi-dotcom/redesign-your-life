@@ -1,5 +1,5 @@
 // Coach console: overview + member & role management.
-import { supabase, app, activityImageUrl } from './supabase.js';
+import { supabase, app, shareLink, activityImageUrl } from './supabase.js';
 import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { renderBatches, loginMessage, waLink, loadXlsx } from './batches.js';
@@ -117,7 +117,7 @@ const mins = (sec) => { const m = Math.floor((sec || 0) / 60); return m < 60 ? `
 const idleDue = (p) => timeKnown && p.role === 'member' && p.is_active && (!p.time?.last_at || Date.now() - new Date(p.time.last_at) > 3 * 864e5);
 // app installed + notifications on? (only for members; coach calls the ones still to do)
 const setupDue = (p) => setupKnown && p.role === 'member' && p.is_active && (!p.app_installed || !p.phones);
-const setupText = (p) => `Hi ${String(p.full_name || '').split(' ')[0]}, Deepak's 10X Life app la ${!p.app_installed ? 'app install' : ''}${!p.app_installed && !p.phones ? ' um ' : ''}${!p.phones ? 'notifications on' : ''} pannala nu kaatudhu. Indha guide la padam oda step by step irukku:\n${app('guide.html#install')}\n\nApp open panna Home la "Finish setting up" card varum, adhula Install, Allow tap pannunga. Doubt na call pannunga 🙏`;
+const setupText = (p) => `Hi ${String(p.full_name || '').split(' ')[0]}, Deepak's 10X Life app la ${!p.app_installed ? 'app install' : ''}${!p.app_installed && !p.phones ? ' um ' : ''}${!p.phones ? 'notifications on' : ''} pannala nu kaatudhu. Indha guide la padam oda step by step irukku:\n${shareLink('guide.html#install')}\n\nApp open panna Home la "Finish setting up" card varum, adhula Install, Allow tap pannunga. Doubt na call pannunga 🙏`;
 async function loadPeople() {
   const [ppl, cats, asg, mem, setup, tm] = await Promise.all([
     supabase.rpc('admin_list_people'),
@@ -248,7 +248,7 @@ function renderList() {
 
 async function renderMembers() {
   const main = $('#main');
-  const joinUrl = app('join.html');
+  const joinUrl = shareLink('join.html');
   main.innerHTML = `
   <div class="admin-head"><div><span class="eyebrow">${me.profile.role === 'super_admin' ? 'You can change roles and pause anyone' : 'You can pause or activate members'}</span><h1>Members</h1></div></div>
   <section class="panel panel-pad stack" style="gap:10px">
@@ -461,7 +461,7 @@ async function approveJoinDialog(r) {
 }
 function sentDialog(a) {
   const msg = a.temp_password ? loginMessage(a.full_name, a.email, a.temp_password)
-    : `Hi ${String(a.full_name || '').split(/\s+/)[0]},\n\nDeepak's 10X Life app-la ungalukku pudhu trackers open pannirukom.\n\nLink: ${app('login.html')}\nUnga pazhaya login (Google / email) vechu ulla ponga.`;
+    : `Hi ${String(a.full_name || '').split(/\s+/)[0]},\n\nDeepak's 10X Life app-la ungalukku pudhu trackers open pannirukom.\n\nLink: ${shareLink('login.html')}\nUnga pazhaya login (Google / email) vechu ulla ponga.`;
   const link = a.phone ? waLink(a.phone, msg) : '';
   formDialog({
     title: `${a.full_name} can log in now`,
@@ -475,7 +475,7 @@ function sentDialog(a) {
 
 // ---------------- FAMILY LINKS (family.html) ----------------
 let families = [];
-const familyLink = (f) => app(`family.html#${f.token}`);
+const familyLink = (f) => shareLink(`family.html#${f.token}`);
 const familyText = (f) => `*${f.name}* · Deepak's 10X Life 🙏\n\nIndha link-a open panni unga peyar type pannunga (first time mattum). Adutha thadava unga peyar mela tap panna podhum, app open aagidum.\n${familyLink(f)}\n\nPhone la "Add to Home screen" pannina app maari use pannalam.`;
 async function loadFamilies() {
   const box = $('#fam-list'); if (!box) return;

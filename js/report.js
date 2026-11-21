@@ -1,7 +1,7 @@
 // Coach "Daily report": a ready-to-paste WhatsApp message built from real data (admin_daily_report):
 // who never logged in, who has not ticked today, who has not opened the app for 3+ days, time in the app,
 // and today's top members. Two versions: one for Deepak sir (full detail) and one for the batch group (friendly).
-import { supabase, app } from './supabase.js';
+import { shareLink, supabase, app } from './supabase.js';
 import { friendlyError } from './auth.js';
 import { $, icon, esc, toast } from './ui.js';
 
@@ -78,7 +78,7 @@ function groupText() {
   if (never.length) {
     L.push(''); L.push(`🔑 *Not logged in yet (${never.length})*`);
     L.push(never.map((r) => first(r.full_name)).join(', '));
-    L.push(`Login here: ${app('login.html')}`);
+    L.push(`Login here: ${shareLink('login.html')}`);
     L.push('Need help? Reply here, we will call you.');
   }
   L.push(''); L.push('Small habits, done daily, make a 10X life ✨');

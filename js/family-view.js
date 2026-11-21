@@ -1,7 +1,7 @@
 // My family (member/family.html): everyone in my family — today's habits, points and streak.
 // All numbers come from the database (family_overview / family_member_day); only people in the
 // same family are returned. Journals and tick notes are never shown here.
-import { supabase, app } from './supabase.js';
+import { shareLink, supabase, app } from './supabase.js';
 import { requireRole, friendlyError } from './auth.js';
 import { $, icon, esc, toast, memberNav, memberTopbar, avatarHTML, formatNumber, animateIn } from './ui.js';
 
@@ -17,7 +17,7 @@ function errorPanel(err, retry) {
   $('[data-retry]').addEventListener('click', retry);
 }
 
-const familyLink = () => S.fam?.token ? app(`family.html#${S.fam.token}`) : '';
+const familyLink = () => S.fam?.token ? shareLink(`family.html#${S.fam.token}`) : '';
 const inviteText = () => `*${S.fam.name}* · Deepak's 10X Life 🙏\n\nIndha link open panni unga peyar type pannunga (first time mattum). Adutha thadava unga peyar mela tap panna podhum:\n${familyLink()}`;
 
 async function render() {
