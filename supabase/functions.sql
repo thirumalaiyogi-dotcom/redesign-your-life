@@ -1879,8 +1879,7 @@ begin
                  (select min(k.checkin_date) from public.daily_checkins k join public.activities a on a.id = k.activity_id
                    where k.member_id = v_m and a.category_id = c.id and k.voided_at is null)) as st
     from public.tracker_categories c
-    where c.is_active and public._sees(v_m, c.id)
-      and exists (select 1 from public.profiles pp where pp.id = v_m and pp.role = 'member')
+    where c.is_active and public._sees(v_m, c.id)   -- coaches see their own meters too (Member view)
   ), per_day as (
     select c.id, d::date as day,
            case when c.st is null or d::date < c.st or c.n = 0 then null
