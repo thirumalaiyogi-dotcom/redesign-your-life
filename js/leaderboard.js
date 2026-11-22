@@ -32,7 +32,9 @@ const movement = (n, hasPrev) => n === undefined ? '' : !hasPrev ? '<span class=
   : n > 0 ? `<span class="mv up">${icon('arrow-up')}${n}</span>` : n < 0 ? `<span class="mv down">${icon('arrow-down')}${-n}</span>` : '<span class="mv same">–</span>';
 
 function scopeHTML() {
-  if (!batches.length) return '';
+  // Members always see everyone (Deepak sir: newcomers should see the top people and want to be like them).
+  // Only coaches can look at one batch.
+  if (!isAdminPage || !batches.length) return '';
   const b = batches.find((x) => x.id === batchId) || batches[0];
   if (isAdminPage) return `<label class="lb-scope-sel"><span>Show</span><select id="lb-batch" aria-label="Whose leaderboard">
       <option value="">Everyone</option>${batches.map((x) => `<option value="${x.id}" ${inBatch() && x.id === batchId ? 'selected' : ''}>${esc(x.name)} (${x.members})</option>`).join('')}</select></label>`;
@@ -157,9 +159,7 @@ function startAutoRefresh() {
     const mb = await supabase.rpc('my_batches');
     batches = mb.error ? [] : (mb.data || []);
     const want = new URLSearchParams(location.search).get('batch');
-    let saved = null; try { saved = sessionStorage.getItem('ryl.lbs'); } catch { /* ignore */ }
-    if (want && batches.some((b) => b.id === want)) { scope = 'batch'; batchId = want; }
-    else if (!isAdminPage && batches.length && saved !== 'all') { scope = 'batch'; batchId = batches[0].id; }
+    if (isAdminPage && want && batches.some((b) => b.id === want)) { scope = 'batch'; batchId = want; }
     shell(); await load(true); startAutoRefresh();
   } catch (err) {
     document.body.classList.remove('guarding');
