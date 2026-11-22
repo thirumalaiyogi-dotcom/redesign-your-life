@@ -156,3 +156,8 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Link previews: public pages (index, login, join, demo, family, forgot, guides) have og:image tags with assets/brand/og.jpg (gold logo on dark green), so WhatsApp shows the logo when a link is shared. Guide screenshots (assets/guide) were retaken with the new logo and new Home/Track design.
 - Icon files are renamed with -2 (icon-192-2.png etc.) because /assets is cached for 30 days as immutable: phones and Chrome kept the old 10X icon under the old names. Next time an icon changes, give it a new file name again. Install texts now say 'Deepak's 10X Life icon'.
 - Leaderboard: members always see Everyone (no My batch tab), so newcomers see the top people (Deepak sir's choice). Coaches can still pick one batch on admin/leaderboard.html.
+
+## Energy meter (Nov 2026)
+- A fuel-gauge per tracker (js/energy.js): 5 zones red Empty 😞 / orange Running low 🙁 / yellow Half tank 😐 / light green Good 🙂 / green Full tank 😄, short needle that never covers the faces, 7-day colour strip and a one-line tip.
+- Numbers from `tracker_energy(p_member)` (server, read-only; members only their own, coaches anyone): each day's % = done ÷ habits in the tracker; energy = 75% weighted last 7 days (yesterday counts most) + 25% average since the tracker started (max 90 days). Today is added only when it lifts the needle; missed days pull it down after they pass. Start = when the tracker was opened for them or their first tick. Points and streaks are not touched.
+- Shown: big meter on each tracker page (refreshes ~1 s after ticks), "My energy" row on Home, "Energy meters" on the coach's member page. Migration `ryl_36_tracker_energy`, tests E1–E2.

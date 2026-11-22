@@ -4,6 +4,7 @@ import { requireRole, signOut, friendlyError, ROLE_LABEL } from './auth.js';
 import { renderSessions, memberExtras, openPointMedia } from './coach-learn.js';
 import { renderBatches, loginMessage, waLink, loadXlsx } from './batches.js';
 import { reportCard } from './report.js';
+import { loadEnergy, energyRowHTML, animateNeedles } from './energy.js';
 import { pushState, enablePush, syncPush, pushSheet } from './push.js';
 import { $, $$, icon, esc, toast, withBusy, confirmDialog, coachTopbar, initials,
          formatDate, formatToday, formatNumber, ringHTML, animateIn } from './ui.js';
@@ -765,11 +766,13 @@ async function renderMember() {
       <button class="iconbtn" id="mp-next" aria-label="Next day">${icon('chevron-right')}</button>
       <button class="btn btn-sm btn-ghost" id="mp-today">Today</button></div>
     <section class="card card-pad" aria-label="Last 14 days"><div class="card-h"><h3>Last 14 days</h3><span class="sub-r muted" style="font-size:12.5px">Tap a day to open it</span></div><div class="mp-strip" id="mp-strip"></div></section>
+    <div id="mp-energy"></div>
     <section class="card card-pad" id="mp-time" aria-label="Time in the app" hidden></section>
     <div id="mp-day"></div>
     <div id="mp-extra" class="stack" style="gap:14px"></div>`;
   memberExtras($('#mp-extra'), mp.id).catch(() => { $('#mp-extra').innerHTML = ''; });
   memberTime(mp.id, today).catch(() => {});
+  loadEnergy(mp.id).then((list) => { const w = $('#mp-energy'); if (w) { w.innerHTML = energyRowHTML(list, () => '#', 'Energy meters'); w.querySelectorAll('.eg-mini').forEach((a) => a.removeAttribute('href')); animateNeedles(w); } }).catch(() => {});
   $('#mp-date').addEventListener('change', (e) => goDay(e.target.value));
   $('#mp-prev').addEventListener('click', () => goDay(addDaysIso(mp.date, -1)));
   $('#mp-next').addEventListener('click', () => goDay(addDaysIso(mp.date, 1)));

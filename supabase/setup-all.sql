@@ -2367,6 +2367,68 @@ end $$;
 revoke all on function public.admin_daily_report(date) from public, anon;
 grant execute on function public.admin_daily_report(date) to authenticated;
 
+-- Energy meter (migration ryl_36_tracker_energy)
+-- Energy meter per tracker (like a fuel gauge). Read-only: points and streaks are not touched.
+-- Each day's % = habits done that day / habits in the tracker. Energy = 75% weighted last 7 days
+-- (yesterday counts most, older days less) + 25% the average since the tracker started (max 90 days).
+-- Today only counts when it lifts the needle, so ticking never moves it down;
+-- days with no ticks pull it down after they pass. Days before the start are left out.
+create or replace function public.tracker_energy(p_member uuid default null)
+returns table(category_id uuid, slug text, name text, color text, sort_order smallint, started date, energy int,
+              days jsonb, run int, missed int, today_pct int)
+language plpgsql stable security definer set search_path = '' as $$
+#variable_conflict use_column
+declare v_m uuid := coalesce(p_member, auth.uid()); t date := public.app_today();
+begin
+  if v_m is null then raise exception 'Please log in.' using errcode = '42501'; end if;
+  if v_m <> auth.uid() and not public.is_admin() then raise exception 'You can only see your own meter.' using errcode = '42501'; end if;
+  return query
+  with cats as (
+    select c.id, c.slug, c.name, c.color, c.sort_order,
+           (select count(*) from public.activities a where a.category_id = c.id and a.is_active) as n,
+           least((select ta.created_at::date from public.tracker_assignments ta where ta.category_id = c.id and ta.member_id = v_m),
+                 (select min(k.checkin_date) from public.daily_checkins k join public.activities a on a.id = k.activity_id
+                   where k.member_id = v_m and a.category_id = c.id and k.voided_at is null)) as st
+    from public.tracker_categories c
+    where c.is_active and public._sees(v_m, c.id)
+      and exists (select 1 from public.profiles pp where pp.id = v_m and pp.role = 'member')
+  ), per_day as (
+    select c.id, d::date as day,
+           case when c.st is null or d::date < c.st or c.n = 0 then null
+                else least(100, round(100.0 * (select count(*) from public.daily_checkins k join public.activities a on a.id = k.activity_id
+                       where k.member_id = v_m and a.category_id = c.id and a.is_active and k.checkin_date = d::date
+                         and k.status = 'done' and k.voided_at is null) / c.n))::int end as pct
+    from cats c, generate_series(t - 6, t, interval '1 day') d
+  ), hist as (
+    select c.id,
+           (select avg(least(100, 100.0 * x.done / c.n)) from (
+              select g::date dd, (select count(*) from public.daily_checkins k join public.activities a on a.id = k.activity_id
+                                   where k.member_id = v_m and a.category_id = c.id and a.is_active and k.checkin_date = g::date
+                                     and k.status = 'done' and k.voided_at is null) done
+              from generate_series(greatest(c.st, t - 90), t - 1, interval '1 day') g) x) as avg_all
+    from cats c where c.st is not null and c.n > 0
+  )
+  select c.id, c.slug, c.name, c.color, c.sort_order, c.st,
+         case when c.st is null then null else
+           round(coalesce(
+             greatest(   -- today is added only when it lifts the needle
+               (select sum(p.pct * (7 - (t - p.day))) / nullif(sum(7 - (t - p.day)), 0) from per_day p where p.id = c.id and p.pct is not null and p.day < t),
+               (select sum(p.pct * (7 - (t - p.day))) / nullif(sum(7 - (t - p.day)), 0) from per_day p where p.id = c.id and p.pct is not null and (p.day < t or p.pct > 0))) * 0.75
+             + coalesce(h.avg_all, (select p.pct from per_day p where p.id = c.id and p.day = t)) * 0.25,
+             (select p.pct from per_day p where p.id = c.id and p.day = t), 0))::int end,
+         (select jsonb_agg(jsonb_build_object('d', p.day, 'p', p.pct) order by p.day) from per_day p where p.id = c.id),
+         (select count(*)::int from (select p.day, p.pct, row_number() over (order by p.day desc) rn,
+                   count(*) filter (where coalesce(p.pct, 0) < 50) over (order by p.day desc) br
+                 from per_day p where p.id = c.id and (p.day < t or p.pct >= 50)) z where z.br = 0),
+         (select count(*)::int from (select p.day, count(*) filter (where coalesce(p.pct, 0) > 0) over (order by p.day desc) br
+                 from per_day p where p.id = c.id and p.day < t and p.pct is not null) z where z.br = 0),
+         (select p.pct from per_day p where p.id = c.id and p.day = t)
+  from cats c left join hist h on h.id = c.id
+  order by c.sort_order, c.name;
+end $$;
+revoke all on function public.tracker_energy(uuid) from public, anon;
+grant execute on function public.tracker_energy(uuid) to authenticated;
+
 -- =====================================================================
 -- Deepak's Redesign Your Life — policies.sql  (run after functions.sql)
 -- Row Level Security on every table + column-level grants.

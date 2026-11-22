@@ -6,6 +6,7 @@ import { requireRole, friendlyError } from './auth.js';
 import { $, $$, icon, esc, toast, memberNav, formatNumber, ringHTML, animateIn, memberTopbar } from './ui.js';
 import { openTrackerSheet } from './point.js';
 import { coverSrc, posterSrc, posterTitle } from './covers.js';
+import { loadEnergy, energyCardHTML, animateNeedles } from './energy.js';
 import { tickFx } from './fx.js';
 import { signedUrls, mediaHTML } from './media.js';
 import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './offline.js';
@@ -373,7 +374,21 @@ async function mark(card, value, fxBtn = null, fxAll = false) {
   if (next === 'done' && left === 0) toast('Tracker complete for today! 🎉');
 }
 
+// Energy meter for this tracker (server numbers). After ticks it refreshes once things settle.
+let meterTimer = 0;
+async function loadMeter() {
+  const box = $('#t-energy'); if (!box || !cat) return;
+  try {
+    const e = (await loadEnergy()).find((x) => x.slug === cat.slug);
+    if (!e) { box.innerHTML = ''; return; }
+    const old = box.querySelector('.eg-needle');
+    box.innerHTML = energyCardHTML(e);
+    if (old) box.querySelector('.eg-needle').style.transform = old.style.transform;   // glide from where it was
+    animateNeedles(box);
+  } catch { /* the meter is optional */ }
+}
 function refreshCard(id, pending = false) {
+  if (!pending) { clearTimeout(meterTimer); meterTimer = setTimeout(loadMeter, 1200); }
   const old = $(`.act[data-id="${id}"]`);
   if (!old) return;
   const a = acts.find((x) => x.id === id);
@@ -456,6 +471,7 @@ async function renderDetail() {
       <span class="tn-tx"><b>Notes · Audio · Ask</b><small id="tn-sub">Coach's notes for all ${acts.length} habits, your real-life notes and questions</small></span>
       <i class="dot" id="tn-dot" hidden aria-label="Coach added notes"></i>${icon('chevron-right')}</button>
     <div class="today-bar" id="today-bar"></div>
+    <div id="t-energy"></div>
     <div class="seg" role="tablist" aria-label="View"><button role="tab" data-view="week" aria-selected="true">Week</button><button role="tab" data-view="month" aria-selected="false">Month</button><button role="tab" data-view="history" aria-selected="false">History</button></div>
     <div id="t-body" class="stack" style="gap:14px"></div>`;
   $('#today-bar').innerHTML = todayBar(); animateIn($('#today-bar'));
@@ -465,6 +481,7 @@ async function renderDetail() {
   }
   await showWeek();
   $('#today-bar').innerHTML = todayBar(); animateIn($('#today-bar'));
+  loadMeter();
   loadClassMaterials();
   main.addEventListener('click', (e) => {
     const v = e.target.closest('[data-view]'); if (v) return setView(v.dataset.view);
