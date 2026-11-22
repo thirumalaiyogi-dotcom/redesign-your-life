@@ -15,6 +15,13 @@ HEAD = '''<!doctype html>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>{title} · Deepak's 10X Life</title>
 <meta name="description" content="{desc}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Deepak's 10X Life">
+<meta property="og:title" content="{title} · Deepak's 10X Life">
+<meta property="og:description" content="{desc}">
+<meta property="og:image" content="https://deepak10xlifecoach.vercel.app/assets/brand/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
