@@ -23,8 +23,8 @@ HEAD = '''<!doctype html>
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="icon" href="assets/icons/favicon-32-2.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon-2.png">
 <script src="js/theme-init.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,7 +59,7 @@ def step(i, sid, title, intro, shots, items, note=None):
 def page(fname, title, desc, hero_h, hero_p, cta, flow, steps, extra=''):
     toc = '<ul class="g-toc">' + ''.join(f'<li><a href="#{s[0]}"><b>{i}</b>{s[1]}</a></li>' for i, s in enumerate(steps, 1)) + '</ul>'
     body = ''.join(step(i, *s) for i, s in enumerate(steps, 1))
-    doc = HEAD.format(title=title, desc=desc) + f'''<header class="g-hero"><div class="g-brand"><img src="assets/icons/logo-96.png" alt="">Deepak's 10X Life</div>
+    doc = HEAD.format(title=title, desc=desc) + f'''<header class="g-hero"><div class="g-brand"><img src="assets/icons/logo-96-2.png" alt="">Deepak's 10X Life</div>
 <h1>{hero_h}</h1><p>{hero_p}</p><a class="g-cta" href="{cta[1]}">{cta[0]}</a></header>
 {flow}{toc}{body}{extra}
 <p class="g-foot">சிவப்பு எண் ① ② ③ = படத்தில் தட்ட வேண்டிய இடம்.<br>படங்கள் மாதிரி கணக்கு (demo) வைத்து எடுத்தவை; உங்க app-ல உங்க பெயர், உங்க points வரும்.<br><a href="privacy.html">Privacy</a></p>
@@ -81,14 +81,14 @@ M = [
     ('code', 'Email code போடுங்க', 'Email போட்டு <b>Send code to my email</b> தட்டினா ஒரு நிமிஷத்துல code வரும்.', ['m02-code'], [
         ('1', 'Email-ல வந்த 6 இலக்க code-ஐ copy பண்ணி <b>Paste</b> தட்டுங்க. 6 இலக்கமும் வந்ததும் தானா login ஆகும்.')],
      'Code வரலைன்னா Spam / Promotions folder பாருங்க. ஒரு நிமிஷம் கழிச்சு <b>Send again</b> தட்டலாம்.'),
-    ('install', 'App மாதிரி phone-ல வைங்க', 'Play Store தேவையில்ல. ஒரு தடவை இப்படி பண்ணினா home screen-ல <b>10X</b> icon வரும், தட்டினா நேரா app திறக்கும்.', [], [
+    ('install', 'App மாதிரி phone-ல வைங்க', 'Play Store தேவையில்ல. ஒரு தடவை இப்படி பண்ணினா home screen-ல <b>Deepak&#39;s 10X Life</b> (Deepak sir படம் உள்ள) icon வரும், தட்டினா நேரா app திறக்கும்.', [], [
         ('★', '<b>Android (Chrome):</b> மேல வலது பக்க ⋮ மூணு புள்ளி → <b>Add to Home screen</b> அல்லது <b>Install app</b> → Install.'),
         ('★', '<b>iPhone (Safari):</b> கீழ Share பட்டன் (□↑) → <b>Add to Home Screen</b> → Add.'),
         ('★', 'Home-ல <b>Finish setting up</b> card வந்தா அதுல <b>Install</b> / <b>How?</b> தட்டுங்க - உங்க phone-க்கு ஏத்த மாதிரி step சொல்லும்.')],
      '<b>WhatsApp-ல link தட்டி திறந்தீங்களா?</b> அது WhatsApp உள்ளேயே திறக்கும், அங்க Install வராது. மேல ⋮ → <b>Open in Chrome</b> தட்டுங்க, Chrome-ல login பண்ணிட்டு மேல சொன்ன மாதிரி Install பண்ணுங்க.'),
     ('notify', 'Notifications Allow பண்ணுங்க', 'முதல் தடவை app திறக்கும்போது இது கேட்கும்.', ['m03-push'], [
         ('1', '<b>Allow</b> தட்டுங்க. Coach பதில், class update, இரவு நினைவூட்டல் எல்லாம் WhatsApp மாதிரி phone-க்கு வரும். <b>Later</b> தட்டினா நாளைக்கு மறுபடி கேட்கும்.')],
-     '<b>முன்னாடி Block தட்டிட்டீங்களா?</b> அப்புறம் app கேட்காது. Chrome-ல web address இடது பக்க ⚙ / 🔒 icon → <b>Permissions</b> → <b>Notifications</b> → <b>Allow</b>. Install பண்ண app-ல: 10X icon-ஐ அழுத்தி பிடிங்க → <b>App info</b> → <b>Notifications</b> → On. அப்புறம் app-ல <b>Fix</b> → <b>Check again</b>.'),
+     '<b>முன்னாடி Block தட்டிட்டீங்களா?</b> அப்புறம் app கேட்காது. Chrome-ல web address இடது பக்க ⚙ / 🔒 icon → <b>Permissions</b> → <b>Notifications</b> → <b>Allow</b>. Install பண்ண app-ல: Deepak&#39;s 10X Life icon-ஐ அழுத்தி பிடிங்க → <b>App info</b> → <b>Notifications</b> → On. அப்புறம் app-ல <b>Fix</b> → <b>Check again</b>.'),
     ('home', 'Home - ஒரே பார்வையில இன்றைக்கு', 'App திறந்ததும் வர்ற முதல் screen.', ['m04-home'], [
         ('1', 'இன்றைய progress - இன்னைக்கு எத்தனை habits முடிஞ்சது.'),
         ('2', '<b>Today</b> இன்றைய points · <b>Streak</b> தொடர்ந்து எத்தனை நாள் · <b>Rank</b> உங்க இடம்.'),

@@ -44,21 +44,21 @@ const openInChrome = () => `<div class="su-warn">${icon('alert-triangle')}<span>
 
 export function installHelp() {
   const body = inApp ? openInChrome()
-    : isIOS ? steps(['Open this page in <b>Safari</b>', 'Tap the <b>Share</b> button <b class="k">□↑</b> at the bottom', 'Scroll and tap <b>Add to Home Screen</b> → <b>Add</b>', 'Open the <b>10X</b> icon from your home screen'])
-    : isSamsung ? steps([`Tap the menu <b class="k">≡</b> at the bottom`, 'Tap <b>Add page to</b> → <b>Home screen</b>', 'Open the <b>10X</b> icon from your home screen'])
-    : steps([`Tap ${dots} at the <b>top right</b> of Chrome`, 'Tap <b>Install app</b> or <b>Add to Home screen</b>', 'Tap <b>Install</b>', 'Open the <b>10X</b> icon from your home screen. Log in once there.']);
-  const s = sheet('Install the app', `<p class="muted">No Play Store needed. Do this once, and a <b>10X</b> icon comes on your home screen like any app.</p>${body}`);
+    : isIOS ? steps(['Open this page in <b>Safari</b>', 'Tap the <b>Share</b> button <b class="k">□↑</b> at the bottom', 'Scroll and tap <b>Add to Home Screen</b> → <b>Add</b>', 'Open the <b>Deepak&#39;s 10X Life</b> icon from your home screen'])
+    : isSamsung ? steps([`Tap the menu <b class="k">≡</b> at the bottom`, 'Tap <b>Add page to</b> → <b>Home screen</b>', 'Open the <b>Deepak&#39;s 10X Life</b> icon from your home screen'])
+    : steps([`Tap ${dots} at the <b>top right</b> of Chrome`, 'Tap <b>Install app</b> or <b>Add to Home screen</b>', 'Tap <b>Install</b>', 'Open the <b>Deepak&#39;s 10X Life</b> icon from your home screen. Log in once there.']);
+  const s = sheet('Install the app', `<p class="muted">No Play Store needed. Do this once, and the <b>Deepak&#39;s 10X Life</b> icon (Deepak sir's photo) comes on your home screen like any app.</p>${body}`);
   s.el.addEventListener('click', copyLink);
 }
 
 export function notifyHelp(state) {
   let body;
   if (inApp) body = openInChrome();
-  else if (state === 'ios-install') body = `<p class="muted">On iPhone, notifications work only in the installed app.</p>${steps(['Install the app first (Share <b class="k">□↑</b> → Add to Home Screen)', 'Open the <b>10X</b> icon from your home screen', 'Tap <b>Allow</b> on this card'])}`;
+  else if (state === 'ios-install') body = `<p class="muted">On iPhone, notifications work only in the installed app.</p>${steps(['Install the app first (Share <b class="k">□↑</b> → Add to Home Screen)', 'Open the <b>Deepak&#39;s 10X Life</b> icon from your home screen', 'Tap <b>Allow</b> on this card'])}`;
   else if (state === 'blocked') {
     body = `<div class="su-warn">${icon('alert-triangle')}<span>Notifications were <b>blocked</b> on this phone earlier, so the app can't ask again. Turn them on like this:</span></div>
       ${isStandalone()
-        ? steps(['Go to your home screen and <b>press and hold the 10X icon</b>', 'Tap <b>App info</b> (ⓘ)', 'Tap <b>Notifications</b> → turn <b>on</b>', 'Come back here and tap <b>Check again</b>'])
+        ? steps(['Go to your home screen and <b>press and hold the Deepak&#39;s 10X Life icon</b>', 'Tap <b>App info</b> (ⓘ)', 'Tap <b>Notifications</b> → turn <b>on</b>', 'Come back here and tap <b>Check again</b>'])
         : steps([`Tap the small icon <b class="k">⚙</b> or <b class="k">🔒</b> on the left of the web address`, 'Tap <b>Permissions</b> → <b>Notifications</b> → <b>Allow</b>', 'Come back here and tap <b>Check again</b>'])}
       <p class="muted" style="font-size:13px">Can't find it? ${dots} → <b>Settings</b> → <b>Site settings</b> → <b>Notifications</b> → find <b>${esc(location.hostname)}</b> → <b>Allow</b>.</p>
       <button class="btn btn-gold btn-block" type="button" data-recheck>${icon('rotate-ccw')}Check again</button>`;
@@ -101,7 +101,7 @@ export async function renderSetup(box) {
   box.innerHTML = `<section class="card setup-card" aria-labelledby="su-h">
     <div class="su-top"><b id="su-h">Finish setting up</b><small>${done} of 2 done</small></div>
     <div class="su-bar"><i style="width:${done * 50}%"></i></div>
-    <div class="su-row ${installed ? 'ok' : ''}"><span class="su-n">1</span><div><b>Install the app</b><small>A 10X icon on your home screen. Opens in one tap.</small></div>${installBtn}</div>
+    <div class="su-row ${installed ? 'ok' : ''}"><span class="su-n">1</span><div><b>Install the app</b><small>Deepak's 10X Life icon on your home screen. Opens in one tap.</small></div>${installBtn}</div>
     <div class="su-row ${pushOn ? 'ok' : ''}"><span class="su-n">2</span><div><b>Turn on notifications</b><small>${push === 'blocked' ? 'Blocked on this phone. Tap Fix to see how to allow.' : 'Evening reminder, coach answers and class updates.'}</small></div>${pushBtn}</div>
     <div class="su-foot"><button class="btn btn-ghost btn-sm" data-su="later">Later</button></div></section>`;
   return true;

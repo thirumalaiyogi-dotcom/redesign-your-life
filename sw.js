@@ -1,7 +1,7 @@
 // Service worker — Deepak's 10X Life
 // Caches only the public app shell (HTML/CSS/JS/images from this site).
 // Never caches Supabase requests, so private member data never lands in the cache.
-const VERSION = 'ryl-v98';
+const VERSION = 'ryl-v99';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const IMAGES = `${VERSION}-images`;
@@ -11,7 +11,7 @@ const PRECACHE = [
   'css/tokens.css', 'css/style.css', 'css/landing.css', 'css/components.css', 'css/responsive.css', 'css/dashboard.css', 'css/tracker.css', 'css/journal.css', 'css/progress.css', 'css/leaderboard.css', 'css/admin.css', 'css/learn.css', 'css/todo.css', 'css/family.css',
   'js/theme-init.js', 'js/theme.js', 'js/site-content.js', 'js/vendor/supabase.js', 'js/supabase.js', 'js/landing.js', 'js/index.js', 'js/auth.js', 'js/ui.js', 'js/icons.js', 'js/stadium.js', 'js/pwa.js',
   'js/auth-pages.js', 'js/dashboard.js', 'js/tracker.js', 'js/leaderboard.js', 'js/journal.js', 'js/admin.js', 'js/learn.js', 'js/media.js', 'js/coach-learn.js', 'js/push.js', 'js/point.js', 'js/batches.js', 'js/fx.js', 'js/offline.js', 'js/family-view.js', 'js/setup.js', 'js/covers.js', 'js/quotes.js', 'js/usage.js', 'js/report.js',
-  'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/favicon-32.png', 'assets/icons/logo-96.png', 'assets/fonts/anton-latin-400.woff2'
+  'assets/icons/icon-192-2.png', 'assets/icons/icon-512-2.png', 'assets/icons/favicon-32-2.png', 'assets/icons/logo-96-2.png', 'assets/fonts/anton-latin-400.woff2'
 ];
 
 // member pages are saved too, so the app opens with no internet (it then shows the habits saved on the phone)
@@ -91,7 +91,7 @@ self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { title: event.data?.text() || "Deepak's 10X Life" }; }
   event.waitUntil(self.registration.showNotification(d.title || "Deepak's 10X Life", {
-    body: d.body || '', tag: d.tag || undefined, icon: 'assets/icons/icon-192.png', badge: 'assets/icons/favicon-32.png',
+    body: d.body || '', tag: d.tag || undefined, icon: 'assets/icons/icon-192-2.png', badge: 'assets/icons/favicon-32-2.png',
     data: { url: d.url || 'member/dashboard.html' }
   }));
 });
