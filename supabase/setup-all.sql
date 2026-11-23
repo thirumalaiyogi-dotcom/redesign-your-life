@@ -3086,7 +3086,11 @@ from (values
 ) as v(number, default_name, description, icon)
 join public.tracker_categories c on c.slug = 'manifest'
 on conflict (category_id, number) do nothing;
-
+-- new Gen Z pictures (12 and 14 keep the first ones)
+update public.activities a set image_path = 'manifestb-' || lpad(a.number::text, 2, '0') || '.webp'
+from public.tracker_categories c
+where c.id = a.category_id and c.slug = 'manifest' and a.number in (1,2,3,4,5,6,7,8,9,10,11,13,15,16)
+  and a.image_path = 'manifest-' || lpad(a.number::text, 2, '0') || '.webp';
 
 -- >>>>>>>>>>>>>>>>>>>> FIRST SUPER ADMIN (run once, after you sign up in the app)
 -- Replace the email with the client's login email, then run just this line:
