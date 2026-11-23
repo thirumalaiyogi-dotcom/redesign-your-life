@@ -209,3 +209,30 @@ from public.tracker_categories c where c.id = a.category_id and c.slug = 'nithil
 -- The Secret - 16 Basics pictures (Nov 2026)
 update public.activities a set image_path = 'secret-' || lpad(a.number::text, 2, '0') || '.webp'
 from public.tracker_categories c where c.id = a.category_id and c.slug = 'secret' and a.image_path is null;
+
+-- 16 Manifestation Techniques (Nov 2026): Deepak's poster wording; pictures cut from his poster
+insert into public.tracker_categories(slug, name, tagline, color, icon, sort_order, audience, show_locked) values
+  ('manifest', 'Manifestation - 16 Techniques', 'Transform your Thinking, Transform your Life!', '#e07b24', 'target', 11, 'assigned', true)
+on conflict (slug) do nothing;
+insert into public.activities(category_id, number, default_name, description, icon, image_path, points)
+select c.id, v.number, v.default_name, v.description, v.icon, 'manifest-' || lpad(v.number::text, 2, '0') || '.webp', 10
+from (values
+  (1, 'Miracle vs Process', null, 'flag'),
+  (2, 'Conceive + Believe + Achieve', null, 'brain'),
+  (3, 'Baby Conceived', null, 'heart'),
+  (4, '100% Believe?', null, 'check-circle-2'),
+  (5, 'Possession of Anything Begins in the Mind', null, 'house'),
+  (6, 'Taj Mahal - 22 Years', null, 'clock'),
+  (7, 'Everything is Created Twice', 'First in Mind, then in Reality', 'copy'),
+  (8, 'SMART Goals', 'Specific, Measurable, Achievable, Relevant, Time-bound', 'target'),
+  (9, 'END Goals - Experience / Growth / Contribution', null, 'mountain'),
+  (10, 'How Vision Board Works?', null, 'image'),
+  (11, 'Amygdala - Vadikettuna Muttal. Fool.', null, 'alert-triangle'),
+  (12, 'Live Vision Board Sample Today', null, 'sparkles'),
+  (13, '3 Functions of Prefrontal Cortex', 'GPS, Google, Filter', 'eye'),
+  (14, 'Tomorrow NEVER Comes. Take Action NOW!', null, 'zap'),
+  (15, 'Importance of Mentor. Who is your Mentor?', null, 'users'),
+  (16, 'Surya Jyotika Workout', null, 'dumbbell')
+) as v(number, default_name, description, icon)
+join public.tracker_categories c on c.slug = 'manifest'
+on conflict (category_id, number) do nothing;
