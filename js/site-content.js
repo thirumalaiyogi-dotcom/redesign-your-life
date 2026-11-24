@@ -54,12 +54,25 @@ export const WORKSHOP = {
   title: 'The Science & Psychology of 10X',
   title_ta: 'ஏன் கடினமாக உழைத்தும் எதிர்பார்த்த வளர்ச்சி கிடைப்பதில்லை?',
   days: 7,
-  start: '2026-11-18',              // yyyy-mm-dd (first day)
+  start: '',                        // yyyy-mm-dd (first day). Empty = no dates yet (Nov 18 batch is over; shown as "Coming soon" in EVENTS)
   time: '5:45 AM – 7:30 AM',
   where: 'Zoom (online)',
   whatsappText: '10X',
   registerUrl: ''                   // e.g. 'https://pages.razorpay.com/pl_XXXX/view'
 };
+
+// Home "Coming up" list + the poster that pops up when the app opens (js/events.js).
+//   start/end: yyyy-mm-dd. A dated event hides itself after its end day (India time).
+//   soon: true → no dates yet, shows "Coming soon" until you remove it.
+//   popup: true → its poster opens full screen once each time the app is opened, until the end day.
+//   whatsappText: the word members send on WhatsApp to book (leave out if there is none yet).
+export const EVENTS = [
+  { id: 'ctc-2611', title: 'Corporate Theri Champions', sub: '2-day residential boot camp · Winners Hill Resort, Coimbatore',
+    when: 'This weekend · Sat 28 & Sun 29 Nov', start: '2026-11-28', end: '2026-11-29',
+    poster: 'assets/events/ctc-2611.webp', whatsappText: 'CTC', cta: 'WhatsApp “CTC” to block your seat', popup: true },
+  { id: 'secret', title: 'The One & Only Secret', sub: "Deepak's next program", soon: true, poster: 'assets/events/secret-soon.webp' },
+  { id: '10x', title: 'The Science & Psychology of 10X', sub: '7-day online workshop · next batch', soon: true, face: true }
+];
 
 // ---- helpers ----
 export const waLink = (text = '') => `https://wa.me/${CONTACT.whatsapp}${text ? '?text=' + encodeURIComponent(text) : ''}`;

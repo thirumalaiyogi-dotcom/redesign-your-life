@@ -162,3 +162,10 @@ All of Deepak's details live in one file: **`js/site-content.js`** (on GitHub: o
 - Numbers from `tracker_energy(p_member)` (server, read-only; members only their own, coaches anyone; coaches also see their own in Member view — migration ryl_37): each day's % = done ÷ habits in the tracker; energy = 75% weighted last 7 days (yesterday counts most) + 25% average since the tracker started (max 90 days). Today is added only when it lifts the needle; missed days pull it down after they pass. Start = when the tracker was opened for them or their first tick. Points and streaks are not touched.
 - Shown: big meter on each tracker page (refreshes ~1 s after ticks), "My energy" row on Home, "Energy meters" on the coach's member page. Migration `ryl_36_tracker_energy`, tests E1–E2.
 - 16 Manifestation Techniques tracker (slug manifest, migration ryl_38): Deepak's poster wording; habit pictures cut from his poster (assets/images/manifest-NN.webp, numbered as on the poster: 12 Live Vision Board, 13 Prefrontal Cortex), cover = top of the poster, Home poster = the whole poster. Opened for everyone who has Psychology of Money (49).
+
+## Coming up + event poster popup (sw ryl-v104)
+- Edit `EVENTS` in `js/site-content.js` (the one place). Each event: `start`/`end` dates hide it automatically after the last day;
+  `soon: true` shows "Coming soon" with no dates; `popup: true` opens its poster full screen once each time the app is opened, until `end`.
+- Code: `js/events.js` (Home "Coming up" list, poster sheet, popup). Posters live in `assets/events/` — use a new file name when a poster changes (30-day cache).
+- Now: CTC (28–29 Nov, Coimbatore, popup, WhatsApp "CTC"), The One & Only Secret (coming soon), 10X 7-day online (coming soon).
+  `WORKSHOP.start` is empty, so the old "Happening now" card is hidden.

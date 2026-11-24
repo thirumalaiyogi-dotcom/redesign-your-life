@@ -10,6 +10,7 @@ import { isOfflineError, keepTick, forgetTick, pendingFor, autoSend } from './of
 import { coverSrc, posterSrc, posterTitle } from './covers.js';
 import { loadEnergy, energyRowHTML, trackerHref, animateNeedles } from './energy.js';
 import { quotesHTML, startQuotes } from './quotes.js';
+import { eventsHTML, wireEvents, popupOnOpen } from './events.js';
 import { fmtTime } from './usage.js';
 import { renderSetup, wireSetup, notifyHelp } from './setup.js';
 import { $, $$, icon, esc, toast, withBusy, setFieldError, wirePasswordToggles, memberNav,
@@ -373,11 +374,13 @@ async function renderDashboard() {
     ${quotesHTML()}
     <div id="push-ask"></div>
     <div class="dash">
-      <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}<div id="tk-wrap"></div><div id="energy-wrap"></div><div id="act-wrap"></div></div>
+      <div class="dash-col" id="col-main">${heroHTML()}${workshopCardHTML()}${eventsHTML()}<div id="tk-wrap"></div><div id="energy-wrap"></div><div id="act-wrap"></div></div>
       <div class="dash-col dash-side" id="col-side"><div id="streak-wrap">${streakHTML()}</div><div id="week-wrap"></div>${quickHTML()}</div>
     </div>`;
   animateRings(main);
   startQuotes($('.qband', main));
+  wireEvents($('.ev-sec', main));
+  popupOnOpen();
   loadEnergy().then((list) => { const w = $('#energy-wrap'); if (w) { w.innerHTML = energyRowHTML(list, trackerHref); animateNeedles(w); } }).catch(() => {});
   loadAppTime();
   familyTile();

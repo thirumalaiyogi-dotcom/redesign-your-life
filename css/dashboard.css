@@ -221,3 +221,23 @@
 .apptime:empty { display: none; }
 .apptime .icon { width: 16px; height: 16px; color: var(--c-accent-ink); flex: none; }
 .apptime b { color: var(--c-text); }
+
+/* Coming up (js/events.js) */
+.ev-list { display: grid; gap: 10px; }
+.ev-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; width: 100%; text-align: left; font: inherit; color: var(--c-text); cursor: pointer; border: 1px solid var(--c-border, transparent); background: linear-gradient(120deg, color-mix(in srgb, var(--c-accent) 12%, var(--c-surface)), var(--c-surface) 70%); }
+.ev-card:active { transform: scale(.99); }
+.ev-card > img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; object-position: top; }
+.ev-card > img.ev-face { border-radius: 50%; box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 3.5px var(--c-accent); }
+.ws-txt small.ev-soon { color: #c0262b; }
+.ev-pop { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .82); display: grid; place-items: center; padding: 16px; animation: evIn .25s ease; }
+.ev-box { position: relative; width: min(440px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 10px; }
+.ev-box > img { width: 100%; max-height: calc(100dvh - 170px); object-fit: contain; border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.ev-x { position: absolute; top: -6px; right: -6px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #fff; color: #111; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); cursor: pointer; z-index: 1; }
+.ev-act { display: grid; gap: 8px; }
+.ev-act p { margin: 0; color: #fff; text-align: center; font-size: 14px; }
+.ev-act .btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .45); box-shadow: none; }
+.ev-noposter { background: var(--c-surface); border-radius: 14px; padding: 28px 20px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.ev-noposter img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; }
+.ev-noposter span { color: var(--c-text-2); }
+@keyframes evIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ev-pop { animation: none; } }
